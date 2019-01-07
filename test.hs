@@ -228,6 +228,8 @@ instance Num a => Num (T n a) where
 type T2 a b t = T a (T b t)
 type T3 a b c t = T a (T b (T c t))
 
+
+
 -- TODO: sequence works but distribute doesn't for some reason
 -- λ: t26 * (sequenceA $ t26 + t26)
 -- Tagged (Tagged 2.0)
@@ -308,34 +310,34 @@ scalar :: (Additive f, Finite f, Elt a) => a -> f a
 scalar a = fromV (V $ pure a)
 
 -- (Tensor f, Ring a) 
-(:+:) :: (Additive f, Num a) => f a -> f a -> f a 
-(:+:) = add 
+(.+.) :: (Additive f, Num a) => f a -> f a -> f a 
+(.+.) = add 
 
-(:-:) :: (Additive f, Num a) => f a -> f a -> f a 
-(:-:) = sub 
+(.-.) :: (Additive f, Num a) => f a -> f a -> f a 
+(.-.) = sub 
 
 -- | Right scalar product
-(:*) :: (Functor f, Num a) => f a -> a -> f a
-f :* a = fmap (* a) f
+(.*) :: (Functor f, Num a) => f a -> a -> f a
+f .* a = fmap (* a) f
 
 -- | Left scalar product
-(*:) :: (Functor f, Num a) => a -> f a -> f a
-a *: f = fmap (* a) f
+(*.) :: (Functor f, Num a) => a -> f a -> f a
+a *. f = fmap (* a) f
 
 -- | Right vector product
-(:*.) :: (Functor m, Foldable r, Additive r, Num a) => m (r a) -> r a -> m a
-m :*. v = fmap (\r -> Foldable.sum $ liftI2 (*) r v) m
+(.*!) :: (Functor m, Foldable r, Additive r, Num a) => m (r a) -> r a -> m a
+m .*! v = fmap (\r -> Foldable.sum $ liftI2 (*) r v) m
 
 -- (!*) :: (Metric r, Additive f, Num a) => r a -> r (f a) -> f a
 -- f !* g = dot f <$> distribute g
 --
 -- | Left vector product
-(.*:) :: (Foldable t, Additive f, Additive t, Num a) => t a -> t (f a) -> f a
-f .*: g = sumV $ liftI2 (*:) f g
+(!*.) :: (Foldable t, Additive f, Additive t, Num a) => t a -> t (f a) -> f a
+f !*. g = sumV $ liftI2 (*.) f g
 
 -- | Matrix product. 
-(:*:) :: (Functor m, Foldable t, Additive t, Additive n, Num a) => m (t a) -> t (n a) -> m (n a)
-f :*: g = fmap (\f' -> Foldable.foldl' add zero $ liftI2 (*:) f' g) f
+(.*.) :: (Functor m, Foldable t, Additive t, Additive n, Num a) => m (t a) -> t (n a) -> m (n a)
+f .*. g = fmap (\f' -> Foldable.foldl' add zero $ liftI2 (*.) f' g) f
 
 {-
 infixl 6 :+:, :-:

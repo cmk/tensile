@@ -19,18 +19,26 @@ make it easy to share parameters between different components (example: if we do
 Long game: integrate cutting edge ideas as they arrive with moderate effort.
 
 -----------------------------------------------------------------
-tensile - a flexible high-level n.n. API (think FP Keras) 
+onnx-core - a purely functional n.n. API for TensorFlow, etc
 -----------------------------------------------------------------
 multiple backends 
-  - tensile-hmatrix
-  - tensile-eigen 
-  - tensile-accelerate    
+  - onnx-hmatrix
+  - onnx-eigen 
+  - onnx-accelerate    
     - https://github.com/AccelerateHS/accelerate
     - https://github.com/ekmett/linear-accelerate/
-  - tensile-tensorflow
+  - onnx-tensorflow
+  - onnx-torch
+
+  - tensile-onnx
+  - tensile-tensorflow?
+
 
 
 TOGROK
+
+https://hackage.haskell.org/package/dimensions-1.0.1.1/docs/Numeric-Dim.html
+https://hackage.haskell.org/package/constraints-0.10.1/docs/Data-Constraint.html#t:Dict
 
 https://github.com/GU-CLASP/TypedFlow/blob/master/TypedFlow/Haskell.hs#L99
   - grok column: http://hackage.haskell.org/package/linear-1.20.8/docs/src/Linear.Matrix.html#column
@@ -43,26 +51,186 @@ http://hackage.haskell.org/package/lens-4.17/docs/Control-Lens-Indexed.html
 http://hackage.haskell.org/package/lens-4.17/docs/Control-Lens-Internal-Indexed.html#t:Indexable
   - grok biplate / Data-Data-Lens
 
+  - tf variables: https://github.com/tensorflow/community/blob/master/rfcs/20180817-variables-20.md#ref-edges-versus-resources
+
 
 -- TODO: 
+-- see http://hackage.haskell.org/package/beam-core
 
-Numeric.Tensile
-Numeric.Tensile.Tensor
+-- onnx-core
+Numeric.Onnx.Tensor
+Numeric.Onnx.Expression (Expr)
+Numeric.Onnx.Graph
+
+Numeric.Onnx.Backend.Linear
+
+-- onnx-operators
+Numeric.Onnx.Operators.NN
+
+Numeric.Onnx.Backend.HMatrix 
+-- use https://github.com/mstksg/hmatrix-backprop/blob/master/src/Numeric/LinearAlgebra/Static/Backprop.hs
+Numeric.Onnx.Backend.Eigen
+Numeric.Onnx.Backend.TensorFlow
+Numeric.Onnx.Backend.Accelerate
+Numeric.Onnx.Backend.ATen
+Numeric.Onnx.Backend.Torch
 
 
-  - give Bool a num instance? going to fail a - a = 0
-  - use http://hackage.haskell.org/package/semirings-0.2.1.1/docs/Data-Semiring.html
+TODO:
 
--- plus, zero, times, one
+- explore kmett/linear style using function applicatives. amazing that you can do matrix algebra w these.
+-- grok adjuctions, yoneda. application to n-way currying. 
+-- need hoist :: (forall a. a -> a) -> ([Word] -> a) -> (Word -> ... -> Word -> a)
+-- or maybe density?
+-- t s e = Idxs s -> e ~ n0 -> n1 -> ... -> nn -> e
+-- generic currying (from f :: s  to  f :: n0 -> n1 -> ... -> nn -> e)
+-- https://mail.haskell.org/pipermail/haskell/2004-May/014062.html
+-- http://hackage.haskell.org/package/adjunctions-4.4/docs/Data-Functor-Adjunction.html
 
-import Prelude hiding ((*), (+), (-), negate, subtract,zipWith)
-import qualified Prelude
-import qualified  Data.Semiring as S
 
+
+
+
+
+- make Elt kind / typeclass (see typed-flow) & Attribute kind / typeclass. Elt e => Attribute e 
+-- https://github.com/onnx/onnx/blob/master/docs/IR.md#attribute-types
+
+- make Node typeclass (one impl per node)? or Nodes? 
+
+- make Tensor typeclass?
+-- higher-kinded data (see Beam / http://reasonablypolymorphic.com/blog/higher-kinded-data/)
+
+
+- Expr idea
+-- http://hackage.haskell.org/package/fgl-5.7.0.1
+-- https://hackage.haskell.org/package/typedflow-0.9/docs/TypedFlow-Types.html#t:GState
+-- https://www.tensorflow.org/guide/extend/model_files
+-- use DynGraph to handle If and other graph-valued ops: http://hackage.haskell.org/package/fgl-5.7.0.1/docs/src/Data.Graph.Inductive.Graph.html#DynGraph
+
+- decide how to handle op attributes (put in function args?, Reader?, type-level map?)
+-- https://github.com/tensorflow/tensorflow/blob/master/tensorflow/core/framework/attr_value.proto
+
+- make onnx-proto, compile onnx protos w/ proto-lens, compare w/ tf versions
+https://github.com/onnx/onnx/blob/765f5ee823a67a866f4bd28a9860e81f3c811ce8/onnx/onnx.proto
+https://tensorflow.github.io/haskell/haddock/tensorflow-proto-0.2.0.0/
+
+
+
+- define datatypes:
+
+-- http://hackage.haskell.org/package/fgl-5.7.0.1/docs/Data-Graph-Inductive-PatriciaTree.html
+-- note that TF nodes do not record outputs in this type, but onnx nodes do. we follow onnx here but will make a Rendered typeclass : class Rendered s where MonadState s m => Expr a -> m a
+-- later fold Expr to TF NodeDef, Tensor Build a and eval with Build.hs
+-- we use the functions BELOW in the Expr interpreter
+newtype Expr t = Expr { unExpr :: FGL.Gr Operator t } 
+
+
+-- node https://github.com/onnx/onnx/blob/master/docs/IR.md#nodes
+-- Node dependencies MUST NOT create cycles in the computation graph. HOW TO ENFORCE?
+newtype Node t = Node { unNode :: FGL.Context Operator t }
+
+
+-- t above can be TRep or FRep. note these are adjoint!!!
+-- domain type for https://tensorflow.github.io/haskell/haddock/tensorflow-proto-0.2.0.0/Proto-Tensorflow-Core-Framework-TensorDescription.html
+-- http://hackage.haskell.org/package/comonad-5.0.2/docs/Control-Comonad-Trans-Env.html#t:EnvT
+data TRep = TRep { shape :: [Word], type :: TType } ~ Env [Word] TType 
+newtype FRep = FRep { unFRep :: [Word] -> TType } ~ Reader [Word] TType 
+
+
+-- useful?
+-- https://hackage.haskell.org/package/dimensions-1.0.1.1/docs/src/Numeric.Dimensions.Idxs.html#idxsFromWords
+forall ds . Dimensions ds => Prism (TRep a) (T TRep (Idx ds) a)
+
+
+
+-- https://tensorflow.github.io/haskell/haddock/tensorflow-proto-0.2.0.0/Proto-Tensorflow-Core-Framework-OpDef.html#t:OpDef
+-- see also https://tensorflow.github.io/haskell/haddock/tensorflow-0.2.0.0/src/TensorFlow.Output.html#OpDef
+-- https://tensorflow.github.io/haskell/haddock/tensorflow-proto-0.2.0.0/Proto-Tensorflow-Core-Framework-NodeDef.html
+-- https://github.com/onnx/onnx/blob/master/onnx/onnx.proto3#L279
+-- https://github.com/onnx/onnx/blob/master/docs/IR.md#nodes
+-- https://github.com/onnx/onnx/blob/master/docs/IR.md#attributes
+-- properties: Operator arity should match Context, Operator shape / type should match that of the f's
+data Operator 
+
+
+-- tensor (for tf dense/sparse, onnx dense, hmatrix, etc)
+newtype T (t :: * -> *) (s :: Dims) e = T { unT :: t e } 
+
+
+-- tensor shape
+https://github.com/onnx/onnx/blob/master/docs/IR.md#tensor-shapes
+https://hackage.haskell.org/package/dimensions-1.0.1.1/docs/src/Numeric.Dim.html#XNat
+https://hackage.haskell.org/package/dimensions-1.0.1.1/docs/src/Numeric.Dimensions.Dims.html#Dims
+
+message TensorShapeProto {
+  message Dimension { 
+    oneof value { // XNat
+      int64 dim_value = 1; // N
+      string dim_param = 2; // XN
+    };
+  };
+  repeated Dimension dim = 1; //Dims = TypedList Dim xs
+}
+
+message Tensor {
+    optional TensorProto.DataType elem_type = 1;
+    optional TensorShapeProto shape = 2;
+  }
+
+
+
+
+- define T f s e instance for Backprop, Num, Fractional, and Floating
+instance Elt e, NotBool e => Num e where
+instance Elt e, NotBool e, NotInt e => Fractional e where
+instance Elt e, NotBool e, NotInt e => Floating e where
+
+- use dimensions lib to implement bcast: 
+https://hackage.haskell.org/package/dimensions-1.0.1.1/
+https://github.com/GU-CLASP/TypedFlow/blob/9f053e9cb8ee54aed411fb6c7d93eb29d28a6862/TypedFlow/Abstract.hs
+
+- need to add Op defns for every method in Num, Fractional, and Floating. see https://github.com/mstksg/backprop/blob/master/src/Numeric/Backprop/Op.hs?
+
+- define remaining typeclasses w/ defaults and functor => instances (from linear / test.hs)
+-- basically gotta use the opdefs to implement all these type classes
+-- https://github.com/onnx/onnx/blob/master/docs/Operators.md
+
+
+ 
+-- https://github.com/onnx/onnx/blob/master/docs/Operators.md#max
+instance Ord e => Ord T e where
+
+MonadBuild
+
+  https://github.com/onnx/onnx/blob/master/docs/Operators.md#Loop
+  loop
+
+
+https://github.com/onnx/onnx/blob/master/docs/Operators.md#if
+elseThenIf
+
+instances: Eq, Ord, Num, Fractional, Floating
+
+class Boolean where
+  and &&&
+  or  |||
+  not
+  xor 
+
+class Reduce where
+ReduceL1
+ReduceL2
+ReduceLogSum
+ReduceLogSumExp
+ReduceMax
+ReduceMean
+ReduceMin
+ReduceProd
+ReduceSum
+ReduceSumSquare
 
 
 class Dims v => Finite v where
-  type Shape v :: [Nat] ??
 
   type Size v :: Nat -- this should allow kind k, for Reifies k Int
   toV :: v a -> V (Size v) a
@@ -74,71 +242,161 @@ class Dims v => Finite v where
   -- need to get shape
   fill :: V (Size v) a -> v a
 
+  unstack :: t (n:s) a -> V n (t s a)
 
-instance (Tensor (t s a), Ring a) => Ring (t s a) where
+-- Numeric.Onnx.NN.Tensor
 
-  add :: Num a => t s a -> t s a -> t s a
+-- let t hold s instead so we can use hmatrix-static, hasktorch, etc ?
+-- see https://github.com/hasktorch/hasktorch/blob/master/indef/src/Torch/Indef/Static/Tensor/Math/Blas.hs
+class Tensor t where 
 
-  neg :: Num a => t s a -> t s a
+  shape :: (KnownShape s, Len s ~ n, Elt e) => T t s e -> V n Int
+  shape = 
 
-  sub :: Num a => t s a -> t s a -> t s a
-  sub x y = x `add` neg y
+  constant :: (KnownShape s, Len s ~ n, Size s ~ n', Elt e) => V n' e -> T t s e
+  -- constant v = fill $ const v
 
-  mul :: Num a => t s a -> t s a
+  -- forces a denotation of data ordering (e.g. row-major, col-major etc)
+  fill :: (Idxs s -> e) -> T t s e
 
 
-class Tensor f where 
+  -- res = (v1 * M) + (v2 * mat1 * mat2)
+  -- If @mat1@ is a @n × m@ matrix, @mat2@ a @m × p@ matrix, @M@ must be a @n × p@ matrix.
+  gemm
+    :: All KnownDim '[a, b, c]
+    => HsReal                  -- ^ v1
+    -> Tensor '[a, c]          -- ^ M
+    -> HsReal                  -- ^ v2
+    -> Tensor '[a, b]          -- ^ mat1
+    -> Tensor '[b, c]          -- ^ mat2
+    -> Tensor '[a, c]          -- ^ res
+
+  matmul
+    :: All KnownDim '[i, j, k]
+    => KnownShape x
+    => Num e
+    => T t (i ': j ': x) e 
+    -> T t (j ': k ': x) e 
+    -> T t (i ': k ': x) e 
+  matmul x y = gemm 1 (constant 0) 1 x y
 
   -- Tensor (Kronecker) product 
   -- transpose (m ⊗ n) == (transpose m) ⊗ (transpose n)
   -- adjoint (m ⊗ n) == (adjoint m) ⊗ (adjoint n)
-
-  (:*:) :: t s a -> t s' a -> t (s++s') a 
-
-  
+  kronecker :: t s a -> t s' a -> t (s++s') a 
 
   transpose :: Rank 1 f, Tensor g => f * g -> g * f
 
   -- f has rank 1
   transpose :: Tensor g => f (g a) -> g (f a)
 
-
-
   -- https://github.com/ekmett/linear/blob/master/src/Linear/Trace.hs
   trace :: f (g (h a)) -> h a
 
   -- contract 
 
-  -- a (1,1) tensor action
-  (.*.) :: (Tensor g, Tensor t, Num a) => f (t a) -> t (g a) -> f (g a)
-
-  -- a (1,
-  (.*) :: (Tensor g, Num a) => f a -> f (g a) -> f a
-
-  (*.) :: (Tensor g, Num a) => f (g a) -> f a -> f a
-
-  (..*) :: Num a => a -> f a -> f a
-
-  (*..) :: Num a => f a -> a -> f a
 
 
-class Tensile (t s a) where
 
-  constant :: s -> a -> t s a 
+-- | infix 'matmul'
+
+(#) :: T t (i ': j ': x) e -> T t (j ': k ': x) e -> T t (i ': k ': x) e 
+(#) = matmul
+
+(<#>)
+dot :: KnownShape s, Num e => T t s e -> T t s e -> e
+dot a b = reduce $ a `mul` b
+
+(#>) :: (All KnownDim '[r, c]) => Tensor '[r, c] -> Tensor '[c] -> Tensor '[r]
+(#>) a b = mv a b
+
+
+
+https://github.com/hasktorch/hasktorch/blob/master/indef/src/Torch/Indef/Static/Tensor/Math/Pairwise.hs
+
+-- use bcast instead
+class Num real => Pairwise tensor real where
+  -- | infix version of 'add'
+  (#.)
+  (^+) :: tensor -> real -> tensor
+  -- | infix version of 'sub'
+  (^-) :: tensor -> real -> tensor
+  -- | infix version of 'mul'
+  (^*) :: tensor -> real -> tensor
+  -- | infix version of 'div'
+  (^/) :: tensor -> real -> tensor
+
+
+infixl 7 ^*,^/
+infixl 6 ^+,^-
+
+(^+) = bcast ...
+(^-) = bcast
+(^*) = mul
+(^/) = div
+
+-- | flipped version of '(^+)'
+(+^) :: Pairwise ten real => real -> ten -> ten
+(+^) = flip (^+)
+
+-- | flipped version of '(^*)'
+(*^) :: Pairwise ten real => real -> ten -> ten
+(*^) = flip (^*)
+
+-- | flipped version of '(^/)'
+(/^) :: Pairwise ten real => real -> ten -> ten
+(/^) = flip (^/)
+
+-- | flipped version of '(^-)'
+(-^) :: forall ten real . Pairwise ten real => real -> ten -> ten
+(-^) v t = v +^ (negate (1::real) *^ t)
+
+
+https://github.com/hasktorch/hasktorch/blob/master/indef/src/Torch/Indef/Static/Tensor/Math/Pointwise.hs
+infixl 6 ^+^, ^-^
+infixl 7 ^*^, ^/^
+
+
+-- Numeric.Onnx.Backend
+-- see also https://github.com/onnx/onnx/blob/master/docs/Operators.md
+-- add scatter / gather?
+-- add flatten https://github.com/onnx/onnx/blob/master/docs/Operators.md#Flatten
+-- add expand / compress?
+-- add squeeze / unsqueeze? https://github.com/onnx/onnx/blob/master/docs/Operators.md#Squeeze
+class (Tensor t, Shape s, Elt e) => Tensile (t s e) where
 
   -- s1234 have optic-like relationship, 
   -- easy to impl w/ Fuctor/Foldable w/ Index
   tmap :: (t s1 a -> t s2 a) -> t s3 a -> t s4 a
-
+  https://github.com/AccelerateHS/accelerate/blob/dc743a12753f3cd22c6f5184576112ed801e682b/src/Data/Array/Accelerate/Data/Functor.hs#L48
+  http://hackage.haskell.org/package/linear-accelerate-0.6.0.0/docs/src/Data-Array-Accelerate-Linear-V1.html#line-154
   tmap :: (t n a -> t s2 a) -> t s3 a -> t s4 a
 
   -- transpose :: f (g a) -> g (f a)
-  shuffle :: (s -> s') -> t s a -> t s' a
+  -- https://github.com/GU-CLASP/TypedFlow/blob/9f053e9cb8ee54aed411fb6c7d93eb29d28a6862/TypedFlow/Abstract.hs#L245
+  transpose :: (Perm s s') => t s a -> t s' a
 
-  unstack :: t (n:s) a -> V n (t s a)
-  unstack :: f n (g s a) -> V n (g s a)
+  slice :: (In s s') => t s e -> t s' e
 
-  stack :: V n (t s a) -> t (n:s) a
+  shape :: (Integral i, Nat n, n ~ Size s) t s e -> t n i
+
+  -- https://github.com/onnx/onnx/blob/master/docs/Operators.md#Reshape
+  -- https://github.com/GU-CLASP/TypedFlow/blob/9f053e9cb8ee54aed411fb6c7d93eb29d28a6862/TypedFlow/Abstract.hs#L266
+  reshape :: (Size s ~ Size s') => t s e -> t s' e
+
+  -- https://github.com/onnx/onnx/blob/master/docs/Operators.md#Tile
+  tile ::
+
+  -- like tf.stack
+  -- https://github.com/onnx/onnx/blob/master/docs/Operators.md#concat
+  concat :: V n (t s a) -> t (n:s) a
+
+
+  -- https://www.tensorflow.org/xla/broadcasting
+  -- https://github.com/onnx/onnx/blob/master/docs/Broadcasting.md
+  -- Need a recursive typelevel function for Comp
+  -- https://github.com/onnx/onnx/blob/master/docs/Operators.md#Expand
+  bcast (Comp s s') :: t s e -> t s' e
 
 
 -- mapT' :: forall s t r u n. KnownLen r => KnownLen s => KnownNat n => (T s t -> T r u) ->  T (n ': s) t -> Gen (T (n ': r) u)
