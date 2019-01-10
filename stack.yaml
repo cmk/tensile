@@ -1,4 +1,4 @@
-resolver: lts-13.1
+resolver: lts-11.9
 
 packages:
   - '.'
@@ -20,10 +20,10 @@ packages:
     extra-dep: true
 extra-deps:
   - dimensions-1.0.1.1
-  - lens-labels-0.3.0.1
-  - proto-lens-0.4.0.1
-  - proto-lens-protobuf-types-0.4.0.1
-  - proto-lens-protoc-0.4.0.1
+  - lens-labels-0.2.0.1
+  - proto-lens-0.3.1.0
+  - proto-lens-protobuf-types-0.3.0.2
+  - proto-lens-protoc-0.3.1.0
   - snappy-0.2.0.2
   - snappy-framing-0.1.1
 
