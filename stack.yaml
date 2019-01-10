@@ -1,0 +1,34 @@
+resolver: lts-13.1
+
+packages:
+  - '.'
+  - location:
+      git: https://github.com/tensorflow/haskell.git
+      commit: e4acd6957458c76d7eaba98c2683239aa8a52437
+      subdirs:
+      - tensorflow
+      - tensorflow-core-ops
+      - tensorflow-logging
+      - tensorflow-mnist
+      - tensorflow-mnist-input-data
+      - tensorflow-opgen
+      - tensorflow-ops
+      - tensorflow-proto
+      - tensorflow-records
+      - tensorflow-records-conduit
+      - tensorflow-test
+    extra-dep: true
+extra-deps:
+  - dimensions-1.0.1.1
+  - lens-labels-0.3.0.1
+  - proto-lens-0.4.0.1
+  - proto-lens-protobuf-types-0.4.0.1
+  - proto-lens-protoc-0.4.0.1
+  - snappy-0.2.0.2
+  - snappy-framing-0.1.1
+
+# Override default flag values for local packages and extra-deps
+flags: {}
+
+# Extra package databases containing global packages
+extra-package-dbs: []

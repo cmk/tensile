@@ -155,6 +155,8 @@ instance Num t => Num (Tagged n Int -> t) where
 
 -}
 
+
+
 newtype F (n :: Nat) t = F { unF :: Int -> t } deriving (Functor,Applicative,Generic,Generic1)
 
 instance Additive (F n)
@@ -247,6 +249,23 @@ type V2 a b t = (KnownNat a, KnownNat b) => V a (V b t)
 type V3 a b c t = (KnownNat a, KnownNat b, KnownNat c) => V a (V b (V c t)) 
 
 
+{-
+ -
+ -
+Representable f => 
+
+instance {-# Overlapping #-} (Representable v, KnownNat n) => Representable (V n v) where
+  reflectDims _ = reflectDim (Proxy :: Proxy (V n v)) : reflectDims (Proxy :: Proxy v)
+
+type Rep ?  = Idxs ds -> a
+
+instance (Representable f, Representable g) => Representable (Compose f g) where
+  type Rep (Compose f g) = (Rep f, Rep g)
+  index (Compose fg) (i,j) = index (index fg i) j
+  tabulate = Compose . tabulate . fmap tabulate . curry
+
+
+-}
 -- TODO why isn't the applicative working?
 b265 :: V3 2 6 5 Bool 
 b265 = pure . pure . pure $ False

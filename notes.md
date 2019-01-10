@@ -1,7 +1,4 @@
 
-
-
-
 Some NN building blocks are naturally higher-order. Taking an example (and simplifying) a recurrent neural network turns a tensor function into a function between lists (vectorslists) of tensors.
 Functional programming is ideally suited to program complicated applications from building blocks.
 Example: an “Attention-model” is a thing where every step in a RNN adds a computation which depends on an external input. We can compose usual RNN cells with attention models in several ways. The state of the art is to reprogram all combinations by hand.
@@ -19,8 +16,15 @@ make it easy to share parameters between different components (example: if we do
 Long game: integrate cutting edge ideas as they arrive with moderate effort.
 
 -----------------------------------------------------------------
-onnx-core - a purely functional n.n. API for TensorFlow, etc
+tensile - a purely functional n.n. API for TensorFlow, etc 
 -----------------------------------------------------------------
+target different frameworks & compute architectures 
+research-prod parity
+separate code from spec
+higher-order functions act on graphs themselves
+Neural Architecture Search (NAS)
+
+
 multiple backends 
   - onnx-hmatrix
   - onnx-eigen 
@@ -37,8 +41,30 @@ multiple backends
 
 TOGROK
 
-https://hackage.haskell.org/package/dimensions-1.0.1.1/docs/Numeric-Dim.html
+https://www.schoolofhaskell.com/user/thoughtpolice/using-reflection#dynamically-constructing-type-class-instances
 https://hackage.haskell.org/package/constraints-0.10.1/docs/Data-Constraint.html#t:Dict
+http://hackage.haskell.org/package/reflection-extras-0.1.1.0/docs/Data-Reflection-Extras.html
+
+with :: forall p a. Def p a -> (forall s. Reifies s (Def p a) => Lift p s a) -> a
+
+using :: forall p a. ReifiableConstraint p => Def p a -> (p a => a) -> a
+using (Monoid (+) 0) $ mempty <> 10 <> 12 -- 12
+using (Gemm myGemm)
+withOpSet 
+
+-- use Constraints package to build a dict of op typeclasses
+
+-- use this to define an OperatorSet (
+--- http://neocontra.blogspot.com/2013/06/controlcategory-now-with-kind.html
+--- https://kseo.github.io/posts/2017-02-06-reified-dictionaries.html
+--- https://hackage.haskell.org/package/constraints-0.10.1/docs/src/Data.Constraint.html#Dict
+--- https://github.com/onnx/onnx/blob/2e7099ee7c37b196c197c9a084a97698a41da232/onnx/onnx-operators.proto#L132
+
+
+http://jelv.is/blog/Generating-Mazes-with-Inductive-Graphs/
+https://hackage.haskell.org/package/dimensions-1.0.1.1/docs/Numeric-Dim.html
+https://hackage.haskell.org/package/ad-4.3.5/docs/Numeric-AD.html
+
 
 https://github.com/GU-CLASP/TypedFlow/blob/master/TypedFlow/Haskell.hs#L99
   - grok column: http://hackage.haskell.org/package/linear-1.20.8/docs/src/Linear.Matrix.html#column
@@ -46,6 +72,12 @@ https://github.com/GU-CLASP/TypedFlow/blob/master/TypedFlow/Haskell.hs#L99
   generalize to n-d slice
 
   - grok Distributive / Representable
+  -- tabulated :: Representable f => Iso' (Rep f -> a) (f a)
+  -- foldDimIdx :: Dims ds -- Shape of a space
+           -> (Idxs ds -> a -> a) -- Function to call on each dimension
+           -> a -- Initial value
+           -> a
+
   - grok Conjoined, Indexable, Indexing, Index, Ixed 
 http://hackage.haskell.org/package/lens-4.17/docs/Control-Lens-Indexed.html 
 http://hackage.haskell.org/package/lens-4.17/docs/Control-Lens-Internal-Indexed.html#t:Indexable
@@ -55,30 +87,165 @@ http://hackage.haskell.org/package/lens-4.17/docs/Control-Lens-Internal-Indexed.
 
 
 -- TODO: 
+
+packages: onnx, tensile, tensile-onnx, tensile-tensorflow
+
 -- see http://hackage.haskell.org/package/beam-core
 
--- onnx-core
-Numeric.Onnx.Tensor
-Numeric.Onnx.Expression (Expr)
-Numeric.Onnx.Graph
+-- tensile
+Numeric.Tensile.Tensor
+Numeric.Tensile.Expression (Expr)
+Numeric.Tensile.Graph
+Numeric.Tensile.
 
-Numeric.Onnx.Backend.Linear
+Numeric.Tensile.Backend.Linear
+
 
 -- onnx-operators
-Numeric.Onnx.Operators.NN
+Numeric.Tensile.Operators.NN
 
-Numeric.Onnx.Backend.HMatrix 
+Numeric.Tensile.Backend.HMatrix 
 -- use https://github.com/mstksg/hmatrix-backprop/blob/master/src/Numeric/LinearAlgebra/Static/Backprop.hs
-Numeric.Onnx.Backend.Eigen
-Numeric.Onnx.Backend.TensorFlow
-Numeric.Onnx.Backend.Accelerate
-Numeric.Onnx.Backend.ATen
-Numeric.Onnx.Backend.Torch
+--http://hackage.haskell.org/package/sparse
+Numeric.Tensile.Backend.Sparse
+Numeric.Tensile.Backend.Eigen
+Numeric.Tensile.Backend.TensorFlow
+Numeric.Tensile.Backend.Accelerate
+Numeric.Tensile.Backend.ATen
+Numeric.Tensile.Backend.Torch
 
 
-TODO:
+ONNX TODO:
+- basic proto manipulation. domain types.
+https://github.com/onnx/onnx/blob/master/onnx/examples/Protobufs.ipynb
 
-- explore kmett/linear style using function applicatives. amazing that you can do matrix algebra w these.
+
+- use onnx 'supported opset' approach, but at typeclass/constraint level.
+-- how do we take a model we made using hmatrix and run it on TF?
+-- https://github.com/onnx/onnx/blob/master/docs/Versioning.md#operator-versioning 
+-- https://www.schoolofhaskell.com/user/thoughtpolice/using-reflection#dynamically-constructing-type-class-instances
+
+> ONNX models declare which operator sets they require as a list of two part operator ids (domain, opset_version). The empty string ("") domain indicates the operators defined as part of the ONNX specification; other domains correspond to operator sets of other vendors (e.g., they can be used to provide vendor-specific extensions to ONNX). The union of the operator sets specified by a given model MUST have a compatible operator declaration for each node in the model's graph.
+
+newtype Domain = Domain { unDomain :: Text }
+
+-- https://github.com/onnx/onnx/blob/master/onnx/onnx.in.proto#L184
+data Model = Model { graph :: Graph, meta :: [OperatorSetId], version :: Word }
+
+-- https://github.com/onnx/onnx/blob/master/onnx/onnx.in.proto#L501
+type OperatorSetId = (Domain, Version)
+
+-- need a Kind for OpDefs
+data OpSet where = '[Constraint] -- get version by folding over w/ max
+
+class OpDef (* -> Constraint)
+instance OpDef Gemm
+
+class (TensorLike t, Transpose t) => Gemm t where
+
+  domain :: Domain 
+  domain = "" -- should be defaulted 
+   
+  type :: 
+  type = 
+
+  version :: Word
+  version = 8 -- should be defaulted
+
+  -- res = (v1 * M) + (v2 * mat1 * mat2)
+  -- If @mat1@ is a @n × m@ matrix, @mat2@ a @m × p@ matrix, @M@ must be a @n × p@ matrix.
+  gemm
+    :: All KnownDim '[a, b, c]
+    => HsReal                  -- ^ v1
+    -> Tensor '[a, c]          -- ^ M
+    -> HsReal                  -- ^ v2
+    -> Tensor '[a, b]          -- ^ mat1
+    -> Tensor '[b, c]          -- ^ mat2
+    -> Tensor '[a, c]          -- ^ res
+
+  gemm'
+
+matmul
+  :: (Gemm t, Constant t)
+  => All KnownDim '[i, j, k]
+  => KnownShape x
+  => Num e
+  => T t (i ': j ': x) e 
+  -> T t (j ': k ': x) e 
+  -> T t (i ': k ': x) e 
+matmul x y = gemm 1 (constant 0) 1 x y
+
+matmul' = (BVar version)
+
+-- Dynamically construct a 'Foo' instance out of a supplied function.
+withOrd :: (a -> a -> Ordering) -> (forall s. Reifies s (Ord_ a) => O a s) -> a
+withOrd f v = reify (Ord_ f) (runO . asProxyOf v)
+  where
+    asProxyOf :: f s -> Proxy s -> f s
+    asProxyOf v _ = v
+
+
+-- replicate these
+- (w/o IndexTensor) https://github.com/hasktorch/hasktorch/blob/master/indef/src/Torch/Indef/Index.hs
+- https://github.com/hasktorch/hasktorch/blob/master/indef/src/Torch/Indef/Static/Tensor/Index.hs
+- https://github.com/hasktorch/hasktorch/blob/master/indef/src/Torch/Indef/Static/Tensor.hs
+- https://github.com/hasktorch/hasktorch/blob/master/indef/src/Torch/Indef/Static/Tensor/Math.hs
+- https://github.com/hasktorch/hasktorch/blob/master/indef/src/Torch/Indef/Static/Tensor/Math/Reduce/Floating.hs https://github.com/hasktorch/hasktorch/blob/master/indef/src/Torch/Indef/Static/Tensor/Math/Reduce.hs
+
+
+https://github.com/tensorflow/haskell/blob/8e1d85b5e5bd56d54ff6d463c8581c57ab5526d9/tensorflow/src/TensorFlow/BuildOp.hs
+data ResultState = ResultState !OutputIx [Int64] deriving Show
+
+-- | Class of types that can be used as op outputs.
+class BuildResult a where
+    buildResult :: ReaderT NodeName (State ResultState) a
+
+class PureResult a where
+    pureResult :: ReaderT (Build OpDef) (State ResultState) a
+
+buildOp :: BuildResult a => [Int64] -> OpDef -> Build a
+buildOp sizes o = do
+    nodeName <- addNewOp o
+    return $ flip evalState (ResultState 0 sizes) (runReaderT buildResult nodeName)
+
+
+pureOp :: PureResult a => [Int64] -> Build OpDef -> a
+pureOp sizes opDef = flip evalState (ResultState 0 sizes) (runReaderT pureResult opDef)
+
+
+-- 
+-- set up repo build script w/ import
+-- define core T type. start with T (Tensor Build) s e rather than something more generic
+-- define core typeclasses (see Beam / http://reasonablypolymorphic.com/blog/higher-kinded-data/)
+-- figure out how to run gradBP on Variable nodes to keep graph size down
+-- define Optimized typeclass. something like:
+
+-- https://blog.jle.im/entry/purely-functional-typed-models-1.html
+-- http://hackage.haskell.org/package/ad-4.3.5/docs/Numeric-AD.html#g:18
+-- http://hackage.haskell.org/package/ad-4.3.5/docs/Numeric-AD-Rank1-Forward.html
+class Backprop p => Optimizable p where
+  optimize :: (Num b, Backprop b) => Model p a b -> p -> p
+
+e.g.:
+gradientDescent :: Optimizable p =>
+gradientAscent
+conjugateGradientDescent
+stochasticGradientDescent
+adam
+
+
+-- define primary with* functions: 
+   type T' d t s e = BVar d (T t s e)
+
+   withFoo () => t -> (forall d s. (KnownShape s, Reifies d W) => T' s a -> r) -> r
+   -- https://hackage.haskell.org/package/constraints-0.10.1/docs/Data-Constraint.html#t:Dict
+   withDict :: Dict a -> (a => r) -> r
+
+
+-- start creating grad instances. Q: can we do this purely w/in tensile?
+
+-- explore giving tensors functor instances via co/yoneda & pusing fuctor application to creation (either via 'constant' or other operators/attributes). could we just use a free applicative for everything?
+-- explore kmett/linear style using function applicatives. amazing that you can do matrix algebra w these.
 -- grok adjuctions, yoneda. application to n-way currying. 
 -- need hoist :: (forall a. a -> a) -> ([Word] -> a) -> (Word -> ... -> Word -> a)
 -- or maybe density?
@@ -92,22 +259,97 @@ TODO:
 
 
 
-- make Elt kind / typeclass (see typed-flow) & Attribute kind / typeclass. Elt e => Attribute e 
+- make Elt kind / typeclass & Attribute kind / typeclass. Elt e => Attribute e 
 -- https://github.com/onnx/onnx/blob/master/docs/IR.md#attribute-types
+-- use Bits, Integral, RealFloat, RealFrac, Floating, Fractional, Real, Num
 
-- make Node typeclass (one impl per node)? or Nodes? 
+instance Bits Word -- Defined in ‘Data.Bits’
+instance Bits Integer -- Defined in ‘Data.Bits’
+instance Bits Int -- Defined in ‘Data.Bits’
+instance Bits Bool -- Defined in ‘Data.Bits’
 
-- make Tensor typeclass?
--- higher-kinded data (see Beam / http://reasonablypolymorphic.com/blog/higher-kinded-data/)
+instance Integral Word -- Defined in ‘GHC.Real’
+instance Integral Integer -- Defined in ‘GHC.Real’
+instance Integral Int -- Defined in ‘GHC.Real’
+
+instance RealFloat a => Num (Complex a)
+instance Num Word -- Defined in ‘GHC.Num’
+instance Num Integer -- Defined in ‘GHC.Num’
+instance Num Int -- Defined in ‘GHC.Num’
+instance Num Float -- Defined in ‘GHC.Float’
+instance Num Double -- Defined in ‘GHC.Float’
+
+instance Real Word -- Defined in ‘GHC.Real’
+instance Real Integer -- Defined in ‘GHC.Real’
+instance Real Int -- Defined in ‘GHC.Real’
+instance Real Float -- Defined in ‘GHC.Float’
+instance Real Double -- Defined in ‘GHC.Float’
+
+instance RealFloat Float -- Defined in ‘GHC.Float’
+instance RealFloat Double -- Defined in ‘GHC.Float’
+
+instance RealFloat a => Floating (Complex a)
+instance Floating Float -- Defined in ‘GHC.Float’
+instance Floating Double 
+
+instance RealFloat a => Fractional (Complex a)
+instance Integral a => Fractional (Ratio a)
+instance Fractional Float -- Defined in ‘GHC.Float’
+instance Fractional Double -- Defined in ‘GHC.Float’
+instance Class (Num a) (Fractional a)
+instance Class (Fractional a) (Floating a)
+instance RealFloat a :=> Fractional (Complex a)
+instance Integral a :=> Fractional (Ratio a)
+
+class (Real a, Fractional a) => RealFrac a where
+  properFraction :: Integral b => a -> (b, a)
+  truncate :: Integral b => a -> b
+  round :: Integral b => a -> b
+  ceiling :: Integral b => a -> b
+  floor :: Integral b => a -> b
+instance Integral a => RealFrac (Ratio a) -- Defined in ‘GHC.Real’
+instance RealFrac Float -- Defined in ‘GHC.Float’
+instance RealFrac Double -- Defined in ‘GHC.Float’
+instance Integral a :=> RealFrac (Ratio a)
+
+
+type I f s n = T f s (Int n)
+type B f s = T f s Bool
+
+type Scalar t = T '[] t
+
+
+class (KnownLen s, All KnownNat s) => KnownShape s where
+
+instance KnownShape '[]
+instance (KnownNat x, KnownShape xs) => KnownShape (x ': xs)
+
+class KnownTyp t where
+  typVal :: Typ
+class KnownBits t where
+  bitsVal :: NBits
+
+instance KnownBits 'B1 where bitsVal = B1
+instance KnownBits 'B32 where bitsVal = B32
+instance KnownBits 'B64 where bitsVal = B64
+instance (KnownBits l, KnownKind k) => KnownTyp ('Typ k l) where
+  typVal = Typ (kindVal @k) (bitsVal @l)
+
+class KnownKind t where
+  kindVal :: Kind
+
+instance KnownKind 'Bool where kindVal = Bool
+instance KnownKind 'Float where kindVal = Float
+instance KnownKind 'Int where kindVal = Int
+
 
 
 - Expr idea
--- http://hackage.haskell.org/package/fgl-5.7.0.1
 -- https://hackage.haskell.org/package/typedflow-0.9/docs/TypedFlow-Types.html#t:GState
 -- https://www.tensorflow.org/guide/extend/model_files
--- use DynGraph to handle If and other graph-valued ops: http://hackage.haskell.org/package/fgl-5.7.0.1/docs/src/Data.Graph.Inductive.Graph.html#DynGraph
-
-- decide how to handle op attributes (put in function args?, Reader?, type-level map?)
+-- https://hackage.haskell.org/package/simple-reflect instances?
+ 
+- decide how to handle op attributes (put in function args where possible)
 -- https://github.com/tensorflow/tensorflow/blob/master/tensorflow/core/framework/attr_value.proto
 
 - make onnx-proto, compile onnx protos w/ proto-lens, compare w/ tf versions
@@ -118,7 +360,7 @@ https://tensorflow.github.io/haskell/haddock/tensorflow-proto-0.2.0.0/
 
 - define datatypes:
 
--- http://hackage.haskell.org/package/fgl-5.7.0.1/docs/Data-Graph-Inductive-PatriciaTree.html
+-- https://github.com/travitch/haggle/blob/master/src/Data/Graph/Haggle.hs
 -- note that TF nodes do not record outputs in this type, but onnx nodes do. we follow onnx here but will make a Rendered typeclass : class Rendered s where MonadState s m => Expr a -> m a
 -- later fold Expr to TF NodeDef, Tensor Build a and eval with Build.hs
 -- we use the functions BELOW in the Expr interpreter
@@ -154,14 +396,16 @@ data Operator
 
 
 -- tensor (for tf dense/sparse, onnx dense, hmatrix, etc)
-newtype T (t :: * -> *) (s :: Dims) e = T { unT :: t e } 
-
+newtype T (t :: * -> *) (s :: Dims) e = T { unT :: t e }
+type T' t s e = BVar s (T t s e)
+-- tabulated :: Representable f => Iso' (Rep f -> a) (f a)
 
 -- tensor shape
 https://github.com/onnx/onnx/blob/master/docs/IR.md#tensor-shapes
 https://hackage.haskell.org/package/dimensions-1.0.1.1/docs/src/Numeric.Dim.html#XNat
 https://hackage.haskell.org/package/dimensions-1.0.1.1/docs/src/Numeric.Dimensions.Dims.html#Dims
 
+--https://github.com/onnx/onnx/blob/master/onnx/onnx.proto#L419
 message TensorShapeProto {
   message Dimension { 
     oneof value { // XNat
@@ -244,7 +488,7 @@ class Dims v => Finite v where
 
   unstack :: t (n:s) a -> V n (t s a)
 
--- Numeric.Onnx.NN.Tensor
+-- Numeric.Tensile.NN.Tensor
 
 -- let t hold s instead so we can use hmatrix-static, hasktorch, etc ?
 -- see https://github.com/hasktorch/hasktorch/blob/master/indef/src/Torch/Indef/Static/Tensor/Math/Blas.hs
@@ -357,7 +601,7 @@ infixl 6 ^+^, ^-^
 infixl 7 ^*^, ^/^
 
 
--- Numeric.Onnx.Backend
+-- Numeric.Tensile.Backend
 -- see also https://github.com/onnx/onnx/blob/master/docs/Operators.md
 -- add scatter / gather?
 -- add flatten https://github.com/onnx/onnx/blob/master/docs/Operators.md#Flatten
@@ -910,3 +1154,154 @@ unsafeCoeff row col m@(Matrix (Vec vals)) =
 
 
 
+-- https://hackage.haskell.org/package/uniform-pair-0.1.15/docs/src/Data.UniformPair.html#line-135
+
+------------------------------------------------------------------
+{-# LANGUAGE GADTs, DataKinds, PolyKinds, TypeFamilies, TypeOperators #-}
+-- https://www.reddit.com/r/haskell/comments/67l9so/currying_a_typelevel_list/
+-- http://hackage.haskell.org/package/singletons-2.2/docs/Data-Singletons-Prelude-Tuple.html#t:Curry
+module Curry where
+
+import Data.Kind
+
+type family Curry (xs :: [Type]) (y :: Type) where
+  Curry '[] y = y
+  Curry (x ': xs) y = x -> Curry xs y
+
+data Record :: (k -> Type) -> [k] -> Type where
+  RecordNil :: Record f '[]
+  RecordCons :: f a -> Record f as -> Record f (a ': as)
+
+newtype Identity a = Identity a
+
+curryRecord' :: (Record Identity as -> r) -> Record proxy as -> Curry as r
+curryRecord' k RecordNil = k RecordNil
+curryRecord' k (RecordCons _ r0) = \a -> curryRecord' (\r -> k (RecordCons (Identity a) r)) r0
+
+curryRecord :: Record proxy as -> Curry as (Record Identity as)
+curryRecord = curryRecord' id
+
+
+------------------------------------------------------------------
+
+https://ro-che.info/articles/2013-01-29-generic-uncurry
+
+https://mail.haskell.org/pipermail/haskell/2004-May/014062.html
+
+:set -XFlexibleInstances
+:set -XFunctionalDependencies
+:set -XMultiParamTypeClasses
+:set -XUndecidableInstances
+
+-- An uncurrying application: flattening the product
+-- http://hackage.haskell.org/package/product-profunctors-0.10.0.0/docs/Data-Profunctor-Product-Flatten.html
+class FApp f a c | a c -> f where fapp:: f -> a -> c
+   
+instance FApp (Char->c) Char c where fapp = ($)
+
+instance (FApp fx a r, FApp r b c) => FApp fx (a,b) c where fapp f = uncurry (fapp . (fapp f))
+
+-- test
+fappt :: [Char] --"abcde"
+fappt = fapp (\a b c d e -> [a,b,c,d,e]) (('a','b'),('c',('d','e')))
+
+
+Combinators fapp and mcomp will occur together. Therefore, we define
+
+mcomp f g = g . f
+
+fcomp :: FApp f a1 c => (a2 -> a1) -> f -> a2 -> c
+fcomp a = (. fapp) (mcomp a)
+
+
+class (Functor path, Functor space) =>
+		Adjunction path space | path -> space, space -> path where
+      leftAdjunct :: (path top -> bot) -> top -> space bot
+      unit :: top -> space (path top) 
+      rightAdjunct :: (top -> space bot) -> path top -> bot
+      counit :: path (space bot) -> bot 
+      -- minimum required impl: unit xor leftAdjunct
+      -- minimum required impl: counit xor rightAdjunct
+      unit = leftAdjunct id
+      leftAdjunct f = fmap f . unit
+      counit = rightAdjunct id
+      rightAdjunct g = counit . fmap g
+
+-- Here are some instances for different arities:
+
+instance Adjunction ((,) a) ((->) a) where
+	 unit t = \arg -> (arg,t)
+	 counit (x,f) = f x
+
+newtype Func2 a b c = Func2 (a -> b -> c) deriving Functor
+   -- Func2 is only needed due to syntax of partial type constructor application
+
+instance Adjunction ((,,) a b) (Func2 a b) where
+	  unit t = Func2 (\arg1 arg2 -> (arg1,arg2,t))
+	  counit (arg1,arg2,Func2 f) = f arg1 arg2
+
+
+Here, 'leftAdjunct' is a generalization of curry and rightAdjunct is a
+generalization of uncurry.
+
+
+import Data.Tuple
+
+fst3 :: (a,b,c) -> a
+fst3 (x,y,z) = x
+
+snd3 :: (a,b,c) -> b
+snd3 (x,y,z) = y
+
+trd3 :: (a,b,c) -> c
+trd3 (x,y,z) = z
+
+fst4 :: (a,b,c,d) -> a
+fst4 (x,y,z,w) = x
+
+snd4 :: (a,b,c,d) -> b
+snd4 (x,y,z,w) = y
+
+trd4 :: (a,b,c,d) -> c
+trd4 (x,y,z,w) = z
+
+fth4 :: (a,b,c,d) -> d
+fth4 (x,y,z,w) = w
+
+curry3 :: ((a,b,c)->d) -> a -> b -> c -> d
+curry3 f x y z = f (x,y,z)
+
+curry4 :: ((a,b,c,d)->e) -> a -> b -> c -> d -> e
+curry4 f x y z w = f (x,y,z,w)
+
+uncurry3 :: (a->b->c->d) -> (a,b,c) -> d
+uncurry3 f t = f (fst3 t) (snd3 t) (trd3 t)
+
+uncurry4 :: (a->b->c->d->e) -> (a,b,c,d) -> e
+uncurry4 f q = f (fst4 q) (snd4 q) (trd4 q) (fth4 q)
+
+uncurry5 :: (a->b->c->d->e->f) -> (a,b,c,d,e) -> f
+uncurry5 f (x,y,z,w,v) = f x y z w v
+
+uncurry6 :: (a->b->c->d->e->f->g) -> (a,b,c,d,e,f) -> g
+uncurry6 f (x,y,z,w,v,u) = f x y z w v u
+
+uncurry7 :: (a->b->c->d->e->f->g->h) -> (a,b,c,d,e,f,g) -> h
+uncurry7 f (x,y,z,w,v,u,r) = f x y z w v u r
+
+uncurry8 :: (a->b->c->d->e->f->g->h->i) -> (a,b,c,d,e,f,g,h) -> i
+uncurry8 f (x,y,z,w,v,u,r,s) = f x y z w v u r s
+
+uncurry9 :: (a->b->c->d->e->f->g->h->i->j) -> (a,b,c,d,e,f,g,h,i) -> j
+uncurry9 f (x,y,z,w,v,u,r,s,t) = f x y z w v u r s t
+
+uncurry10 :: (a->b->c->d->e->f->g->h->i->j->k) -> (a,b,c,d,e,f,g,h,i,j) -> k
+uncurry10 f (x,y,z,w,v,u,r,s,t,o) = f x y z w v u r s t o
+
+uncurry11 :: (a->b->c->d->e->f->g->h->i->j->k->l)
+          -> (a,b,c,d,e,f,g,h,i,j,k) -> l
+uncurry11 f (x,y,z,w,v,u,r,s,t,o,p) = f x y z w v u r s t o p
+
+uncurry12 :: (a->b->c->d->e->f->g->h->i->j->k->l->m)
+          -> (a,b,c,d,e,f,g,h,i,j,k,l) -> m
+uncurry12 f (x,y,z,w,v,u,r,s,t,o,p,q) = f x y z w v u r s t o p q
