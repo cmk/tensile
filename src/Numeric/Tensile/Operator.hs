@@ -6,6 +6,9 @@
 
 module Numeric.Tensile.Operator where
 
+import Numeric.Backprop
+--import Numeric.Tensile.Tensor
+
 import Data.ByteString (ByteString)
 import Data.Complex (Complex)
 import Data.Int (Int8, Int16, Int32, Int64)
@@ -26,20 +29,21 @@ import Proto.Tensorflow.Core.Framework.OpDef_Fields
 
 import Control.Lens (Lens',(.~),(&),(^.),at,anon,iso,non)
 
-import Numeric.Backprop
 
 import TensorFlow.Build
-import TensorFlow.Ops
+import TensorFlow.Ops()
 import TensorFlow.Tensor
 import TensorFlow.Types
 import qualified TensorFlow.GenOps.Core as C
 
 type T a = Tensor Build a
 
+-- Note that if a type class only has one method, GHC will simply pass around the method itself. 
 
 lookupAttr :: Attribute a1 => NodeDef -> Text -> a1
 lookupAttr nodeDef attrName = nodeDef ^. attr . at attrName . non def . attrLens
 
+-- NOTE derive the lifted instances using the unlifted type classes, not from scratch
 -- TODO: Double check all these /= restrictions after bumping backprop version
 squareD
     :: (TensorType a, Num a, a /= Int8, a /= Int16,
@@ -49,13 +53,6 @@ squareD
     -> BVar s (T a)
 squareD = liftOp1 . op1 $ \x ->
   ( x * x, \dzdy -> dzdy * 2 * x)
-
-{-
-
-
-
-
-
 
 mulD 
     :: (TensorType a, Num a, a /= Int8, a /= Int16,
@@ -103,6 +100,4 @@ myMeanD = liftOp1 . op1 $ \x -> (myMean x, id) -- extremely suspect
 
 myMean x = C.mean' id x allAxes
   where allAxes = C.range 0 (C.rank x :: Tensor Build Int32) 1
-
--}
 

@@ -33,6 +33,7 @@ library
     , lens
     , proto-lens
     , reflection
+    --, reflection-extras
     , tensorflow
     , tensorflow-ops
     , tensorflow-core-ops
