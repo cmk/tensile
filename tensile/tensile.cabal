@@ -55,7 +55,6 @@ executable mnist
     , tensile
     , tensile-vector
     , vector
-    , vector-sized
   mixins:
       tensile (Numeric.Tensile.Tensor as Numeric.Tensile.Tensor) requires (Numeric.Tensile.Tensor.Types as Numeric.Tensile.Tensor.Types)
   default-language: Haskell2010

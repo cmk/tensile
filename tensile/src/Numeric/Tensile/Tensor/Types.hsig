@@ -11,7 +11,7 @@ import Numeric.Dimensions (KnownDim(..))
 
 data T (s :: [Nat]) e
 
-fromVector :: forall e n . KnownDim n => KnownNat n => Vector e -> T '[n] e
+fromVector :: forall e n . KnownDim n => KnownNat n => Vector e -> Maybe (T '[n] e)
 
 --fromSizedVector :: (KnownNat n, Product s ~ n) => Vector n e -> T s e
 
