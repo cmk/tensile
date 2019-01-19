@@ -1,7 +1,7 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE OverloadedLists   #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE RankNTypes        #-}
+{-# LANGUAGE RankNTypes , FlexibleInstances   ,DataKinds    #-}
 {-# LANGUAGE TypeOperators #-}
 
 module Numeric.Tensile.Operator where

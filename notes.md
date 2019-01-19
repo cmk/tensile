@@ -24,7 +24,9 @@ separate code from spec
 higher-order functions act on graphs themselves
 Neural Architecture Search (NAS)
 
+
 inspirations:
+https://github.com/hasktorch/hasktorch
 https://www.schoolofhaskell.com/user/thoughtpolice/using-reflection#dynamically-constructing-type-class-instances
 https://www.benjamin.pizza/posts/2017-12-15-functor-functors.html
 
@@ -34,7 +36,7 @@ http://hackage.haskell.org/package/beam-core
 http://reasonablypolymorphic.com/blog/higher-kinded-data/index.html
 
 
-multiple backends 
+multiple backends / sig instantiations (if using backpack)
   - onnx-hmatrix
   - onnx-eigen 
   - onnx-accelerate    
@@ -47,6 +49,8 @@ multiple backends
   - tensile-tensorflow?
 
 
+proto-reflection
+-- see http://hackage.haskell.org/package/reflection-extras-0.1.1.0/docs/Data-Reflection-Extras.html#t:FromJSON
 
 TOGROK
 
@@ -98,6 +102,7 @@ http://hackage.haskell.org/package/lens-4.17/docs/Control-Lens-Internal-Indexed.
 
 -- TODO: 
 
+
 packages: onnx, tensile, tensile-onnx, tensile-tensorflow
 
 -- see http://hackage.haskell.org/package/beam-core
@@ -132,6 +137,12 @@ Numeric.Tensile.Backend.Torch
 
 
 ONNX TODO:
+
+--** backpack impl
+- ai.onnx sig
+- ai.tf sig (for core tf lib code)
+- ai.tf.bitwise ... (see https://www.tensorflow.org/api_docs/python/tf for all packages)
+- ai.layers
 
 --** implement base types
 
