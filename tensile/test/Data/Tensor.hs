@@ -38,7 +38,6 @@ instance (Elt e, Num e, KnownDim (Product d)) => Num (T d e) where
 
 constant
   :: forall d e. Elt e
-  => Dimensions d
   => KnownDim (Product d)
   => Vector e
   -> Maybe (T d e)
