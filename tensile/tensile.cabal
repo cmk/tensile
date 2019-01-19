@@ -19,7 +19,7 @@ library
   hs-source-dirs:
       src
   signatures:
-      Tensor
+      Numeric.Tensile.Tensor.Types
   build-depends:
       base >= 4.9 && < 5
     , backprop
