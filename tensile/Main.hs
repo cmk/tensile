@@ -11,7 +11,12 @@ u = V.fromList [1..10]
 main :: IO ()
 main = case (constant u :: Maybe (T '[2,5] Float)) of
   Nothing -> print "nope"
-  Just t -> print $ shape t
+  Just t -> do
+    print $ shape t
+    print $ t + t
+    let t' :: T '[2,2] Float
+        t' = fromIntegral 1
+    print $ t'
 
 
 {-

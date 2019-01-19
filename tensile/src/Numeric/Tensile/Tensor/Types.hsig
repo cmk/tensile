@@ -1,4 +1,4 @@
-{-# LANGUAGE DataKinds, KindSignatures #-}
+{-# LANGUAGE DataKinds, KindSignatures, UndecidableInstances #-}
 
 signature Numeric.Tensile.Tensor.Types where
 
@@ -10,12 +10,12 @@ import Numeric.Dimensions --(KnownDim(..))
 
 
 -- | Implementation-dependant constraint on the tensor elements.
---type family Elt e :: Constraint
 class Elt e
 
 data T (d :: [Nat]) e
 
---fromVector :: forall e n . KnownDim n => KnownNat n => Vector e -> Maybe (T '[n] e)
+instance (Elt e, Eq e) => Eq (T d e)
+instance (Elt e, Num e, KnownDim (Product d)) => Num (T d e)
 
 constant
   :: forall d e. Elt e
@@ -25,17 +25,10 @@ constant
   -> Maybe (T d e)
 
 {-
-https://github.com/hasktorch/hasktorch/blob/master/signatures/types/src/Torch/Sig/Types.hsig#L55
-data HsReal
-instance Num  HsReal
-instance Show HsReal
-instance Ord HsReal
-instance NFData HsReal
-instance PrintfArg HsReal
+vector :: TensorType a => [a] -> Tensor Build a 
+zeros :: forall a. (Num a, TensorType a) => Shape -> Tensor Build a
 
 
-instance Eq e => Eq (T s e)
-instance Num e => Num (T s e)
 instance Floating e => Floating (T s e)
 instance Fractional e => Fractional (T s e)
 instance RealFrac e => RealFrac (T s e)
