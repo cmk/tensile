@@ -2,18 +2,27 @@
 
 signature Numeric.Tensile.Tensor.Types where
 
+import Data.Singletons.Prelude.List (Product)
 import Data.Vector (Vector)
 import GHC.TypeLits
-import Numeric.Dimensions (KnownDim(..))
+--import GHC.Exts (Constraint)
+import Numeric.Dimensions --(KnownDim(..))
+
 
 -- | Implementation-dependant constraint on the tensor elements.
--- class Elt e
+--type family Elt e :: Constraint
+class Elt e
 
-data T (s :: [Nat]) e
+data T (d :: [Nat]) e
 
-fromVector :: forall e n . KnownDim n => KnownNat n => Vector e -> Maybe (T '[n] e)
+--fromVector :: forall e n . KnownDim n => KnownNat n => Vector e -> Maybe (T '[n] e)
 
---fromSizedVector :: (KnownNat n, Product s ~ n) => Vector n e -> T s e
+constant
+  :: forall d e. Elt e
+  => Dimensions d
+  => KnownDim (Product d)
+  => Vector e
+  -> Maybe (T d e)
 
 {-
 https://github.com/hasktorch/hasktorch/blob/master/signatures/types/src/Torch/Sig/Types.hsig#L55
