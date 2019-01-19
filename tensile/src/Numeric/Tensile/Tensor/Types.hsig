@@ -1,0 +1,16 @@
+{-# LANGUAGE DataKinds, KindSignatures #-}
+
+signature Numeric.Tensile.Tensor.Types where
+
+import GHC.TypeLits (Nat)
+
+-- | Implementation-dependant constraint on the tensor elements.
+class Elt e
+
+data T (s :: [Nat]) e
+
+instance Eq e => Eq (T s e)
+instance Num e => Num (T s e)
+instance Floating e => Floating (T s e)
+instance Fractional e => Fractional (T s e)
+instance RealFrac e => RealFrac (T s e)

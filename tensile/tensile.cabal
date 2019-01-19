@@ -8,56 +8,26 @@ bug-reports:    https://github.com/cmk/tensile/issues
 maintainer:     Chris McKinlay
 license:        BSD-3-Clause
 build-type:     Simple
-cabal-version:  >= 1.10
-
-extra-source-files:
-    CHANGELOG.md
-    LICENSE
-    README.md
-    stack.yaml
+cabal-version:  >= 2.0
 
 source-repository head
   type: git
   location: https://github.com/cmk/tensile
 
 library
+  ghc-options: -Wall -Wincomplete-uni-patterns -Wincomplete-record-updates -Wmissing-import-lists
   hs-source-dirs:
       src
-  ghc-options: -Wall -Wincomplete-uni-patterns -Wincomplete-record-updates -Wmissing-import-lists
+  signatures:
+      Tensor
   build-depends:
       base >= 4.9 && < 5
     , backprop
-    , bytestring
-    , constraints
     , dimensions
-    , lens
-    , proto-lens
-    , reflection
-    --, reflection-extras
-    , tensorflow
-    , tensorflow-ops
-    , tensorflow-core-ops
-    , tensorflow-proto
-    , text
     , vector
 
   exposed-modules:
       Numeric.Tensile.Tensor
     , Numeric.Tensile.Operator
-    , Numeric.Tensile.Operator.Class
     , Numeric.Tensile.Operator.Lifted
-  default-language: Haskell2010
-
-executable tensile-tensorflow
-  main-is: Main.hs
-  hs-source-dirs:
-      app
-  ghc-options: -Wall -rtsopts -threaded -with-rtsopts=-N
-  build-depends:
-      base >= 4.9 && < 5
-    , bytestring
-    , tensile
-    , tensorflow
-    , tensorflow-ops
-    , vector
   default-language: Haskell2010
