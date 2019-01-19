@@ -2,15 +2,32 @@
 
 signature Numeric.Tensile.Tensor.Types where
 
-import GHC.TypeLits (Nat)
+import Data.Vector (Vector)
+import GHC.TypeLits
+import Numeric.Dimensions (KnownDim(..))
 
 -- | Implementation-dependant constraint on the tensor elements.
-class Elt e
+-- class Elt e
 
 data T (s :: [Nat]) e
+
+fromVector :: forall e n . KnownDim n => KnownNat n => Vector e -> T '[n] e
+
+--fromSizedVector :: (KnownNat n, Product s ~ n) => Vector n e -> T s e
+
+{-
+https://github.com/hasktorch/hasktorch/blob/master/signatures/types/src/Torch/Sig/Types.hsig#L55
+data HsReal
+instance Num  HsReal
+instance Show HsReal
+instance Ord HsReal
+instance NFData HsReal
+instance PrintfArg HsReal
+
 
 instance Eq e => Eq (T s e)
 instance Num e => Num (T s e)
 instance Floating e => Floating (T s e)
 instance Fractional e => Fractional (T s e)
 instance RealFrac e => RealFrac (T s e)
+-}

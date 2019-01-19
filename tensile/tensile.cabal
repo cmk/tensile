@@ -1,7 +1,7 @@
 name:           tensile
 version:        0.0.1
 synopsis:       A purely functional library for deep learning.
-description:    Tensile provides ONNX and TensorFlow-compatible operator definitions and an ergonomic API.
+description:    Tensile is an ONNX-compatible neural network API that uses backpack to integrate with compute layers such as TensorFlow or Torch.
 category:       Machine Learning
 homepage:       https://github.com/cmk/tensile#readme
 bug-reports:    https://github.com/cmk/tensile/issues
@@ -31,3 +31,32 @@ library
     , Numeric.Tensile.Operator
     , Numeric.Tensile.Operator.Lifted
   default-language: Haskell2010
+  default-extensions: DataKinds TypeApplications ScopedTypeVariables
+
+library tensile-vector
+  ghc-options: -Wall -Wincomplete-uni-patterns -Wincomplete-record-updates -Wmissing-import-lists
+  hs-source-dirs:
+      test
+  build-depends:
+      base >= 4.9 && < 5
+    , dimensions
+    , vector
+    , vector-sized
+  exposed-modules:
+      Numeric.Tensile.Tensor.Types
+  default-language: Haskell2010
+  default-extensions: DataKinds TypeApplications ScopedTypeVariables OverloadedLists
+
+executable mnist
+  main-is: 
+      Main.hs
+  build-depends:
+      base >= 4.9 && < 5
+    , tensile
+    , tensile-vector
+    , vector
+    , vector-sized
+  mixins:
+      tensile (Numeric.Tensile.Tensor as Numeric.Tensile.Tensor) requires (Numeric.Tensile.Tensor.Types as Numeric.Tensile.Tensor.Types)
+  default-language: Haskell2010
+  default-extensions: DataKinds ScopedTypeVariables OverloadedLists

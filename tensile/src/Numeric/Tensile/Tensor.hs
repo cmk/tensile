@@ -1,5 +1,3 @@
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TypeApplications #-}
 module Numeric.Tensile.Tensor 
   ( module Numeric.Tensile.Tensor,
     module Numeric.Tensile.Tensor.Types
@@ -22,3 +20,13 @@ shape _ = fromIntegral <$> D.listDims (D.dims @Nat @s)
 -- | Product of all dimension sizes @O(Length xs)@.
 size :: forall s e. Dimensions s => T s e -> Int64
 size = product . shape
+
+{-
+vector :: forall n . KnownDim n => KnownNat n => [HsReal] -> ExceptT String IO (Tensor '[n])
+vector rs
+  | genericLength rs == dimVal (dim :: Dim n) = asStatic <$> Dynamic.vectorEIO rs
+  | otherwise = ExceptT . pure $ Left "Vector dimension does not match length of list"
+
+unsafeVector :: (KnownDim n, KnownNat n) => [HsReal] -> IO (Tensor '[n])
+unsafeVector = fmap (either error id) . runExceptT . vector
+-}
