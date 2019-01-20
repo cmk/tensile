@@ -20,7 +20,7 @@ instance Functor (T d) where
   {-# INLINE fmap #-}
 
 
-instance (Elt e, Num e, KnownDim (Product d)) => Num (T d e) where
+instance (KnownDim (Product d), Elt e, Num e) => Num (T d e) where
   T as + T bs = T $ V.zipWith (+) as bs
   {-# INLINE (+) #-}
   T as - T bs = T $ V.zipWith (-) as bs
@@ -35,6 +35,52 @@ instance (Elt e, Num e, KnownDim (Product d)) => Num (T d e) where
   {-# INLINE signum #-}
   fromInteger = T . V.replicate (fromIntegral . dimVal $ (dim :: Dim (Product d))) . fromInteger
   {-# INLINE fromInteger #-}
+
+instance (KnownDim (Product d), Elt e, Fractional e) => Fractional (T d e) where
+  recip = fmap recip
+  {-# INLINE recip #-}
+  T as / T bs = T $ V.zipWith (/) as bs
+  {-# INLINE (/) #-}
+  fromRational = T . V.replicate (fromIntegral . dimVal $ (dim :: Dim (Product d))) . fromRational
+  {-# INLINE fromRational #-}
+
+instance (KnownDim (Product d), Elt e, Floating e) => Floating (T d e) where
+  pi =  T . V.replicate (fromIntegral . dimVal $ (dim :: Dim (Product d))) $ pi
+  {-# INLINE pi #-}
+  exp = fmap exp
+  {-# INLINE exp #-}
+  sqrt = fmap sqrt
+  {-# INLINE sqrt #-}
+  log = fmap log
+  {-# INLINE log #-}
+  T as ** T bs = T $ V.zipWith (**) as bs
+  {-# INLINE (**) #-}
+  logBase (T as) (T bs) = T $ V.zipWith logBase as bs
+  {-# INLINE logBase #-}
+  sin = fmap sin
+  {-# INLINE sin #-}
+  tan = fmap tan
+  {-# INLINE tan #-}
+  cos = fmap cos
+  {-# INLINE cos #-}
+  asin = fmap asin
+  {-# INLINE asin #-}
+  atan = fmap atan
+  {-# INLINE atan #-}
+  acos = fmap acos
+  {-# INLINE acos #-}
+  sinh = fmap sinh
+  {-# INLINE sinh #-}
+  tanh = fmap tanh
+  {-# INLINE tanh #-}
+  cosh = fmap cosh
+  {-# INLINE cosh #-}
+  asinh = fmap asinh
+  {-# INLINE asinh #-}
+  atanh = fmap atanh
+  {-# INLINE atanh #-}
+  acosh = fmap acosh
+  {-# INLINE acosh #-}
 
 constant
   :: forall d e. Elt e

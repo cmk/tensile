@@ -15,7 +15,9 @@ class Elt e
 data T (d :: [Nat]) e
 
 instance (Elt e, Eq e) => Eq (T d e)
-instance (Elt e, Num e, KnownDim (Product d)) => Num (T d e)
+instance (KnownDim (Product d), Elt e, Num e) => Num (T d e) 
+instance (KnownDim (Product d), Elt e, Fractional e) => Fractional (T d e) 
+instance (KnownDim (Product d), Elt e, Floating e) => Floating (T d e) 
 
 constant
   :: forall d e. Elt e
