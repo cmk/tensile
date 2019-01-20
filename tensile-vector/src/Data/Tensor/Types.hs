@@ -1,7 +1,8 @@
-{-# LANGUAGE FlexibleInstances, KindSignatures, TypeFamilies, TypeOperators, UndecidableInstances #-}
+{-# LANGUAGE FlexibleInstances, KindSignatures, TypeOperators, UndecidableInstances #-}
 
 module Data.Tensor.Types where
 
+import Data.Bits
 import Data.Singletons.Prelude.List (Product)
 import Data.Vector (Vector)
 import GHC.TypeLits
@@ -15,16 +16,15 @@ instance Num e => Elt e
 data T (d :: [Nat]) e = T (Vector e) deriving (Eq, Show)
 
 instance Functor (T d) where
-  fmap f (T as) = T (fmap f as)
+  fmap f (T a) = T (fmap f a)
   {-# INLINE fmap #-}
 
-
 instance (KnownDim (Product d), Elt e, Num e) => Num (T d e) where
-  T as + T bs = T $ V.zipWith (+) as bs
+  T a + T b = T $ V.zipWith (+) a b
   {-# INLINE (+) #-}
-  T as - T bs = T $ V.zipWith (-) as bs
+  T a - T b = T $ V.zipWith (-) a b
   {-# INLINE (-) #-}
-  T as * T bs = T $ V.zipWith (*) as bs
+  T a * T b = T $ V.zipWith (*) a b
   {-# INLINE (*) #-}
   negate = fmap negate
   {-# INLINE negate #-}
@@ -38,7 +38,7 @@ instance (KnownDim (Product d), Elt e, Num e) => Num (T d e) where
 instance (KnownDim (Product d), Elt e, Fractional e) => Fractional (T d e) where
   recip = fmap recip
   {-# INLINE recip #-}
-  T as / T bs = T $ V.zipWith (/) as bs
+  T a / T b = T $ V.zipWith (/) a b
   {-# INLINE (/) #-}
   fromRational = T . V.replicate (fromIntegral . dimVal $ (dim :: Dim (Product d))) . fromRational
   {-# INLINE fromRational #-}
@@ -52,9 +52,9 @@ instance (KnownDim (Product d), Elt e, Floating e) => Floating (T d e) where
   {-# INLINE sqrt #-}
   log = fmap log
   {-# INLINE log #-}
-  T as ** T bs = T $ V.zipWith (**) as bs
+  T a ** T b = T $ V.zipWith (**) a b
   {-# INLINE (**) #-}
-  logBase (T as) (T bs) = T $ V.zipWith logBase as bs
+  logBase (T a) (T b) = T $ V.zipWith logBase a b
   {-# INLINE logBase #-}
   sin = fmap sin
   {-# INLINE sin #-}
@@ -81,6 +81,23 @@ instance (KnownDim (Product d), Elt e, Floating e) => Floating (T d e) where
   acosh = fmap acosh
   {-# INLINE acosh #-}
 
+instance (KnownDim (Product d), Elt e, Eq e, Bits e, Num e) => Bits (T d e) where
+  T a .&. T b = T $ V.zipWith (.&.) a b
+  {-# INLINE (.&.) #-}
+  T a .|. T b = T $ V.zipWith (.|.) a b
+  {-# INLINE (.|.) #-}
+  T a `xor` T b = T $ V.zipWith xor a b
+  {-# INLINE xor #-}
+  complement = fmap complement
+  shift t i = fmap (flip shift i) t
+  rotate t i = fmap (flip rotate i) t
+  bit = T . V.replicate (fromIntegral . dimVal $ (dim :: Dim (Product d))) . bit
+  testBit = testBitDefault
+  bitSizeMaybe _ = bitSizeMaybe @e undefined
+  bitSize _ = bitSize @e undefined
+  isSigned _ = isSigned @e undefined
+  popCount = popCountDefault
+
 constant
   :: forall d e. Elt e
   => KnownDim (Product d)
@@ -89,3 +106,51 @@ constant
 constant v
   | V.length v == fromIntegral (dimVal (dim :: Dim (Product d))) = Just $ T v
   | otherwise = Nothing
+
+less
+  :: forall d e. Elt e
+  => Ord e
+  => T d e
+  -> T d e
+  -> T d Bool
+less (T a) (T b) = T $ V.zipWith (<) a b
+
+lessEqual
+  :: forall d e. Elt e
+  => Ord e
+  => T d e
+  -> T d e
+  -> T d Bool
+lessEqual (T a) (T b) = T $ V.zipWith (<=) a b
+
+greater
+  :: forall d e. Elt e
+  => Ord e
+  => T d e
+  -> T d e
+  -> T d Bool
+greater (T a) (T b) = T $ V.zipWith (>) a b
+
+greaterEqual
+  :: forall d e. Elt e
+  => Ord e
+  => T d e
+  -> T d e
+  -> T d Bool
+greaterEqual (T a) (T b) = T $ V.zipWith (>=) a b
+
+maximum
+  :: forall d e. Elt e
+  => Ord e
+  => T d e
+  -> T d e
+  -> T d e
+maximum (T a) (T b) = T $ V.zipWith max a b
+
+minimum
+  :: forall d e. Elt e
+  => Ord e
+  => T d e
+  -> T d e
+  -> T d e
+minimum (T a) (T b) = T $ V.zipWith min a b
