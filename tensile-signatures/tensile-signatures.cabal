@@ -1,0 +1,28 @@
+name:           tensile-signatures
+version:        0.0.1
+synopsis:       A purely functional library for deep learning.
+description:    Tensile is an ONNX-compatible neural network API that uses backpack to integrate with compute layers such as TensorFlow or Torch.
+category:       Machine Learning
+homepage:       https://github.com/cmk/tensile#readme
+bug-reports:    https://github.com/cmk/tensile/issues
+maintainer:     Chris McKinlay
+license:        BSD-3-Clause
+build-type:     Simple
+cabal-version:  >= 2.0
+
+source-repository head
+  type: git
+  location: https://github.com/cmk/tensile
+
+library
+  ghc-options: -Wall -Wincomplete-uni-patterns -Wincomplete-record-updates -Wmissing-import-lists
+  hs-source-dirs:
+      sig
+  signatures:
+      Data.Tensor.Types
+  build-depends:
+      base >= 4.9 && < 5
+    , dimensions
+    , singletons
+    , vector
+  default-extensions: ConstraintKinds DataKinds FlexibleContexts TypeApplications TypeFamilies ScopedTypeVariables OverloadedLists
