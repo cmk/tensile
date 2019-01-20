@@ -1,7 +1,6 @@
 {-# LANGUAGE FlexibleInstances, KindSignatures, TypeFamilies, TypeOperators, UndecidableInstances #-}
 
---TODO rename to Data.Tensor.Sized
-module Data.Tensor where
+module Data.Tensor.Types where
 
 import Data.Singletons.Prelude.List (Product)
 import Data.Vector (Vector)

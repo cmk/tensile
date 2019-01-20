@@ -1,7 +1,9 @@
 {-# LANGUAGE DataKinds, KindSignatures, UndecidableInstances #-}
 
-signature Numeric.Tensile.Tensor.Types where
+signature Data.Tensor.Types where
 
+-- this signature roughly corresponds to tf.math in the TensorFlow Python API
+ 
 import Data.Singletons.Prelude.List (Product)
 import Data.Vector (Vector)
 import GHC.TypeLits
@@ -14,7 +16,8 @@ class Elt e
 
 data T (d :: [Nat]) e
 
-instance (Elt e, Eq e) => Eq (T d e)
+-- may want to use a default instance from the equals op
+-- instance (Elt e, Eq e) => Eq (T d e)
 instance (KnownDim (Product d), Elt e, Num e) => Num (T d e) 
 instance (KnownDim (Product d), Elt e, Fractional e) => Fractional (T d e) 
 instance (KnownDim (Product d), Elt e, Floating e) => Floating (T d e) 
