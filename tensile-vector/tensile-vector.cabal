@@ -1,4 +1,4 @@
-name:           tensile
+name:           tensile-vector
 version:        0.0.1
 synopsis:       A purely functional library for deep learning.
 description:    Tensile is an ONNX-compatible neural network API that uses backpack to integrate with compute layers such as TensorFlow or Torch.
@@ -22,7 +22,6 @@ library
       base >= 4.9 && < 5
     , dimensions
     , singletons
-    , tensile
     , vector
   exposed-modules:
       Data.Tensor.Types
