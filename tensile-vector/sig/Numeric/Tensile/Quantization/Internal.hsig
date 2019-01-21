@@ -1,5 +1,0 @@
-signature Numeric.Tensile.Quantization.Internal (foo, round) where
-  
-import qualified Prelude as P
-
-foo :: P.Int
