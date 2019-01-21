@@ -1,7 +1,18 @@
-name: lesson4-signature-thinning
-version: 1.0.0.0
-cabal-version: >=2.0
-build-type: Simple
+name:           tensile-test
+version:        0.0.1
+synopsis:       A cross-platform library for deep learning.
+description:    Tensile is a lightweight deep learning library that uses backpack to integrate with common machine learning frameworks such as TensorFlow, Torch, or ONNX.
+category:       Machine Learning
+homepage:       https://github.com/cmk/tensile#readme
+bug-reports:    https://github.com/cmk/tensile/issues
+maintainer:     Chris McKinlay
+license:        BSD-3-Clause
+build-type:     Simple
+cabal-version:  >= 2.0
+
+source-repository head
+  type: git
+  location: https://github.com/cmk/tensile
 
 executable main
     main-is: 
@@ -9,8 +20,8 @@ executable main
     build-depends:
         base          >= 4 && < 5,
         def,
-        foo,
-        bar
+        foo
+        --bar
     default-language: Haskell2010
 
 library def
@@ -20,6 +31,7 @@ library def
         Foo.Siggy
         Bar.Siggy
         Data.Tensor.Types
+        Numeric.Tensile.Quantization.Operations
     build-depends:
         base          >= 4 && < 5,
         dimensions,
@@ -28,7 +40,7 @@ library def
     default-language: Haskell2010
     default-extensions: ConstraintKinds DataKinds FlexibleContexts TypeApplications TypeFamilies ScopedTypeVariables OverloadedLists
 
-library foo --tensile core
+library foo
     hs-source-dirs: 
         foo
     signatures:
@@ -40,23 +52,11 @@ library foo --tensile core
         signatures
     mixins:
         signatures requires (Siggy as Foo.Siggy)
-        --signatures requires (Data.Tensor.Signature as Data.Tensor.Internal)
+        -- signatures requires (Numeric.Tensile.Quantization.Operations as Numeric.Tensile.Quantization.Internal.Vector)
     default-language: Haskell2010
+    --default-extensions: NoImplicitPrelude
 
-library bar --thinning
-    hs-source-dirs: 
-        bar
-    signatures:
-        Bar.Siggy
-    exposed-modules:
-        Bar
-    build-depends:
-        base          >= 4 && < 5,
-        signatures
-    mixins:
-        signatures requires (Siggy as Bar.Siggy)
-        --signatures requires (Data.Tensor.Signature as Data.Tensor.Internal)
-    default-language: Haskell2010
+
 
 library signatures
     hs-source-dirs: 
@@ -64,7 +64,7 @@ library signatures
     signatures:
         Siggy,
         Data.Tensor.Types
-        --Numeric.Tensile.Quantization.Types
+        Numeric.Tensile.Quantization.Operations
     build-depends:
         base          >= 4 && < 5,
         dimensions,

@@ -1,10 +1,10 @@
 module Main where
 
 import Foo (foo)
-import Bar (bar)
+--import Bar (bar)
 
 main :: IO ()
 main = do
     foo
-    bar
+    --bar
     return ()

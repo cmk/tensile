@@ -13,8 +13,6 @@ round
   => T d e
   -> T d i
 
-
-{-
 truncate
   :: forall d e i. Elt e
   => Elt i
@@ -38,4 +36,3 @@ floor
   => P.Integral i 
   => T d e
   -> T d i
--}

@@ -1,7 +1,7 @@
-module Numeric.Tensile.Quantization.Internal.Types where
+module Numeric.Tensile.Quantization.Operations where
 
 import Data.Vector (Vector)
-import Data.Tensor.Internal.Types (T(..), Elt(..))
+import Data.Tensor.Types (T(..), Elt(..))
 
 round 
   :: forall d e i. Elt e
@@ -11,6 +11,3 @@ round
   => T d e
   -> T d i
 round t = undefined 
-
-foo :: Int
-foo = 2 
