@@ -1,2 +1,2 @@
-# tensile
-A flexible high-level API for TensorFlow
+# Tensile
+A cross-platform library for deep learning.

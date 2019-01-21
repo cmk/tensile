@@ -1,6 +1,6 @@
 module Data.Tensor 
   ( module Data.Tensor,
-    module Data.Tensor.Internal
+    module Data.Tensor.Types
   )
 where
 
@@ -11,7 +11,7 @@ import GHC.TypeLits (Nat)
 import Numeric.Dimensions (Dimensions(..))
 import qualified Numeric.Dimensions as D
 
-import Data.Tensor.Internal
+import Data.Tensor.Types
 
 -- | return the a runtime shape representing the dimensions of a tensor.
 shape :: forall s e. Dimensions s => T s e -> [Int64]
