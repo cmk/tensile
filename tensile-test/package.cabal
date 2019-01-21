@@ -1,7 +1,7 @@
 name:           tensile-test
 version:        0.0.1
 synopsis:       A cross-platform library for deep learning.
-description:    Tensile is a lightweight deep learning library that uses backpack to integrate with common machine learning frameworks such as TensorFlow, Torch, or ONNX.
+description:    Tensile is a lightweight neural network API that uses backpack to integrate with common deep learning frameworks such as TensorFlow, Torch, or ONNX.
 category:       Machine Learning
 homepage:       https://github.com/cmk/tensile#readme
 bug-reports:    https://github.com/cmk/tensile/issues
@@ -20,16 +20,16 @@ executable main
     build-depends:
         base          >= 4 && < 5,
         def,
-        foo
-        --bar
-    default-language: Haskell2010
+        foo,
+        lib,
+        vector
+  default-language: Haskell2010
+  default-extensions: DataKinds ScopedTypeVariables OverloadedLists
 
 library def
     hs-source-dirs: 
         def
     exposed-modules:
-        Foo.Siggy
-        Bar.Siggy
         Data.Tensor.Types
         Numeric.Tensile.Quantization.Operations
     build-depends:
@@ -43,26 +43,31 @@ library def
 library foo
     hs-source-dirs: 
         foo
-    signatures:
-        Foo.Siggy
-    exposed-modules:
-        Foo
     build-depends:
         base          >= 4 && < 5,
         signatures
-    mixins:
-        signatures requires (Siggy as Foo.Siggy)
-        -- signatures requires (Numeric.Tensile.Quantization.Operations as Numeric.Tensile.Quantization.Internal.Vector)
     default-language: Haskell2010
     --default-extensions: NoImplicitPrelude
 
-
+library lib
+    hs-source-dirs: 
+        lib
+    exposed-modules:
+        Data.Tensor
+    build-depends:
+        base          >= 4 && < 5,
+        backprop,
+        dimensions,
+        singletons,
+        signatures,
+        vector
+    default-language: Haskell2010
+    default-extensions: ConstraintKinds DataKinds FlexibleContexts TypeApplications TypeFamilies ScopedTypeVariables
 
 library signatures
     hs-source-dirs: 
         sig
     signatures:
-        Siggy,
         Data.Tensor.Types
         Numeric.Tensile.Quantization.Operations
     build-depends:

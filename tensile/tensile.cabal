@@ -1,7 +1,7 @@
 name:           tensile
 version:        0.0.1
-synopsis:       A purely functional library for deep learning.
-description:    Tensile is an ONNX-compatible neural network API that uses backpack to integrate with compute layers such as TensorFlow or Torch.
+synopsis:       A cross-platform library for deep learning.
+description:    Tensile is a lightweight neural network API that uses backpack to integrate with common deep learning frameworks such as TensorFlow, Torch, or ONNX.
 category:       Machine Learning
 homepage:       https://github.com/cmk/tensile#readme
 bug-reports:    https://github.com/cmk/tensile/issues
