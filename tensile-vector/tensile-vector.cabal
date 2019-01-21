@@ -33,6 +33,8 @@ library
     , definitions
     , vector
     , tensile
+  mixins:
+      signatures requires (Numeric.Tensile.Quantization.Types as Numeric.Tensile.Quantization.Internal.Types)
    -- , tensile requires (Data.Tensor.Types as Data.Tensor.Internal.Types)
   default-language: Haskell2010
   default-extensions: ConstraintKinds DataKinds FlexibleContexts TypeApplications TypeFamilies ScopedTypeVariables OverloadedLists
@@ -67,8 +69,6 @@ library signatures
   build-depends:
       base >= 4.9 && < 5
     , tensile-signatures
-  mixins:
-      tensile-signatures requires (Numeric.Tensile.Quantization.Types as Numeric.Tensile.Quantization.Internal.Types)
   default-language: Haskell2010
   default-extensions: NoImplicitPrelude
 

@@ -1,0 +1,8 @@
+signature Siggy where
+
+import Data.Tensor.Types
+
+fooRequiresThis :: Int
+
+barRequiresThis :: Int
+

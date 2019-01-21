@@ -1,6 +1,6 @@
 -- {-# LANGUAGE DataKinds, KindSignatures #-}
 
-signature Numeric.Tensile.Quantization.Types where
+signature Numeric.Tensile.Quantization.Operations where
 
 import Data.Tensor.Types (T(..), Elt(..))
 import qualified Prelude as P
