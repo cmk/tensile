@@ -1,4 +1,0 @@
-{-# LANGUAGE DataKinds, KindSignatures, UndecidableInstances #-}
-
-signature Data.Tensor.Internal.Types where
-

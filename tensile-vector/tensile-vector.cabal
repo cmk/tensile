@@ -27,29 +27,28 @@ library
       Data.Tensor
   build-depends:
       base >= 4.9 && < 5
+    , definitions
     , dimensions
     , singletons
     , tensile
-    , tensile-vector-definitions
     , vector
   mixins:
-      tensile requires (Numeric.Tensile.Quantization.Types as Numeric.Tensile.Quantization.Internal.Types)
-   -- , tensile requires (Data.Tensor.Types as Data.Tensor.Internal.Types)
+      tensile requires (Numeric.Tensile.Quantization.Types as Numeric.Tensile.Quantization.Internal)
   default-language: Haskell2010
   default-extensions: ConstraintKinds DataKinds FlexibleContexts TypeApplications TypeFamilies ScopedTypeVariables OverloadedLists
 
-library tensile-vector-definitions
+library definitions
   ghc-options: -Wall -Wincomplete-uni-patterns -Wincomplete-record-updates -Wmissing-import-lists
   hs-source-dirs:
       def
   exposed-modules:
     --, Numeric.Tensile.Quantization
-      Data.Tensor.Internal.Types
-    , Numeric.Tensile.Quantization.Internal.Types
+      Data.Tensor.Internal
+    , Numeric.Tensile.Quantization.Internal
     --, Numeric.Tensile.Quantization.Lifted
   reexported-modules:  
-      Data.Tensor.Internal.Types as Data.Tensor.Types
-    , Numeric.Tensile.Quantization.Internal.Types as Numeric.Tensile.Quantization.Types
+      Data.Tensor.Internal as Data.Tensor.Types
+    , Numeric.Tensile.Quantization.Internal as Numeric.Tensile.Quantization.Types
 
   build-depends:
       base >= 4.9 && < 5

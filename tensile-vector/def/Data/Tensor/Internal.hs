@@ -1,6 +1,6 @@
 {-# LANGUAGE FlexibleInstances, KindSignatures, TypeOperators, UndecidableInstances #-}
 
-module Data.Tensor.Internal.Types where
+module Data.Tensor.Internal where
 
 import Data.Bits
 import Data.Singletons.Prelude.List (Product)

@@ -18,23 +18,21 @@ library
   ghc-options: -Wall -Wincomplete-uni-patterns -Wincomplete-record-updates -Wmissing-import-lists
   hs-source-dirs:
       lib
-  signatures:
-      Data.Tensor.Internal.Types
   exposed-modules:
       Data.Tensor
   build-depends:
       base >= 4.9 && < 5
     , backprop
     , dimensions
+    , signatures
     , singletons
-    , tensile-signatures
     , vector
   mixins:
-      tensile-signatures requires (Data.Tensor.Types as Data.Tensor.Internal.Types)
+      signatures requires (Data.Tensor.Types as Data.Tensor.Internal)
   default-language: Haskell2010
   default-extensions: ConstraintKinds DataKinds FlexibleContexts TypeApplications TypeFamilies ScopedTypeVariables
 
-library tensile-signatures
+library signatures
   ghc-options: -Wall -Wincomplete-uni-patterns -Wincomplete-record-updates -Wmissing-import-lists
   hs-source-dirs:
       sig
