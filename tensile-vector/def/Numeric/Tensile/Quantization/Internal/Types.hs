@@ -12,4 +12,5 @@ round
   -> T d i
 round t = undefined 
 
- 
+foo :: Int
+foo = 2 

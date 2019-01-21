@@ -32,7 +32,7 @@ library
     , signatures
     , definitions
     , vector
-
+    , tensile
    -- , tensile requires (Data.Tensor.Types as Data.Tensor.Internal.Types)
   default-language: Haskell2010
   default-extensions: ConstraintKinds DataKinds FlexibleContexts TypeApplications TypeFamilies ScopedTypeVariables OverloadedLists
@@ -64,13 +64,11 @@ library signatures
       sig
   signatures:
       Numeric.Tensile.Quantization.Internal.Types
-  reexported-modules: 
-      Data.Tensor
   build-depends:
       base >= 4.9 && < 5
-    , tensile
+    , tensile-signatures
   mixins:
-      tensile requires (Numeric.Tensile.Quantization.Types as Numeric.Tensile.Quantization.Internal.Types)
+      tensile-signatures requires (Numeric.Tensile.Quantization.Types as Numeric.Tensile.Quantization.Internal.Types)
   default-language: Haskell2010
   default-extensions: NoImplicitPrelude
 

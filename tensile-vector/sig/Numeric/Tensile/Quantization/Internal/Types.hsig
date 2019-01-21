@@ -1,2 +1,5 @@
-signature Numeric.Tensile.Quantization.Internal.Types (round) where
-  -- import Prelude ()
+signature Numeric.Tensile.Quantization.Internal.Types (foo, round) where
+  
+import qualified Prelude as P
+
+foo :: P.Int
