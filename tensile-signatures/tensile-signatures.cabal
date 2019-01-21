@@ -20,9 +20,10 @@ library
       sig
   signatures:
       Data.Tensor.Types
+    , Numeric.Tensile.Quantization.Types
   build-depends:
       base >= 4.9 && < 5
     , dimensions
     , singletons
     , vector
-  default-extensions: ConstraintKinds DataKinds FlexibleContexts TypeApplications TypeFamilies ScopedTypeVariables OverloadedLists
+  default-extensions: ConstraintKinds DataKinds FlexibleContexts TypeApplications TypeFamilies ScopedTypeVariables

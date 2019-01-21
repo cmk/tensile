@@ -18,23 +18,54 @@ library
   ghc-options: -Wall -Wincomplete-uni-patterns -Wincomplete-record-updates -Wmissing-import-lists
   hs-source-dirs:
       lib
+  exposed-modules:
+    --, Numeric.Tensile.Quantization
+
+      Numeric.Tensile
+    --, Numeric.Tensile.Quantization.Lifted
+  build-depends:
+      base >= 4.9 && < 5
+    , dimensions
+    , singletons
+    , tensile
+    , tensile-vector-definitions
+    , tensile-vector-signatures
+    , vector
+  default-language: Haskell2010
+  default-extensions: ConstraintKinds DataKinds FlexibleContexts TypeApplications TypeFamilies ScopedTypeVariables OverloadedLists
+
+library tensile-vector-definitions
+  ghc-options: -Wall -Wincomplete-uni-patterns -Wincomplete-record-updates -Wmissing-import-lists
+  hs-source-dirs:
+      def
+  exposed-modules:
+    --, Numeric.Tensile.Quantization
+      Data.Tensor.Internal.Types
+    , Numeric.Tensile.Quantization.Internal.Types
+    --, Numeric.Tensile.Quantization.Lifted
   build-depends:
       base >= 4.9 && < 5
     , dimensions
     , singletons
     , vector
-  exposed-modules:
-      Data.Tensor.Internal.Types
   default-language: Haskell2010
   default-extensions: ConstraintKinds DataKinds FlexibleContexts TypeApplications TypeFamilies ScopedTypeVariables OverloadedLists
 
-executable mnist
-  main-is: 
-      Main.hs
+library tensile-vector-signatures
+  ghc-options: -Wall -Wincomplete-uni-patterns -Wincomplete-record-updates -Wmissing-import-lists
+  hs-source-dirs:
+      sig
+  signatures:
+      Numeric.Tensile.Quantization.Internal.Types
   build-depends:
       base >= 4.9 && < 5
-    , tensile
-    , tensile-vector
+    , dimensions
+    , singletons
+    , tensile-signatures
     , vector
-  default-language: Haskell2010
-  default-extensions: DataKinds ScopedTypeVariables OverloadedLists
+  mixins:
+      tensile-signatures requires (Numeric.Tensile.Quantization.Types as Numeric.Tensile.Quantization.Internal.Types)
+    , tensile-signatures requires (Data.Tensor.Types as Data.Tensor.Internal.Types)
+  default-extensions: NoImplicitPrelude
+
+
