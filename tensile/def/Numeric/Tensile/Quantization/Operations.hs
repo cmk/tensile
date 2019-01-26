@@ -1,13 +1,11 @@
 module Numeric.Tensile.Quantization.Operations where
 
 import Data.Vector (Vector)
-import Data.Tensor.Types (T(..), Elt(..))
+import Data.Tensor.Types (Tensor)
 
 round 
-  :: forall d e i. Elt e
-  => Elt i
-  => RealFrac e 
+  :: forall d e i. RealFrac e 
   => Integral i 
-  => T d e
-  -> T d i
+  => Tensor d e
+  -> Tensor d i
 round t = undefined 
