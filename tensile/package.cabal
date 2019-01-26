@@ -52,9 +52,9 @@ library local-signatures
         tensile-signatures
     default-language: Haskell2010
 
-library definitions
+library reference
     hs-source-dirs: 
-        def
+        ref
     exposed-modules:
         Data.Tensor.Types
         Numeric.Tensile.Linear.Operations
@@ -62,7 +62,7 @@ library definitions
     build-depends:
         base          >= 4 && < 5,
         dimensions,
-        eigen,
+        easytensor,
         singletons,
         vector
     default-language: Haskell2010
@@ -73,8 +73,8 @@ executable main
         Main.hs
     build-depends:
         base          >= 4 && < 5,
-        definitions,
-        eigen,
+        reference,
+        easytensor,
         tensile,
         vector
   default-language: Haskell2010

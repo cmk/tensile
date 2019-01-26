@@ -9,8 +9,6 @@ import GHC.TypeLits
 import Numeric.Dimensions --(Dimensions(..), KnownDim(..), dimVal)
 
 import qualified Data.Vector.Storable as V
-import qualified Eigen.Matrix as E
-import qualified Eigen.Internal as E
 
 import Foreign.C.Types
 
@@ -26,19 +24,6 @@ instance Elt IVal
 
 newtype Tensor (d :: [Nat]) e = Tensor { unTensor :: Vector e } deriving (Eq, Show)
 
-toVec 
-  :: forall d e n. E.Elem e 
-  => Product d ~ n
-  => Tensor d e 
-  -> E.Vec n e
-toVec = E.Vec . V.map E.toC . unTensor
-
-toMatrix
-  :: forall d e m n. E.Elem e 
-  => Product d ~ (n * m)
-  => Tensor d e
-  -> E.Matrix n m e
-toMatrix = E.Matrix . toVec
 
 -- | A real or complex-valued tensor of shape 'd'. 
 type T d = Tensor d TVal

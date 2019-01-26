@@ -305,6 +305,7 @@ v4321 = pure 2
 v3512 :: V 3 (V 5 (V 1 (V 2 Int)))
 v3512 = pure 2
 
+{-
 v232 :: V 2 (V 3 (V 2 Int))
 v232 = unsafeCoerce 
   [[[13, 14],
@@ -320,6 +321,7 @@ v223 = unsafeCoerce
     [ 4,  5,  6]],
    [[ 7,  8,  9],
     [10, 11, 12]]]
+-}
 
 ----Tensile.Operators API 
 --
