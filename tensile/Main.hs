@@ -39,7 +39,7 @@ main = do
       print $ t * t
       print $ sin t
       print $ t == t
-      let m = toMatrix t :: Matrix 2 5 Float
+      let m = toMatrix t :: Matrix 5 2 Float
       print $ E.trace m
       print $ E.squaredNorm m
 

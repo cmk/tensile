@@ -30,6 +30,9 @@ data IVal :: *
 -- instance Bits IVal
 -- 
 
+-- | By convention, elements are assumed to be stored in major-to-minor (i.e. row-major) order.
+-- Implementations that use a different ordering (e.g. Eigen), must supply a conversion or risk
+-- unexpected behavior upon swapping implementations. 
 data Tensor (d :: [Nat]) e
 
 -- | A real or complex-valued tensor of shape 'd'. 
