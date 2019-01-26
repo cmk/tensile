@@ -2,11 +2,13 @@
 
 module Main where
 
+
 import Data.Tensor --(T(..), fromVector, shape)
+import Data.Tensor.Types
 import Data.Bits
+import Eigen.Matrix (Matrix(..), Vec(..))
 import qualified Data.Vector.Storable as V (fromList, Vector(..))
-
-
+import qualified Eigen.Matrix as E
 
 u :: V.Vector Int
 u = V.fromList [1..10]
@@ -26,7 +28,7 @@ main = do
       print $ t `xor` t
       print $ bitSize t
       print $ rotate t 1
-      print $ t == t
+      print $ t == t    
 
   case (constant v :: Maybe (T '[2,5])) of
     Nothing -> print "nope"
@@ -37,7 +39,9 @@ main = do
       print $ t * t
       print $ sin t
       print $ t == t
-
+      let m = toMatrix t :: Matrix 2 5 Float
+      print $ E.trace m
+      print $ E.squaredNorm m
 
 {-
 main = VS.withSized u $ \v -> do 

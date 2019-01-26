@@ -12,23 +12,23 @@ import GHC.TypeLits
 import Numeric.Dimensions --(KnownDim(..))
 
 class Elt e
-instance Elt TVal
-instance Elt IVal
-instance Elt Bool
-
+-- instance Elt TVal
+-- instance Elt IVal
+-- instance Elt Bool
+-- 
 data TVal :: *
-instance Eq TVal
-instance Num TVal
-instance Floating TVal
-instance Fractional TVal
-
+-- instance Eq TVal
+-- instance Num TVal
+-- instance Floating TVal
+-- instance Fractional TVal
+-- 
 
 data IVal :: *
-instance Eq IVal
-instance Num IVal
-instance Ord IVal
-instance Bits IVal
-
+-- instance Eq IVal
+-- instance Num IVal
+-- instance Ord IVal
+-- instance Bits IVal
+-- 
 
 data Tensor (d :: [Nat]) e
 

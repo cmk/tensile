@@ -10,26 +10,31 @@ import Numeric.Dimensions --(Dimensions(..), KnownDim(..), dimVal)
 
 import qualified Data.Vector.Storable as V
 import qualified Eigen.Matrix as E
+import qualified Eigen.Internal as E
+
+import Foreign.C.Types
 
 -- TODO: move to application / test stanza
 type TVal = Float
 type IVal = Int
 
-type Elt = V.Storable
+-- TODO fix, keep in mind you need BOOLs
+class V.Storable e => Elt e
+instance Elt Bool
+instance Elt TVal
+instance Elt IVal
 
 newtype Tensor (d :: [Nat]) e = Tensor { unTensor :: Vector e } deriving (Eq, Show)
 
 toVec 
   :: forall d e n. E.Elem e 
-  => E.C e ~ e
   => Product d ~ n
   => Tensor d e 
   -> E.Vec n e
-toVec = E.Vec . unTensor
+toVec = E.Vec . V.map E.toC . unTensor
 
 toMatrix
   :: forall d e m n. E.Elem e 
-  => E.C e ~ e
   => Product d ~ (n * m)
   => Tensor d e
   -> E.Matrix n m e
