@@ -6,36 +6,49 @@ signature Data.Tensor.Types where
 
 import Data.Bits 
 import Data.Singletons.Prelude.List (Product)
-import Data.Vector (Vector)
+import Data.Vector.Storable (Vector)
 import GHC.TypeLits
 --import GHC.Exts (Constraint)
 import Numeric.Dimensions --(KnownDim(..))
 
-
+class Elt e
+-- instance Elt TVal
+-- instance Elt IVal
+-- instance Elt Bool
+-- 
 data TVal :: *
-instance Eq TVal
-instance Num TVal
-instance Fractional TVal
-instance Floating TVal
+-- instance Eq TVal
+-- instance Num TVal
+-- instance Floating TVal
+-- instance Fractional TVal
+-- 
 
 data IVal :: *
-instance Eq IVal
-instance Ord IVal
-instance Bits IVal
-instance Num IVal
+-- instance Eq IVal
+-- instance Num IVal
+-- instance Ord IVal
+-- instance Bits IVal
+-- 
 
 data Tensor (d :: [Nat]) e
 
+-- | A real or complex-valued tensor of shape 'd'. 
+type T d = Tensor d TVal
 
+-- | An integer or non-negative integer-valued tensor of shape 'd'. 
+type I d = Tensor d IVal
+
+-- | A boolean-valued tensor of shape 'd'. 
+type B d = Tensor d Bool
 
 -- | A variable tensor. Need ST-like interface w/ ghost type for variables.
 --newtype V v (d :: [Nat]) 
 
-instance (KnownDim (Product d), Eq e) => Eq (Tensor d e)
-instance (KnownDim (Product d), Eq e, Bits e, Num e) => Bits (Tensor d e) 
-instance (KnownDim (Product d), Num e) => Num (Tensor d e) 
-instance (KnownDim (Product d), Fractional e) => Fractional (Tensor d e) 
-instance (KnownDim (Product d), Floating e) => Floating (Tensor d e)
+instance (KnownDim (Product d), Elt e, Eq e) => Eq (Tensor d e)
+instance (KnownDim (Product d), Elt e, Eq e, Bits e, Num e) => Bits (Tensor d e) 
+instance (KnownDim (Product d), Elt e, Num e) => Num (Tensor d e) 
+instance (KnownDim (Product d), Elt e, Fractional e) => Fractional (Tensor d e) 
+instance (KnownDim (Product d), Elt e, Floating e) => Floating (Tensor d e)
 -- instance (Elt e, Integral e) => Integral (Tensor d e) 
 -- instance (KnownDim (Product d), Elt e, RealFrac e) => RealFrac (Tensor d e)  
 
@@ -45,7 +58,8 @@ instance (KnownDim (Product d), Floating e) => Floating (Tensor d e)
 -- 
 -- sigmoid
 constant
-  :: KnownDim (Product d)
+  :: forall d e. Elt e
+  => KnownDim (Product d)
   => Vector e
   -> Maybe (Tensor d e)
 
@@ -93,49 +107,57 @@ class (RealFrac a, Floating a) => RealFloat a where
 
 
 equal
-  :: Eq e
+  :: Elt e
+  => Eq e
   => Tensor d e
   -> Tensor d e
   -> Tensor d Bool
 
 notEqual
-  :: Eq e
+  :: Elt e
+  => Eq e
   => Tensor d e
   -> Tensor d e
   -> Tensor d Bool
 
 less
-  :: Ord e
+  :: Elt e
+  => Ord e
   => Tensor d e
   -> Tensor d e
   -> Tensor d Bool
 
 lessEqual
-  :: Ord e
+  :: Elt e
+  => Ord e
   => Tensor d e
   -> Tensor d e
   -> Tensor d Bool
 
 greater
-  :: Ord e
+  :: Elt e
+  => Ord e
   => Tensor d e
   -> Tensor d e
   -> Tensor d Bool
 
 greaterEqual
-  :: Ord e
+  :: Elt e
+  => Ord e
   => Tensor d e
   -> Tensor d e
   -> Tensor d Bool
 
 maximum
-  :: Ord e
+  :: Elt e
+  => Ord e
   => Tensor d e
   -> Tensor d e
   -> Tensor d e
 
 minimum
-  :: Ord e
+  :: Elt e
+  => Ord e
   => Tensor d e
   -> Tensor d e
   -> Tensor d e

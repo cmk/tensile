@@ -14,14 +14,7 @@ import qualified Numeric.Dimensions as D
 
 import Data.Tensor.Types
 
--- | A real or complex-valued tensor of shape 'd'. 
-type T d = Tensor d TVal
 
--- | An integer or non-negative integer-valued tensor of shape 'd'. 
-type I d = Tensor d IVal
-
--- | A boolean-valued tensor of shape 'd'. 
-type B d = Tensor d Bool
 
 type T' s d = BVar s (T d)
 
