@@ -80,18 +80,18 @@ instance (KnownDim (Product d), Elt e, Integral e) => Integral (Tensor e d) wher
 
 -}
 
-
-
-{-
-
 constant
   :: forall d e. Elt e
   => KnownDim (Product d)
-  => V.Vector e
+  => [e]
   -> Maybe (Tensor e d)
 constant v
-  | V.length v == fromIntegral (dimVal (dim :: Dim (Product d))) = Just $ Tensor v
+  | length v == fromIntegral (dimVal (dim :: Dim (Product d))) = Just $ unsafeFromFlatList (length v) v
   | otherwise = Nothing
+
+{-
+
+
 
 equal
   :: Elt e
@@ -142,7 +142,6 @@ greaterEqual
   -> Tensor e d
 greaterEqual = liftF2 geq 
   where geq = (.)(.)(.) coerced (>=)
-
 
 maximum
   :: Elt e
