@@ -4,31 +4,43 @@ module Data.Tensor.Types where
 
 import Data.Bits
 import Data.Singletons.Prelude.List (Product)
-import Data.Vector (Vector)
+import Data.Vector.Storable (Vector)
+import Eigen.Matrix
 import GHC.TypeLits
 import Numeric.Dimensions --(Dimensions(..), KnownDim(..), dimVal)
 
-import qualified Data.Vector as V
+import qualified Data.Vector.Storable as V
 
+-- TODO: move to application / test stanza
 type TVal = Float
 type IVal = Int
 
-newtype Tensor (d :: [Nat]) e = Tensor (Vector e) deriving (Eq, Show)
 
-instance Functor (Tensor d) where
-  fmap f (Tensor a) = Tensor (fmap f a)
-  {-# INLINE fmap #-}
+newtype Tensor (d :: [Nat]) e = Tensor { unTensor :: Vector e } deriving (Eq, Show)
 
-instance (KnownDim (Product d), Eq e, Bits e, Num e) => Bits (Tensor d e) where
+-- | A real or complex-valued tensor of shape 'd'. 
+type T d = Tensor d TVal
+
+-- | An integer or non-negative integer-valued tensor of shape 'd'. 
+type I d = Tensor d IVal
+
+-- | A boolean-valued tensor of shape 'd'. 
+type B d = Tensor d Bool
+
+
+
+liftF f = Tensor . V.map f . unTensor
+
+instance (KnownDim (Product d), V.Storable e, Eq e, Bits e, Num e) => Bits (Tensor d e) where
   Tensor a .&. Tensor b = Tensor $ V.zipWith (.&.) a b
   {-# INLINE (.&.) #-}
   Tensor a .|. Tensor b = Tensor $ V.zipWith (.|.) a b
   {-# INLINE (.|.) #-}
   Tensor a `xor` Tensor b = Tensor $ V.zipWith xor a b
   {-# INLINE xor #-}
-  complement = fmap complement
-  shift t i = fmap (flip shift i) t
-  rotate t i = fmap (flip rotate i) t
+  complement = liftF complement
+  shift t i = liftF (flip shift i) t
+  rotate t i = liftF (flip rotate i) t
   bit = Tensor . V.replicate (fromIntegral . dimVal $ (dim :: Dim (Product d))) . bit
   testBit = testBitDefault
   bitSizeMaybe _ = bitSizeMaybe @e undefined
@@ -38,15 +50,15 @@ instance (KnownDim (Product d), Eq e, Bits e, Num e) => Bits (Tensor d e) where
 
 {-
 
-instance (KnownDim (Product d), Real e) => Real (Tensor d e) where
+instance (KnownDim (Product d), V.Storable e, Real e) => Real (Tensor d e) where
   toRational = undefined --TODO find a reasonable sum-based implementation or scrap the typeclass
 
-instance (KnownDim (Product d), Enum e) => Enum (Tensor d e) where
+instance (KnownDim (Product d), V.Storable e, Enum e) => Enum (Tensor d e) where
   toEnum = Tensor . V.replicate (fromIntegral . dimVal $ (dim :: Dim (Product d))) . toEnum
   {-# INLINE toEnum #-}
   fromEnum = undefined --TODO find a reasonable sum-based implementation or scrap the typeclass
 
-instance (KnownDim (Product d), Integral e) => Integral (Tensor d e) where
+instance (KnownDim (Product d), V.Storable e, Integral e) => Integral (Tensor d e) where
   quot (Tensor a) (Tensor b) = Tensor $ V.zipWith quot a b
   rem (Tensor a) (Tensor b) = Tensor $ V.zipWith rem a b
   div (Tensor a) (Tensor b) = Tensor $ V.zipWith div a b
@@ -57,70 +69,71 @@ instance (KnownDim (Product d), Integral e) => Integral (Tensor d e) where
 
 -}
 
-instance (KnownDim (Product d), Num e) => Num (Tensor d e) where
+instance (KnownDim (Product d), V.Storable e, Num e) => Num (Tensor d e) where
   Tensor a + Tensor b = Tensor $ V.zipWith (+) a b
   {-# INLINE (+) #-}
   Tensor a - Tensor b = Tensor $ V.zipWith (-) a b
   {-# INLINE (-) #-}
   Tensor a * Tensor b = Tensor $ V.zipWith (*) a b
   {-# INLINE (*) #-}
-  negate = fmap negate
+  negate = liftF negate
   {-# INLINE negate #-}
-  abs = fmap abs
+  abs = liftF abs
   {-# INLINE abs #-}
-  signum = fmap signum
+  signum = liftF signum
   {-# INLINE signum #-}
   fromInteger = Tensor . V.replicate (fromIntegral . dimVal $ (dim :: Dim (Product d))) . fromInteger
   {-# INLINE fromInteger #-}
 
-instance (KnownDim (Product d), Fractional e) => Fractional (Tensor d e) where
-  recip = fmap recip
+instance (KnownDim (Product d), V.Storable e, Fractional e) => Fractional (Tensor d e) where
+  recip = liftF recip
   {-# INLINE recip #-}
   Tensor a / Tensor b = Tensor $ V.zipWith (/) a b
   {-# INLINE (/) #-}
   fromRational = Tensor . V.replicate (fromIntegral . dimVal $ (dim :: Dim (Product d))) . fromRational
   {-# INLINE fromRational #-}
 
-instance (KnownDim (Product d), Floating e) => Floating (Tensor d e) where
+instance (KnownDim (Product d), V.Storable e, Floating e) => Floating (Tensor d e) where
   pi = Tensor . V.replicate (fromIntegral . dimVal $ (dim :: Dim (Product d))) $ pi
   {-# INLINE pi #-}
-  exp = fmap exp
+  exp = liftF exp
   {-# INLINE exp #-}
-  sqrt = fmap sqrt
+  sqrt = liftF sqrt
   {-# INLINE sqrt #-}
-  log = fmap log
+  log = liftF log
   {-# INLINE log #-}
   Tensor a ** Tensor b = Tensor $ V.zipWith (**) a b
   {-# INLINE (**) #-}
   logBase (Tensor a) (Tensor b) = Tensor $ V.zipWith logBase a b
   {-# INLINE logBase #-}
-  sin = fmap sin
+  sin = liftF sin
   {-# INLINE sin #-}
-  tan = fmap tan
+  tan = liftF tan
   {-# INLINE tan #-}
-  cos = fmap cos
+  cos = liftF cos
   {-# INLINE cos #-}
-  asin = fmap asin
+  asin = liftF asin
   {-# INLINE asin #-}
-  atan = fmap atan
+  atan = liftF atan
   {-# INLINE atan #-}
-  acos = fmap acos
+  acos = liftF acos
   {-# INLINE acos #-}
-  sinh = fmap sinh
+  sinh = liftF sinh
   {-# INLINE sinh #-}
-  tanh = fmap tanh
+  tanh = liftF tanh
   {-# INLINE tanh #-}
-  cosh = fmap cosh
+  cosh = liftF cosh
   {-# INLINE cosh #-}
-  asinh = fmap asinh
+  asinh = liftF asinh
   {-# INLINE asinh #-}
-  atanh = fmap atanh
+  atanh = liftF atanh
   {-# INLINE atanh #-}
-  acosh = fmap acosh
+  acosh = liftF acosh
   {-# INLINE acosh #-}
 
 constant
-  :: forall d e. KnownDim (Product d)
+  :: forall d e. V.Storable e
+  => KnownDim (Product d)
   => Vector e
   -> Maybe (Tensor d e)
 constant v
@@ -128,56 +141,64 @@ constant v
   | otherwise = Nothing
 
 equal
-  :: Eq e
+  :: V.Storable e
+  => Eq e
   => Tensor d e
   -> Tensor d e
   -> Tensor d Bool
 equal (Tensor a) (Tensor b) = Tensor $ V.zipWith (==) a b
 
 notEqual
-  :: Eq e
+  :: V.Storable e
+  => Eq e
   => Tensor d e
   -> Tensor d e
   -> Tensor d Bool
 notEqual (Tensor a) (Tensor b) = Tensor $ V.zipWith (/=) a b
 
 less
-  :: Ord e
+  :: V.Storable e
+  => Ord e
   => Tensor d e
   -> Tensor d e
   -> Tensor d Bool
 less (Tensor a) (Tensor b) = Tensor $ V.zipWith (<) a b
 
 lessEqual
-  :: Ord e
+  :: V.Storable e
+  => Ord e
   => Tensor d e
   -> Tensor d e
   -> Tensor d Bool
 lessEqual (Tensor a) (Tensor b) = Tensor $ V.zipWith (<=) a b
 
 greater
-  :: Ord e
+  :: V.Storable e
+  => Ord e
   => Tensor d e
   -> Tensor d e
   -> Tensor d Bool
 greater (Tensor a) (Tensor b) = Tensor $ V.zipWith (>) a b
 
 greaterEqual
-  :: Ord e
+  :: V.Storable e
+  => Ord e
   => Tensor d e
   -> Tensor d e
   -> Tensor d Bool
 greaterEqual (Tensor a) (Tensor b) = Tensor $ V.zipWith (>=) a b
 
 maximum
-  :: Ord e
+  :: V.Storable e
+  => Ord e
   => Tensor d e
   -> Tensor d e
   -> Tensor d e
 maximum (Tensor a) (Tensor b) = Tensor $ V.zipWith max a b
 
 minimum
-  :: Ord e
+  :: V.Storable e
+  => Ord e
   => Tensor d e
   -> Tensor d e
   -> Tensor d e
