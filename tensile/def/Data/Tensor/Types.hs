@@ -28,15 +28,23 @@ type I d = Tensor d IVal
 type B d = Tensor d Bool
 
 
-
+liftF
+  :: (V.Storable a, V.Storable e) =>
+     (a -> e) -> Tensor d a -> Tensor d e
 liftF f = Tensor . V.map f . unTensor
 
+liftF2
+  :: (V.Storable a, V.Storable b, V.Storable e) =>
+     (a -> b -> e) -> Tensor d a -> Tensor d b -> Tensor d e
+liftF2 f (Tensor a) (Tensor b) = Tensor $ V.zipWith f a b
+
+
 instance (KnownDim (Product d), V.Storable e, Eq e, Bits e, Num e) => Bits (Tensor d e) where
-  Tensor a .&. Tensor b = Tensor $ V.zipWith (.&.) a b
+  (.&.) = liftF2 (.&.)
   {-# INLINE (.&.) #-}
-  Tensor a .|. Tensor b = Tensor $ V.zipWith (.|.) a b
+  (.|.) = liftF2 (.|.)
   {-# INLINE (.|.) #-}
-  Tensor a `xor` Tensor b = Tensor $ V.zipWith xor a b
+  xor = liftF2 xor
   {-# INLINE xor #-}
   complement = liftF complement
   shift t i = liftF (flip shift i) t
@@ -59,10 +67,10 @@ instance (KnownDim (Product d), V.Storable e, Enum e) => Enum (Tensor d e) where
   fromEnum = undefined --TODO find a reasonable sum-based implementation or scrap the typeclass
 
 instance (KnownDim (Product d), V.Storable e, Integral e) => Integral (Tensor d e) where
-  quot (Tensor a) (Tensor b) = Tensor $ V.zipWith quot a b
-  rem (Tensor a) (Tensor b) = Tensor $ V.zipWith rem a b
-  div (Tensor a) (Tensor b) = Tensor $ V.zipWith div a b
-  mod (Tensor a) (Tensor b) = Tensor $ V.zipWith mod a b
+  quot (Tensor a) (Tensor b) = liftF2 quot a b
+  rem (Tensor a) (Tensor b) = liftF2 rem a b
+  div (Tensor a) (Tensor b) = liftF2 div a b
+  mod (Tensor a) (Tensor b) = liftF2 mod a b
   quotRem ta tb = (quot ta tb, rem ta tb)
   divMod ta tb = (div ta tb, mod ta tb)
   toInteger _ = undefined --TODO find a reasonable sum-based implementation or scrap the typeclass
@@ -70,11 +78,11 @@ instance (KnownDim (Product d), V.Storable e, Integral e) => Integral (Tensor d 
 -}
 
 instance (KnownDim (Product d), V.Storable e, Num e) => Num (Tensor d e) where
-  Tensor a + Tensor b = Tensor $ V.zipWith (+) a b
+  (+) = liftF2 (+)
   {-# INLINE (+) #-}
-  Tensor a - Tensor b = Tensor $ V.zipWith (-) a b
+  (-) = liftF2 (-)
   {-# INLINE (-) #-}
-  Tensor a * Tensor b = Tensor $ V.zipWith (*) a b
+  (*) = liftF2 (*)
   {-# INLINE (*) #-}
   negate = liftF negate
   {-# INLINE negate #-}
@@ -88,7 +96,7 @@ instance (KnownDim (Product d), V.Storable e, Num e) => Num (Tensor d e) where
 instance (KnownDim (Product d), V.Storable e, Fractional e) => Fractional (Tensor d e) where
   recip = liftF recip
   {-# INLINE recip #-}
-  Tensor a / Tensor b = Tensor $ V.zipWith (/) a b
+  (/) = liftF2 (/)
   {-# INLINE (/) #-}
   fromRational = Tensor . V.replicate (fromIntegral . dimVal $ (dim :: Dim (Product d))) . fromRational
   {-# INLINE fromRational #-}
@@ -102,9 +110,9 @@ instance (KnownDim (Product d), V.Storable e, Floating e) => Floating (Tensor d 
   {-# INLINE sqrt #-}
   log = liftF log
   {-# INLINE log #-}
-  Tensor a ** Tensor b = Tensor $ V.zipWith (**) a b
+  (**) = liftF2 (**)
   {-# INLINE (**) #-}
-  logBase (Tensor a) (Tensor b) = Tensor $ V.zipWith logBase a b
+  logBase = liftF2 logBase
   {-# INLINE logBase #-}
   sin = liftF sin
   {-# INLINE sin #-}
@@ -146,7 +154,7 @@ equal
   => Tensor d e
   -> Tensor d e
   -> Tensor d Bool
-equal (Tensor a) (Tensor b) = Tensor $ V.zipWith (==) a b
+equal = liftF2 (==)
 
 notEqual
   :: V.Storable e
@@ -154,7 +162,7 @@ notEqual
   => Tensor d e
   -> Tensor d e
   -> Tensor d Bool
-notEqual (Tensor a) (Tensor b) = Tensor $ V.zipWith (/=) a b
+notEqual = liftF2 (/=)
 
 less
   :: V.Storable e
@@ -162,7 +170,7 @@ less
   => Tensor d e
   -> Tensor d e
   -> Tensor d Bool
-less (Tensor a) (Tensor b) = Tensor $ V.zipWith (<) a b
+less = liftF2 (<)
 
 lessEqual
   :: V.Storable e
@@ -170,7 +178,7 @@ lessEqual
   => Tensor d e
   -> Tensor d e
   -> Tensor d Bool
-lessEqual (Tensor a) (Tensor b) = Tensor $ V.zipWith (<=) a b
+lessEqual = liftF2 (<=)
 
 greater
   :: V.Storable e
@@ -178,7 +186,7 @@ greater
   => Tensor d e
   -> Tensor d e
   -> Tensor d Bool
-greater (Tensor a) (Tensor b) = Tensor $ V.zipWith (>) a b
+greater = liftF2 (>)
 
 greaterEqual
   :: V.Storable e
@@ -186,7 +194,7 @@ greaterEqual
   => Tensor d e
   -> Tensor d e
   -> Tensor d Bool
-greaterEqual (Tensor a) (Tensor b) = Tensor $ V.zipWith (>=) a b
+greaterEqual = liftF2 (>=)
 
 maximum
   :: V.Storable e
@@ -194,7 +202,7 @@ maximum
   => Tensor d e
   -> Tensor d e
   -> Tensor d e
-maximum (Tensor a) (Tensor b) = Tensor $ V.zipWith max a b
+maximum = liftF2 max
 
 minimum
   :: V.Storable e
@@ -202,4 +210,4 @@ minimum
   => Tensor d e
   -> Tensor d e
   -> Tensor d e
-minimum (Tensor a) (Tensor b) = Tensor $ V.zipWith min a b
+minimum = liftF2 min
