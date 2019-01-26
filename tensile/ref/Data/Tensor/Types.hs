@@ -132,15 +132,16 @@ greater
   -> Tensor e d
   -> Tensor BVal d
 greater = liftF2 (>)
+-}
 
+-- TODO use BVal?
 greaterEqual
-  :: Elt e
-  => Ord e
+  :: (Elt e, Num e, Ord e)
   => Tensor e d
   -> Tensor e d
-  -> Tensor BVal d
-greaterEqual = liftF2 (>=)
--}
+  -> Tensor e d
+greaterEqual = liftF2 geq 
+  where geq = (.)(.)(.) coerced (>=)
 
 
 maximum
@@ -163,6 +164,9 @@ minimum = liftF2 min
 -- * Utility functions
 --------------------------------------------------------------------------------
 
+coerced :: (Num t, PrimBytes t) => Bool -> t
+coerced True = 1
+coerced False = 0
 
 ix :: (PrimBytes t, Dimensions ds) => Idxs ds -> ArrayBase t ds -> t
 ix i (ArrayBase a) = case a of
