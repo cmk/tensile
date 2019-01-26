@@ -12,28 +12,42 @@ import GHC.TypeLits
 import Numeric.Dimensions --(KnownDim(..))
 
 
--- | Implementation-dependant constraint on the tensor elements.
-class Elt e
+data TVal :: *
+instance Eq TVal
+instance Num TVal
+instance Fractional TVal
+instance Floating TVal
 
-data T (d :: [Nat]) e
+data IVal :: *
+instance Eq IVal
+instance Ord IVal
+instance Bits IVal
+instance Num IVal
 
--- may want to use a default instance from the equals op
--- instance (Elt e, Eq e) => Eq (T d e)
-instance (KnownDim (Product d), Elt e, Eq e, Bits e, Num e) => Bits (T d e) 
-instance (KnownDim (Product d), Elt e, Num e) => Num (T d e) 
-instance (KnownDim (Product d), Elt e, Fractional e) => Fractional (T d e) 
-instance (KnownDim (Product d), Elt e, Floating e) => Floating (T d e)
--- instance (Elt e, Integral e) => Integral (T d e) 
+data Tensor (d :: [Nat]) e
 
--- instance (KnownDim (Product d), Elt e, RealFrac e) => RealFrac (T d e)  
+
+
+-- | A variable tensor. Need ST-like interface w/ ghost type for variables.
+--newtype V v (d :: [Nat]) 
+
+instance (KnownDim (Product d), Eq e) => Eq (Tensor d e)
+instance (KnownDim (Product d), Eq e, Bits e, Num e) => Bits (Tensor d e) 
+instance (KnownDim (Product d), Num e) => Num (Tensor d e) 
+instance (KnownDim (Product d), Fractional e) => Fractional (Tensor d e) 
+instance (KnownDim (Product d), Floating e) => Floating (Tensor d e)
+-- instance (Elt e, Integral e) => Integral (Tensor d e) 
+-- instance (KnownDim (Product d), Elt e, RealFrac e) => RealFrac (Tensor d e)  
+
+
+
 
 -- 
 -- sigmoid
 constant
-  :: forall d e. Elt e
-  => KnownDim (Product d)
+  :: KnownDim (Product d)
   => Vector e
-  -> Maybe (T d e)
+  -> Maybe (Tensor d e)
 
 {-
 isNaN
@@ -50,7 +64,7 @@ round
   => Real e
   => Fractional e
   => Integral i 
-  => T d e
+  => T d d
   -> T d i
 
 truncate :: Integral b => a -> b
@@ -77,61 +91,54 @@ class (RealFrac a, Floating a) => RealFloat a where
 -}
 
 
+
 equal
-  :: forall d e. Elt e
-  => Eq e
-  => T d e
-  -> T d e
-  -> T d Bool
+  :: Eq e
+  => Tensor d e
+  -> Tensor d e
+  -> Tensor d Bool
 
 notEqual
-  :: forall d e. Elt e
-  => Eq e
-  => T d e
-  -> T d e
-  -> T d Bool
+  :: Eq e
+  => Tensor d e
+  -> Tensor d e
+  -> Tensor d Bool
 
 less
-  :: forall d e. Elt e
-  => Ord e
-  => T d e
-  -> T d e
-  -> T d Bool
+  :: Ord e
+  => Tensor d e
+  -> Tensor d e
+  -> Tensor d Bool
 
 lessEqual
-  :: forall d e. Elt e
-  => Ord e
-  => T d e
-  -> T d e
-  -> T d Bool
+  :: Ord e
+  => Tensor d e
+  -> Tensor d e
+  -> Tensor d Bool
 
 greater
-  :: forall d e. Elt e
-  => Ord e
-  => T d e
-  -> T d e
-  -> T d Bool
+  :: Ord e
+  => Tensor d e
+  -> Tensor d e
+  -> Tensor d Bool
 
 greaterEqual
-  :: forall d e. Elt e
-  => Ord e
-  => T d e
-  -> T d e
-  -> T d Bool
+  :: Ord e
+  => Tensor d e
+  -> Tensor d e
+  -> Tensor d Bool
 
 maximum
-  :: forall d e. Elt e
-  => Ord e
-  => T d e
-  -> T d e
-  -> T d e
+  :: Ord e
+  => Tensor d e
+  -> Tensor d e
+  -> Tensor d e
 
 minimum
-  :: forall d e. Elt e
-  => Ord e
-  => T d e
-  -> T d e
-  -> T d e
+  :: Ord e
+  => Tensor d e
+  -> Tensor d e
+  -> Tensor d e
 
 {-
 vector :: TensorType a => [a] -> Tensor Build a 
