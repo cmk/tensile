@@ -5,18 +5,35 @@ module Data.Tensor.Types where
 import Data.Bits
 import Data.Singletons.Prelude.List (Product)
 import Data.Vector.Storable (Vector)
-import Eigen.Matrix
 import GHC.TypeLits
 import Numeric.Dimensions --(Dimensions(..), KnownDim(..), dimVal)
 
 import qualified Data.Vector.Storable as V
+import qualified Eigen.Matrix as E
 
 -- TODO: move to application / test stanza
 type TVal = Float
 type IVal = Int
 
+type Elt = V.Storable
 
 newtype Tensor (d :: [Nat]) e = Tensor { unTensor :: Vector e } deriving (Eq, Show)
+
+toVec 
+  :: forall d e n. E.Elem e 
+  => E.C e ~ e
+  => Product d ~ n
+  => Tensor d e 
+  -> E.Vec n e
+toVec = E.Vec . unTensor
+
+toMatrix
+  :: forall d e m n. E.Elem e 
+  => E.C e ~ e
+  => Product d ~ (n * m)
+  => Tensor d e
+  -> E.Matrix n m e
+toMatrix = E.Matrix . toVec
 
 -- | A real or complex-valued tensor of shape 'd'. 
 type T d = Tensor d TVal
@@ -39,7 +56,7 @@ liftF2
 liftF2 f (Tensor a) (Tensor b) = Tensor $ V.zipWith f a b
 
 
-instance (KnownDim (Product d), V.Storable e, Eq e, Bits e, Num e) => Bits (Tensor d e) where
+instance (KnownDim (Product d), Elt e, Eq e, Bits e, Num e) => Bits (Tensor d e) where
   (.&.) = liftF2 (.&.)
   {-# INLINE (.&.) #-}
   (.|.) = liftF2 (.|.)
@@ -58,15 +75,15 @@ instance (KnownDim (Product d), V.Storable e, Eq e, Bits e, Num e) => Bits (Tens
 
 {-
 
-instance (KnownDim (Product d), V.Storable e, Real e) => Real (Tensor d e) where
+instance (KnownDim (Product d), Elt e, Real e) => Real (Tensor d e) where
   toRational = undefined --TODO find a reasonable sum-based implementation or scrap the typeclass
 
-instance (KnownDim (Product d), V.Storable e, Enum e) => Enum (Tensor d e) where
+instance (KnownDim (Product d), Elt e, Enum e) => Enum (Tensor d e) where
   toEnum = Tensor . V.replicate (fromIntegral . dimVal $ (dim :: Dim (Product d))) . toEnum
   {-# INLINE toEnum #-}
   fromEnum = undefined --TODO find a reasonable sum-based implementation or scrap the typeclass
 
-instance (KnownDim (Product d), V.Storable e, Integral e) => Integral (Tensor d e) where
+instance (KnownDim (Product d), Elt e, Integral e) => Integral (Tensor d e) where
   quot (Tensor a) (Tensor b) = liftF2 quot a b
   rem (Tensor a) (Tensor b) = liftF2 rem a b
   div (Tensor a) (Tensor b) = liftF2 div a b
@@ -77,7 +94,7 @@ instance (KnownDim (Product d), V.Storable e, Integral e) => Integral (Tensor d 
 
 -}
 
-instance (KnownDim (Product d), V.Storable e, Num e) => Num (Tensor d e) where
+instance (KnownDim (Product d), Elt e, Num e) => Num (Tensor d e) where
   (+) = liftF2 (+)
   {-# INLINE (+) #-}
   (-) = liftF2 (-)
@@ -93,7 +110,7 @@ instance (KnownDim (Product d), V.Storable e, Num e) => Num (Tensor d e) where
   fromInteger = Tensor . V.replicate (fromIntegral . dimVal $ (dim :: Dim (Product d))) . fromInteger
   {-# INLINE fromInteger #-}
 
-instance (KnownDim (Product d), V.Storable e, Fractional e) => Fractional (Tensor d e) where
+instance (KnownDim (Product d), Elt e, Fractional e) => Fractional (Tensor d e) where
   recip = liftF recip
   {-# INLINE recip #-}
   (/) = liftF2 (/)
@@ -101,7 +118,7 @@ instance (KnownDim (Product d), V.Storable e, Fractional e) => Fractional (Tenso
   fromRational = Tensor . V.replicate (fromIntegral . dimVal $ (dim :: Dim (Product d))) . fromRational
   {-# INLINE fromRational #-}
 
-instance (KnownDim (Product d), V.Storable e, Floating e) => Floating (Tensor d e) where
+instance (KnownDim (Product d), Elt e, Floating e) => Floating (Tensor d e) where
   pi = Tensor . V.replicate (fromIntegral . dimVal $ (dim :: Dim (Product d))) $ pi
   {-# INLINE pi #-}
   exp = liftF exp
@@ -140,7 +157,7 @@ instance (KnownDim (Product d), V.Storable e, Floating e) => Floating (Tensor d 
   {-# INLINE acosh #-}
 
 constant
-  :: forall d e. V.Storable e
+  :: forall d e. Elt e
   => KnownDim (Product d)
   => Vector e
   -> Maybe (Tensor d e)
@@ -149,7 +166,7 @@ constant v
   | otherwise = Nothing
 
 equal
-  :: V.Storable e
+  :: Elt e
   => Eq e
   => Tensor d e
   -> Tensor d e
@@ -157,7 +174,7 @@ equal
 equal = liftF2 (==)
 
 notEqual
-  :: V.Storable e
+  :: Elt e
   => Eq e
   => Tensor d e
   -> Tensor d e
@@ -165,7 +182,7 @@ notEqual
 notEqual = liftF2 (/=)
 
 less
-  :: V.Storable e
+  :: Elt e
   => Ord e
   => Tensor d e
   -> Tensor d e
@@ -173,7 +190,7 @@ less
 less = liftF2 (<)
 
 lessEqual
-  :: V.Storable e
+  :: Elt e
   => Ord e
   => Tensor d e
   -> Tensor d e
@@ -181,7 +198,7 @@ lessEqual
 lessEqual = liftF2 (<=)
 
 greater
-  :: V.Storable e
+  :: Elt e
   => Ord e
   => Tensor d e
   -> Tensor d e
@@ -189,7 +206,7 @@ greater
 greater = liftF2 (>)
 
 greaterEqual
-  :: V.Storable e
+  :: Elt e
   => Ord e
   => Tensor d e
   -> Tensor d e
@@ -197,7 +214,7 @@ greaterEqual
 greaterEqual = liftF2 (>=)
 
 maximum
-  :: V.Storable e
+  :: Elt e
   => Ord e
   => Tensor d e
   -> Tensor d e
@@ -205,7 +222,7 @@ maximum
 maximum = liftF2 max
 
 minimum
-  :: V.Storable e
+  :: Elt e
   => Ord e
   => Tensor d e
   -> Tensor d e

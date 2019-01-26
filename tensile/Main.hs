@@ -4,7 +4,7 @@ module Main where
 
 import Data.Tensor --(T(..), fromVector, shape)
 import Data.Bits
-import qualified Data.Vector as V (fromList, Vector(..))
+import qualified Data.Vector.Storable as V (fromList, Vector(..))
 
 
 
