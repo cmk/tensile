@@ -6,6 +6,6 @@ import Data.Tensor.Types (Tensor)
 round 
   :: forall d e i. RealFrac e 
   => Integral i 
-  => Tensor d e
-  -> Tensor d i
+  => Tensor e d
+  -> Tensor i d
 round t = undefined 

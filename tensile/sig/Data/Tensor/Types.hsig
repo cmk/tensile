@@ -14,8 +14,10 @@ import Numeric.Dimensions --(KnownDim(..))
 class Elt e
 -- instance Elt TVal
 -- instance Elt IVal
--- instance Elt Bool
+-- instance Elt BVal
 -- 
+
+-- | A tensor value.
 data TVal :: *
 -- instance Eq TVal
 -- instance Num TVal
@@ -23,6 +25,7 @@ data TVal :: *
 -- instance Fractional TVal
 -- 
 
+-- | An index value.
 data IVal :: *
 -- instance Eq IVal
 -- instance Num IVal
@@ -30,43 +33,40 @@ data IVal :: *
 -- instance Bits IVal
 -- 
 
+-- | A BValean value.
+data BVal :: *
+
 -- | By convention, elements are assumed to be stored in major-to-minor (i.e. row-major) order.
 -- Implementations that use a different ordering (e.g. Eigen), must supply a conversion or risk
 -- unexpected behavior upon swapping implementations. 
-data Tensor (d :: [Nat]) e
+data Tensor e (d :: [Nat])
 
 -- | A real or complex-valued tensor of shape 'd'. 
-type T d = Tensor d TVal
+type T d = Tensor TVal d
 
 -- | An integer or non-negative integer-valued tensor of shape 'd'. 
-type I d = Tensor d IVal
+type I d = Tensor IVal d
 
 -- | A boolean-valued tensor of shape 'd'. 
-type B d = Tensor d Bool
+type B d = Tensor BVal d
 
 -- | A variable tensor. Need ST-like interface w/ ghost type for variables.
 --newtype V v (d :: [Nat]) 
 
-instance (KnownDim (Product d), Elt e, Eq e) => Eq (Tensor d e)
-instance (KnownDim (Product d), Elt e, Eq e, Bits e, Num e) => Bits (Tensor d e) 
-instance (KnownDim (Product d), Elt e, Num e) => Num (Tensor d e) 
-instance (KnownDim (Product d), Elt e, Fractional e) => Fractional (Tensor d e) 
-instance (KnownDim (Product d), Elt e, Floating e) => Floating (Tensor d e)
--- instance (Elt e, Integral e) => Integral (Tensor d e) 
--- instance (KnownDim (Product d), Elt e, RealFrac e) => RealFrac (Tensor d e)  
+instance (KnownDim (Product d), Elt e, Eq e) => Eq (Tensor e d)
+--instance (KnownDim (Product d), Elt e, Eq e, Bits e, Num e) => Bits (Tensor e d) 
+instance (KnownDim (Product d), Elt e, Num e) => Num (Tensor e d) 
+instance (KnownDim (Product d), Elt e, Fractional e) => Fractional (Tensor e d) 
+instance (KnownDim (Product d), Elt e, Floating e) => Floating (Tensor e d)
+-- instance (Elt e, Integral e) => Integral (Tensor e d) 
+-- instance (KnownDim (Product d), Elt e, RealFrac e) => RealFrac (Tensor e d)  
 
 
 
 
--- 
--- sigmoid
-constant
-  :: forall d e. Elt e
-  => KnownDim (Product d)
-  => Vector e
-  -> Maybe (Tensor d e)
 
 {-
+
 isNaN
 isInf
 logicalAnd
@@ -90,80 +90,75 @@ round :: Integral b => a -> b
 ceil :: Integral b => a -> b
 floor :: Integral b => a -> b
 
-class (RealFrac a, Floating a) => RealFloat a where
-  floatRadix :: a -> Integer
-  floatDigits :: a -> Int
-  floatRange :: a -> (Int, Int)
-  decodeFloat :: a -> (Integer, Int)
-  encodeFloat :: Integer -> Int -> a
-  exponent :: a -> Int
-  significand :: a -> a
-  scaleFloat :: Int -> a -> a
-  isNaN :: a -> Bool
-  isInfinite :: a -> Bool
-  isDenormalized :: a -> Bool
-  isNegativeZero :: a -> Bool
-  isIEEE :: a -> Bool
-  atan2 :: a -> a -> a
 -}
 
 
+{-
+
+-- 
+-- sigmoid
+constant
+  :: forall d e. Elt e
+  => KnownDim (Product d)
+  => Vector e
+  -> Maybe (Tensor e d)
 
 equal
   :: Elt e
   => Eq e
-  => Tensor d e
-  -> Tensor d e
-  -> Tensor d Bool
+  => Tensor e d
+  -> Tensor e d
+  -> Tensor BVal d
 
 notEqual
   :: Elt e
   => Eq e
-  => Tensor d e
-  -> Tensor d e
-  -> Tensor d Bool
+  => Tensor e d
+  -> Tensor e d
+  -> Tensor BVal d
 
 less
   :: Elt e
   => Ord e
-  => Tensor d e
-  -> Tensor d e
-  -> Tensor d Bool
+  => Tensor e d
+  -> Tensor e d
+  -> Tensor BVal d
 
 lessEqual
   :: Elt e
   => Ord e
-  => Tensor d e
-  -> Tensor d e
-  -> Tensor d Bool
+  => Tensor e d
+  -> Tensor e d
+  -> Tensor BVal d
 
 greater
   :: Elt e
   => Ord e
-  => Tensor d e
-  -> Tensor d e
-  -> Tensor d Bool
+  => Tensor e d
+  -> Tensor e d
+  -> Tensor BVal d
 
 greaterEqual
   :: Elt e
   => Ord e
-  => Tensor d e
-  -> Tensor d e
-  -> Tensor d Bool
+  => Tensor e d
+  -> Tensor e d
+  -> Tensor BVal d
+-}
 
 maximum
   :: Elt e
   => Ord e
-  => Tensor d e
-  -> Tensor d e
-  -> Tensor d e
+  => Tensor e d
+  -> Tensor e d
+  -> Tensor e d
 
 minimum
   :: Elt e
   => Ord e
-  => Tensor d e
-  -> Tensor d e
-  -> Tensor d e
+  => Tensor e d
+  -> Tensor e d
+  -> Tensor e d
 
 {-
 vector :: TensorType a => [a] -> Tensor Build a 

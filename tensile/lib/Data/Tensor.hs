@@ -19,11 +19,11 @@ import Data.Tensor.Types
 type T' s d = BVar s (T d)
 
 -- | return the a runtime shape representing the dimensions of a tensor.
-shape :: forall d e. Dimensions d => Tensor d e -> [Int64]
+shape :: forall d e. Dimensions d => Tensor e d -> [Int64]
 shape _ = fromIntegral <$> D.listDims (D.dims @Nat @d)
 
 -- | Product of all dimension sizes @O(Length xs)@.
-size :: Dimensions d => Tensor d e -> Int64
+size :: Dimensions d => Tensor e d -> Int64
 size = product . shape
 
 {-

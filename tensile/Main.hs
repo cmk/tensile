@@ -15,7 +15,10 @@ v :: V.Vector Float
 v = V.fromList [1..10]
 
 main :: IO ()
-main = do
+main = print "nothing"
+
+{-
+ - do
   case (constant u :: Maybe (I '[2,5])) of
     Nothing -> print "nope"
     Just t -> do
@@ -37,7 +40,7 @@ main = do
       print $ t * t
       print $ sin t
       print $ t == t
-
+-}
 {-
 main = VS.withSized u $ \v -> do 
   let t :: T '[2,5] 
