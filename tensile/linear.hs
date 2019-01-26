@@ -6,7 +6,7 @@
 {-# LANGUAGE Rank2Types #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE EmptyDataDecls #-}
-{-# LANGUAGE MultiParamTypeClasses, FlexibleContexts, FlexibleInstances, UndecidableInstances #-}
+{-# LANGUAGE MultiParamTypeClasses, FlexibleContexts, FlexibleInstances, UndecidableInstances, OverloadedLists #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveTraversable #-}
 {-# LANGUAGE DataKinds #-}
@@ -38,6 +38,7 @@ import GHC.TypeLits
 import GHC.Generics (Generic)
 import GHC.Generics (Generic1)
 
+import Unsafe.Coerce
 {-
 import Prelude hiding ((*), (+), (-), negate, subtract,zipWith)
 import qualified Prelude
@@ -301,6 +302,24 @@ v4312 = pure 2
 v4321 :: V 4 (V 3 (V 2 (V 1 Int)))
 v4321 = pure 2
 
+v3512 :: V 3 (V 5 (V 1 (V 2 Int)))
+v3512 = pure 2
+
+v232 :: V 2 (V 3 (V 2 Int))
+v232 = unsafeCoerce 
+  [[[13, 14],
+    [15, 16],
+    [17, 18]],
+   [[19, 20],
+    [21, 22],
+    [23, 24]]]
+
+v223 :: V 2 (V 2 (V 3 Int))
+v223 = unsafeCoerce
+  [[[ 1,  2,  3],
+    [ 4,  5,  6]],
+   [[ 7,  8,  9],
+    [10, 11, 12]]]
 
 ----Tensile.Operators API 
 --
