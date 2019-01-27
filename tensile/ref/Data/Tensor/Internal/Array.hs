@@ -89,35 +89,11 @@ elemSize0 (ArrayBase a) = case a of
   (# | (# _, n, _ #) #) -> n
 {-# INLINE elemSize0 #-}
 
+-- | Get array by its offset and size in a ByteArray.
+--   Both offset and size are given in element number.
 fromElems ::  PrimBytes t => Int# -> Int# -> ByteArray# -> ArrayBase t ds
 fromElems off n ba = ArrayBase (# | (# off , n , ba #) #)
 {-# INLINE fromElems #-}
 
 
-{-
 
-broadcast ::  
-
-ix# :: Int# -> ArrayBase t ds -> t 
-
-gen# :: Int# -> (s -> (#s, t#)) -> s -> (#s, ArrayBase t ds#) 
-
-
-
-
-
-
-
-
-
-
-
-
-
-elemSize0 :: a -> Int#
-
--- | Get array by its offset and size in a ByteArray.
---   Both offset and size are given in element number.
-fromElems :: Int# -> Int# -> ByteArray# -> a
-
--}
