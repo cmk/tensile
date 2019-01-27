@@ -19,22 +19,23 @@ class Elt e
 
 -- | A tensor value.
 data TVal :: *
--- instance Eq TVal
--- instance Num TVal
--- instance Floating TVal
--- instance Fractional TVal
+instance Eq TVal
+instance Num TVal
+instance Floating TVal
+instance Fractional TVal
 -- 
 
 -- | An index value.
 data IVal :: *
--- instance Eq IVal
--- instance Num IVal
--- instance Ord IVal
--- instance Bits IVal
+instance Eq IVal
+instance Num IVal
+instance Ord IVal
+instance Bits IVal
 -- 
 
 -- | A BValean value.
 data BVal :: *
+instance Eq BVal
 
 -- | By convention, elements are assumed to be stored in major-to-minor (i.e. row-major) order.
 -- Implementations that use a different ordering (e.g. Eigen), must supply a conversion or risk
@@ -54,7 +55,7 @@ type B d = Tensor BVal d
 --newtype V v (d :: [Nat]) 
 
 instance (KnownDim (Product d), Elt e, Eq e) => Eq (Tensor e d)
---instance (KnownDim (Product d), Elt e, Eq e, Bits e, Num e) => Bits (Tensor e d) 
+instance (KnownDim (Product d), Elt e, Eq e, Bits e, Num e) => Bits (Tensor e d) 
 instance (KnownDim (Product d), Elt e, Num e) => Num (Tensor e d) 
 instance (KnownDim (Product d), Elt e, Fractional e) => Fractional (Tensor e d) 
 instance (KnownDim (Product d), Elt e, Floating e) => Floating (Tensor e d)
@@ -97,6 +98,19 @@ constant
   => KnownDim (Product d)
   => [e]
   -> Maybe (Tensor e d)
+
+eq :: T d -> T d -> B d
+
+neq :: T d -> T d -> B d
+
+lt :: Ord TVal => T d -> T d -> B d
+
+lte :: Ord TVal => T d -> T d -> B d
+
+gt :: Ord TVal => T d -> T d -> B d
+
+gte :: Ord TVal => T d -> T d -> B d
+
 
 {-
 

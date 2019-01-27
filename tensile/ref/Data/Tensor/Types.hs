@@ -20,7 +20,7 @@ import qualified Data.Vector.Storable as V
 -- TODO: move to application / test stanza
 type TVal = Float
 type IVal = Int
-type BVal = Word8
+type BVal = TVal
 
 -- TODO fix, keep in mind you need BOOLs
 type Elt = PrimBytes
@@ -103,39 +103,25 @@ notEqual
   -> Tensor BVal d
 notEqual = liftF2 (/=)
 
-less
-  :: Elt e
-  => Ord e
-  => Tensor e d
-  -> Tensor e d
-  -> Tensor BVal d
-less = liftF2 (<)
-
-lessEqual
-  :: Elt e
-  => Ord e
-  => Tensor e d
-  -> Tensor e d
-  -> Tensor BVal d
-lessEqual = liftF2 (<=)
-
-greater
-  :: Elt e
-  => Ord e
-  => Tensor e d
-  -> Tensor e d
-  -> Tensor BVal d
-greater = liftF2 (>)
 -}
 
--- TODO use BVal?
-greaterEqual
-  :: (Elt e, Num e, Ord e)
-  => Tensor e d
-  -> Tensor e d
-  -> Tensor e d
-greaterEqual = liftF2 geq 
-  where geq = (.)(.)(.) coerced (>=)
+eq :: T d -> T d -> B d
+eq = liftF2 $ (.)(.)(.) coerced (==)
+
+neq :: T d -> T d -> B d
+neq = liftF2 $ (.)(.)(.) coerced (/=)
+
+lt :: Ord TVal => T d -> T d -> B d
+lt = liftF2 $ (.)(.)(.) coerced (<)
+
+lte :: Ord TVal => T d -> T d -> B d
+lte = liftF2 $ (.)(.)(.) coerced (<=)
+
+gt :: Ord TVal => T d -> T d -> B d
+gt = liftF2 $ (.)(.)(.) coerced (>)
+
+gte :: Ord TVal => T d -> T d -> B d
+gte = liftF2 $ (.)(.)(.) coerced (>=)
 
 maximum
   :: Elt e
