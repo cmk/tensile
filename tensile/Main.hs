@@ -7,6 +7,8 @@ import Data.Tensor --(T(..), fromVector, shape)
 import Data.Tensor.Types
 import Data.Bits
 
+import Numeric.Tensile.Linear.Operations
+
 u :: [Int]
 u = [1..10]
 
@@ -27,12 +29,13 @@ main = do
       print $ rotate t 1
    
 
-  case (constant v :: Maybe (T '[2,5])) of
-    Nothing -> print "nope"
-    Just t -> do
+  case (constant v :: Maybe (T '[2,5]), constant v :: Maybe (T '[5,2])) of
+    (Just t, Just t') -> do
       print t
       print $ shape t
-      print $ t + t
+      print $ t `mul` t'    
       print $ t * t
       print $ sin t
       print $ t `gte` t 
+    _ -> print "nope"
+
