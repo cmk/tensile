@@ -92,16 +92,17 @@ floor :: Integral b => a -> b
 
 -}
 
+constant
+  :: forall d e. Elt e
+  => KnownDim (Product d)
+  => [e]
+  -> Maybe (Tensor e d)
 
 {-
 
 -- 
 -- sigmoid
-constant
-  :: forall d e. Elt e
-  => KnownDim (Product d)
-  => Vector e
-  -> Maybe (Tensor e d)
+
 
 equal
   :: Elt e

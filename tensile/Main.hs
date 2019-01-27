@@ -6,19 +6,23 @@ module Main where
 import Data.Tensor --(T(..), fromVector, shape)
 import Data.Tensor.Types
 import Data.Bits
-import qualified Data.Vector.Storable as V (fromList, Vector(..))
 
+{-
 u :: V.Vector Int
 u = V.fromList [1..10]
 
 v :: V.Vector Float
 v = V.fromList [1..10]
+-}
+
+u :: [Int]
+u = [1..10]
+
+v :: [Float]
+v = [1..10]
 
 main :: IO ()
-main = print "nothing"
-
-{-
- - do
+main = do
   case (constant u :: Maybe (I '[2,5])) of
     Nothing -> print "nope"
     Just t -> do
@@ -40,7 +44,6 @@ main = print "nothing"
       print $ t * t
       print $ sin t
       print $ t == t
--}
 {-
 main = VS.withSized u $ \v -> do 
   let t :: T '[2,5] 

@@ -36,13 +36,7 @@ type I d = Tensor IVal d
 -- | A boolean-valued tensor of shape 'd'. 
 type B d = Tensor BVal d
 
-
-
-{-
-
-
-
-instance (KnownDim (Product d), Elt e, Eq e, Bits e, Num e) => Bits (Tensor e d) where
+instance (KnownDim (Product d), Elt e, Eq e, Bits e, Num e) => Bits (ArrayBase e d) where
   (.&.) = liftF2 (.&.)
   {-# INLINE (.&.) #-}
   (.|.) = liftF2 (.|.)
@@ -52,13 +46,13 @@ instance (KnownDim (Product d), Elt e, Eq e, Bits e, Num e) => Bits (Tensor e d)
   complement = liftF complement
   shift t i = liftF (flip shift i) t
   rotate t i = liftF (flip rotate i) t
-  bit = Tensor . V.replicate (fromIntegral . dimVal $ (dim :: Dim (Product d))) . bit
+  bit = replicateA (fromIntegral . dimVal $ (dim :: Dim (Product d))) . bit
   testBit = testBitDefault
   bitSizeMaybe _ = bitSizeMaybe @e undefined
   bitSize _ = bitSize @e undefined
   isSigned _ = isSigned @e undefined
   popCount = popCountDefault
--}
+
 {-
 
 instance (KnownDim (Product d), Elt e, Real e) => Real (Tensor e d) where
@@ -167,6 +161,9 @@ coerced :: (Num t, PrimBytes t) => Bool -> t
 coerced True = 1
 coerced False = 0
 
+undefEl :: ArrayBase t ds -> t
+undefEl = const undefined
+
 ix :: (PrimBytes t, Dimensions ds) => Idxs ds -> ArrayBase t ds -> t
 ix i (ArrayBase a) = case a of
   (# t | #)  -> t
@@ -174,8 +171,9 @@ ix i (ArrayBase a) = case a of
     I# i# -> indexArray arr (off +# i#)
 {-# INLINE ix #-}
 
-undefEl :: ArrayBase t ds -> t
-undefEl = const undefined
+replicateA :: (PrimBytes t, KnownDim (Product ds)) => Int -> t -> ArrayBase t ds
+replicateA i = unsafeFromFlatList i . replicate i
+
 
 liftF :: PrimBytes t => (t -> t) -> ArrayBase t ds -> ArrayBase t ds
 liftF f (ArrayBase (# t | #))

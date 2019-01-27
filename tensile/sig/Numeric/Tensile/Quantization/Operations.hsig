@@ -5,10 +5,10 @@ signature Numeric.Tensile.Quantization.Operations where
 import Data.Tensor.Types
 import qualified Prelude as P
 
-round :: Tensor d TVal -> Tensor d IVal
-truncate :: Tensor d TVal -> Tensor d IVal
-ceiling :: Tensor d TVal -> Tensor d IVal
-floor :: Tensor d TVal -> Tensor d IVal
+round :: T d -> I d
+truncate :: T d -> I d 
+ceiling :: T d -> I d
+floor :: T d -> I d
 
 
 
