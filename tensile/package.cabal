@@ -57,6 +57,7 @@ library reference
         ref
     exposed-modules:
         Data.Tensor.Types
+        Data.Tensor.Internal.Array
         Numeric.Tensile.Linear.Operations
         Numeric.Tensile.Quantization.Operations
     build-depends:
