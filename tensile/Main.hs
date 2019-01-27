@@ -13,7 +13,7 @@ u :: [Int]
 u = [1..10]
 
 v :: [Float]
-v = [1..10]
+v = replicate 8 1.0
 
 main :: IO ()
 main = do
@@ -29,13 +29,20 @@ main = do
       print $ rotate t 1
    
 
-  case (constant v :: Maybe (T '[2,5]), constant v :: Maybe (T '[5,2])) of
+  case (constant v :: Maybe (T '[2,4]), constant v :: Maybe (T '[4,2])) of
     (Just t, Just t') -> do
-      print t
-      print $ shape t
-      print $ t `mul` t'    
-      print $ t * t
-      print $ sin t
-      print $ t `gte` t 
+      print t'
+      print $ shape t'
+      print $ t `matmul` t'    
+      --print $ t * t
+      --print $ sin t
+      --print $ t `gte` t 
+    _ -> print "nope"
+
+  case (constant v :: Maybe (T '[2,2,2]), constant v :: Maybe (T '[2,4])) of
+    (Just t, Just t') -> do
+      let tt = t `matmul` t' 
+      print $ tt
+      print $ shape tt
     _ -> print "nope"
 
