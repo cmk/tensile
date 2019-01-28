@@ -63,14 +63,6 @@ matmulL
 matmulL = undefined
 
 
-infixl 7 <#>
-(<#>)  
-  :: forall a b ab x. KnownDim x
-  => ConcatList a b ab -- witness 'a ++ b ~ ab'
-  => Dimensions a
-  => Dimensions b
-  => T (a +: x) -> T (x :+ b) -> T ab
-(<#>) = matmul
 
 -- | Tensor contraction.
 --   In particular:

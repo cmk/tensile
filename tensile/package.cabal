@@ -19,6 +19,7 @@ library
         lib
     exposed-modules:
         Data.Tensor
+        Numeric.Tensile.Operations.Linear.Unlifted
     build-depends:
         base          >= 4 && < 5,
         backprop,
@@ -27,7 +28,7 @@ library
         tensile-signatures,
         vector
     default-language: Haskell2010
-    default-extensions: ConstraintKinds DataKinds FlexibleContexts TypeApplications TypeFamilies ScopedTypeVariables
+    default-extensions: ConstraintKinds DataKinds FlexibleContexts TypeApplications TypeOperators TypeFamilies ScopedTypeVariables
 
 library tensile-signatures
     hs-source-dirs: 
@@ -58,8 +59,8 @@ library reference
     exposed-modules:
         Data.Tensor.Types
         Data.Tensor.Internal.Array
-        Numeric.Tensile.Operations.Linear.Internal     
-        Numeric.Tensile.Operations.Quantization.Internal
+        Numeric.Tensile.Operations.Linear.Internal
+        Numeric.Tensile.Operations.Quantization.Internal 
     build-depends:
         base          >= 4 && < 5,
         dimensions,

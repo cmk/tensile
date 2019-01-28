@@ -7,7 +7,7 @@ import Data.Tensor --(T(..), fromVector, shape)
 import Data.Tensor.Types
 import Data.Bits
 
-import Numeric.Tensile.Operations.Linear.Internal
+import Numeric.Tensile.Operations.Linear.Unlifted
 
 u :: [Word]
 u = [1..10]
@@ -41,7 +41,7 @@ main = do
 
   case (constant v :: Maybe (T '[2,2,2]), constant v :: Maybe (T '[2,4])) of
     (Just t, Just t') -> do
-      let tt = t `matmul` t' 
+      let tt = t <#> t' 
       print $ tt
       print $ shape tt
     _ -> print "nope"
