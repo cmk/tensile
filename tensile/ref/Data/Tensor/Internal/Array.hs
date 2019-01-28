@@ -1,4 +1,4 @@
-{-# LANGUAGE FlexibleInstances, KindSignatures, MagicHash, TypeOperators, UnboxedSums, UnboxedTuples, UndecidableInstances #-}
+{-# LANGUAGE BangPatterns, FlexibleInstances, KindSignatures, MagicHash, TypeOperators, UnboxedSums, UnboxedTuples, UndecidableInstances #-}
 
 module Data.Tensor.Internal.Array where
 
@@ -306,62 +306,51 @@ iwgen f
           )
       ) of (# _, r #) -> fromElems 0# lenASBS r
 
-{-
-
-
 -- | Left-associative fold of a ArrayBase.
 --   The fold is strict, so accumulater is evaluated to WHNF;
 --   but you'd better make sure that the function is strict enough to not
 --   produce memory leaks deeply inside the result data type.
-ewfoldl :: (b -> ArrayBase t as -> b) -> b -> ArrayBase t asbs -> b
--- | Left-associative fold of a ArrayBase with an index
---   The fold is strict, so accumulater is evaluated to WHNF;
---   but you'd better make sure that the function is strict enough to not
---   produce memory leaks deeply inside the result data type.
-iwfoldl :: (Idxs bs -> b -> ArrayBase t as -> b) -> b -> ArrayBase t asbs -> b
--- | Right-associative fold of a ArrayBase
---   The fold is strict, so accumulater is evaluated to WHNF;
---   but you'd better make sure that the function is strict enough to not
---   produce memory leaks deeply inside the result data type.
-ewfoldr :: (ArrayBase t as -> b -> b) -> b -> ArrayBase t asbs -> b
--- | Right-associative fold of a ArrayBase with an index
---   The fold is strict, so accumulater is evaluated to WHNF;
---   but you'd better make sure that the function is strict enough to not
---   produce memory leaks deeply inside the result data type.
-iwfoldr :: (Idxs bs -> ArrayBase t as -> b -> b) -> b -> ArrayBase t asbs -> b
--- | Apply an applicative functor on each element (Lens-like traversal)
-elementWise :: forall s (as' :: [Nat]) (asbs' :: [Nat]) f
-             . ( Applicative f
-               , SubSpace s as' bs asbs'
-               )
-            => (ArrayBase s as' -> f (ArrayBase t as))
-            -> ArrayBase s asbs' -> f (ArrayBase t asbs)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+ewfoldl
+  :: forall s t as bs asbs. (PrimBytes s, PrimBytes t)
+  => Dimensions as
+  => Dimensions bs
+  => Dimensions asbs
+  => ConcatList as bs asbs
+  => (s -> ArrayBase t as -> s) -> s -> ArrayBase t asbs -> s
 ewfoldl f x0 df
   | ba <- getBytes df
   = foldDimOff (dims @_ @bs) (\(I# o) acc -> f acc (fromBytes o ba))
       (I# (byteOffset df))
       (I# (byteSize @t undefined) * fromIntegral (totalDim' @as)) x0
 
+-- | Left-associative fold of a ArrayBase with an index
+--   The fold is strict, so accumulater is evaluated to WHNF;
+--   but you'd better make sure that the function is strict enough to not
+--   produce memory leaks deeply inside the result data type.
+iwfoldl
+  :: forall s t as bs asbs. (PrimBytes s, PrimBytes t)
+  => Dimensions as
+  => Dimensions bs
+  => Dimensions asbs
+  => ConcatList as bs asbs
+  => (Idxs bs -> s -> ArrayBase t as -> s) -> s -> ArrayBase t asbs -> s
 iwfoldl f x0 df
   | ba <- getBytes df
   = foldDim (dims @_ @bs) (\i (I# o) acc -> f i acc (fromBytes o ba))
       (I# (byteOffset df))
       (I# (byteSize @t undefined) * fromIntegral (totalDim' @as)) x0
 
+-- | Right-associative fold of a ArrayBase
+--   The fold is strict, so accumulater is evaluated to WHNF;
+--   but you'd better make sure that the function is strict enough to not
+--   produce memory leaks deeply inside the result data type.
+ewfoldr
+  :: forall s t as bs asbs. (PrimBytes s, PrimBytes t)
+  => Dimensions as
+  => Dimensions bs
+  => Dimensions asbs
+  => ConcatList as bs asbs
+  => (ArrayBase t as -> s -> s) -> s -> ArrayBase t asbs -> s
 ewfoldr f x0 df
   | step <- I# (byteSize @t undefined) * fromIntegral (totalDim' @as)
   , ba <- getBytes df
@@ -369,6 +358,17 @@ ewfoldr f x0 df
       (I# (byteOffset df +# byteSize df) - step)
       (negate step) x0
 
+-- | Right-associative fold of a ArrayBase with an index
+--   The fold is strict, so accumulater is evaluated to WHNF;
+--   but you'd better make sure that the function is strict enough to not
+--   produce memory leaks deeply inside the result data type.
+iwfoldr
+  :: forall s t as bs asbs. (PrimBytes s, PrimBytes t)
+  => Dimensions as
+  => Dimensions bs
+  => Dimensions asbs
+  => ConcatList as bs asbs
+  => (Idxs bs -> ArrayBase t as -> s -> s) -> s -> ArrayBase t asbs -> s
 iwfoldr f x0 df
   | step <- I# (byteSize @t undefined) * fromIntegral (totalDim' @as)
   , ba <- getBytes df
@@ -376,20 +376,79 @@ iwfoldr f x0 df
       (I# (byteOffset df +# byteSize df) - step)
       step x0
 
+-- | Apply an applicative functor on each element with its index
+--     (Lens-like indexed traversal)
+indexWise_
+  :: forall f s t as bs asbs. (PrimBytes s, PrimBytes t, PrimBytes (f ()))
+  => Applicative f
+  => Dimensions as
+  => Dimensions bs
+  => Dimensions asbs
+  => ConcatList as bs asbs
+  => (Idxs bs -> ArrayBase t as -> f s)
+  -> ArrayBase t asbs -> f ()
+indexWise_ f = iwfoldr (\i -> (*>) . f i) (pure ())
 
--- implement elementWise in terms of indexWise
-elementWise = indexWise . const
-{-# INLINE elementWise #-}
+-- | Apply an applicative functor on each element (Lens-like traversal)
+elementWise_
+  :: forall f s t as bs asbs. (PrimBytes s, PrimBytes t, PrimBytes (f ()))
+  => Applicative f
+  => Dimensions as
+  => Dimensions bs
+  => Dimensions asbs
+  => ConcatList as bs asbs
+  => (ArrayBase t as -> f s)
+  -> ArrayBase t asbs -> f ()
+elementWise_ f = ewfoldr ((*>) . f) (pure ())
 
+
+{-
+
+-- | Apply a functor over a single element (simple lens)
+element
+  :: forall f s t as bs asbs. (PrimBytes s, PrimBytes t)
+  => Applicative f
+  => Dimensions as
+  => Dimensions bs
+  => Dimensions asbs
+  => ConcatList as bs asbs
+  => Idxs bs
+  -> (ArrayBase t as -> f (ArrayBase t as))
+  -> ArrayBase t asbs -> f (ArrayBase t asbs)
+element i f df = flip (update i) df <$> f (i !. df)
+{-# INLINE element #-}
+
+-- | Index an element (reverse of !.)
+(!) = flip (!.)
+infixl 4 !
+{-# INLINE (!) #-}
+
+ewfoldMap :: forall t (as :: [Nat]) (bs :: [Nat]) (asbs :: [Nat]) m
+           . (Monoid m, SubSpace t as bs asbs)
+          => (ArrayBase t as -> m) -> ArrayBase t asbs -> m
+ewfoldMap f = ewfoldl (\m b -> m `seq` (mappend m $! f b)) mempty
+{-# INLINE ewfoldMap #-}
+
+iwfoldMap :: forall t (as :: [Nat]) (bs :: [Nat]) (asbs :: [Nat]) m
+           . ( Monoid m, SubSpace t as bs asbs)
+          => (Idxs bs -> ArrayBase t as -> m) -> ArrayBase t asbs -> m
+iwfoldMap f = iwfoldl (\i m b -> m `seq` (mappend m $! f i b)) mempty
+{-# INLINE iwfoldMap #-}
 
 -- | Apply an applicative functor on each element with its index
 --     (Lens-like indexed traversal)
-indexWise :: forall (s :: Type) (f :: Type -> Type) (as' :: [Nat]) (asbs' :: [Nat])
-           . ( Applicative f
-             , SubSpace s as' bs asbs'
-             )
-          => (Idxs bs -> ArrayBase s as' -> f (ArrayBase t as))
-          -> ArrayBase s asbs' -> f (ArrayBase t asbs)
+indexWise
+  :: forall f s t as as' bs asbs asbs'. (PrimBytes s, PrimBytes t)
+  => Applicative f
+  => Dimensions as
+  => Dimensions as'
+  => Dimensions bs
+  => Dimensions asbs
+  => Dimensions asbs'
+  => ConcatList as bs asbs
+  => ConcatList as' bs asbs'
+  => (Idxs bs -> ArrayBase s as' -> f (ArrayBase t as))
+  -> ArrayBase s asbs' -> f (ArrayBase t asbs)
 indexWise f df = runWithState <$> iwfoldl applyF (pure initialState) df
   where
     -- run a state-based continuation within RW
@@ -435,57 +494,18 @@ indexWise f df = runWithState <$> iwfoldl applyF (pure initialState) df
     !(I# rezLength#) = fromIntegral $ totalDim' @asbs
 
 
-
-
--}
-{-
-
-
--- | Apply an applicative functor on each element with its index
---     (Lens-like indexed traversal)
-indexWise_ :: forall t as bs asbs f b
-            . (SubSpace t as bs asbs, Applicative f)
-           => (Idxs bs -> ArrayBase t as -> f b)
-           -> ArrayBase t asbs -> f ()
-indexWise_ f = iwfoldr (\i -> (*>) . f i) (pure ())
-
 -- | Apply an applicative functor on each element (Lens-like traversal)
-elementWise_ :: forall t as bs asbs f b
-              . (SubSpace t as bs asbs, Applicative f)
-             => (ArrayBase t as -> f b)
-             -> ArrayBase t asbs -> f ()
-elementWise_ f = ewfoldr ((*>) . f) (pure ())
+elementWise :: forall s (as' :: [Nat]) (asbs' :: [Nat]) f
+             . ( Applicative f
+               , SubSpace s as' bs asbs'
+               )
+            => (ArrayBase s as' -> f (ArrayBase t as))
+            -> ArrayBase s asbs' -> f (ArrayBase t asbs)
+elementWise = indexWise . const
+{-# INLINE elementWise #-}
 
-
--- | Apply a functor over a single element (simple lens)
-element :: forall t (as :: [Nat]) (bs :: [Nat]) (asbs :: [Nat]) f
-         . (SubSpace t as bs asbs, Applicative f)
-        => Idxs bs
-        -> (ArrayBase t as -> f (ArrayBase t as))
-        -> ArrayBase t asbs -> f (ArrayBase t asbs)
-element i f df = flip (update i) df <$> f (i !. df)
-{-# INLINE element #-}
-
--- | Index an element (reverse of !.)
-(!) :: SubSpace t (as :: [Nat]) (bs :: [Nat]) (asbs :: [Nat])
-    => ArrayBase t asbs -> Idxs bs -> ArrayBase t as
-(!) = flip (!.)
-infixl 4 !
-{-# INLINE (!) #-}
-
-
-ewfoldMap :: forall t (as :: [Nat]) (bs :: [Nat]) (asbs :: [Nat]) m
-           . (Monoid m, SubSpace t as bs asbs)
-          => (ArrayBase t as -> m) -> ArrayBase t asbs -> m
-ewfoldMap f = ewfoldl (\m b -> m `seq` (mappend m $! f b)) mempty
-{-# INLINE ewfoldMap #-}
-
-iwfoldMap :: forall t (as :: [Nat]) (bs :: [Nat]) (asbs :: [Nat]) m
-           . ( Monoid m, SubSpace t as bs asbs)
-          => (Idxs bs -> ArrayBase t as -> m) -> ArrayBase t asbs -> m
-iwfoldMap f = iwfoldl (\i m b -> m `seq` (mappend m $! f i b)) mempty
-{-# INLINE iwfoldMap #-}
 
 
 
 -}
+
