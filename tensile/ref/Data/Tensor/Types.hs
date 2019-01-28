@@ -4,7 +4,7 @@ module Data.Tensor.Types where
 
 import Data.Bits
 import Data.Singletons.Prelude.List (Product)
-import Data.Word (Word8)
+import Data.Word (Word)
 import GHC.Base hiding (foldr)
 import GHC.TypeLits
 import Numeric.Dimensions --(Dimensions(..), KnownDim(..), dimVal)
@@ -19,7 +19,7 @@ import qualified Data.Vector.Storable as V
 
 -- TODO: move to application / test stanza
 type TVal = Float
-type IVal = Int
+type IVal = Word
 type BVal = TVal
 
 -- TODO fix, keep in mind you need BOOLs

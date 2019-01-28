@@ -74,6 +74,7 @@ executable main
         Main.hs
     build-depends:
         base          >= 4 && < 5,
+        dimensions,
         reference,
         easytensor,
         tensile,

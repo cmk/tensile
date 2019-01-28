@@ -37,9 +37,9 @@ instance Bits IVal
 data BVal :: *
 instance Eq BVal
 
--- | By convention, elements are assumed to be stored in major-to-minor (i.e. row-major) order.
--- Implementations that use a different ordering (e.g. Eigen), must supply a conversion or risk
--- unexpected behavior upon swapping implementations. 
+-- | Elements are assumed to be stored in major-to-minor (i.e. row-major) order.
+-- Implementations that use a different ordering must supply a conversion or risk unexpected 
+-- behavior. 
 data Tensor e (d :: [Nat])
 
 -- | A real or complex-valued tensor of shape 'd'. 
