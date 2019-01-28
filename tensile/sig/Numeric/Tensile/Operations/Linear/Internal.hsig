@@ -1,0 +1,36 @@
+signature Numeric.Tensile.Operations.Linear.Internal where
+
+import Data.Tensor.Types
+import Numeric.Dimensions
+
+matmul 
+  :: forall a b ab x. KnownDim x
+  => Dimensions a
+  => Dimensions b
+  => T (a +: x) -> T (x :+ b) -> T (a ++ b)
+
+infixl 7 <#>
+(<#>)  
+  :: forall a b ab x. KnownDim x
+  => ConcatList a b ab -- witness 'a ++ b ~ ab'
+  => Dimensions a
+  => Dimensions b
+  => T (a +: x) -> T (x :+ b) -> T ab
+
+{-
+
+
+  :: All KnownDim '[a, b, c]
+  => T (a :+ b :+ x)
+  -> T (b :+ c :+ x)
+  -> T (a :+ c :+ x)
+matmulR = undefined
+
+-- <#
+matmulL
+  :: All KnownDim '[a, b, c]
+  => T (x +: a +: b) 
+  -> T (x +: b +: c)
+  -> T (x +: a +: c)
+matmulL = undefined
+-}

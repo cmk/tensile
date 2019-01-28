@@ -111,15 +111,15 @@ elemSize0 (ArrayBase a) = case a of
   (# | (# _, n, _ #) #) -> n
 {-# INLINE elemSize0 #-}
 
--- | Get array by its offset and size in a ByteArray.
+-- | Get array by its offset and size.
 --   Both offset and size are given in element number.
 fromElems :: PrimBytes t => Int# -> Int# -> ByteArray# -> ArrayBase t ds
 fromElems off n ba = ArrayBase (# | (# off , n , ba #) #)
 {-# INLINE fromElems #-}
 
--- | Unsafely get a sub-dataframe by its primitive element offset.
+-- | Unsafely get a sub-array by its primitive element offset.
 --   The offset is not checked to be aligned to the space structure or for bounds.
---   Arguments are zero-based primitive element offset and subset ("as" element) size (aka `totalDim` of sub dataframe)
+--   Arguments are zero-based primitive element offset and subset ("as" element) size (aka `totalDim` of sub-array)
 --
 --   Normal indexing can be expressed in terms of `indexOffset#`:
 --
@@ -435,6 +435,16 @@ iwfoldMap :: forall t (as :: [Nat]) (bs :: [Nat]) (asbs :: [Nat]) m
 iwfoldMap f = iwfoldl (\i m b -> m `seq` (mappend m $! f i b)) mempty
 {-# INLINE iwfoldMap #-}
 
+-- | Apply an applicative functor on each element (Lens-like traversal)
+elementWise :: forall s (as' :: [Nat]) (asbs' :: [Nat]) f
+             . ( Applicative f
+               , SubSpace s as' bs asbs'
+               )
+            => (ArrayBase s as' -> f (ArrayBase t as))
+            -> ArrayBase s asbs' -> f (ArrayBase t asbs)
+elementWise = indexWise . const
+{-# INLINE elementWise #-}
+
 -- | Apply an applicative functor on each element with its index
 --     (Lens-like indexed traversal)
 indexWise
@@ -492,20 +502,6 @@ indexWise f df = runWithState <$> iwfoldl applyF (pure initialState) df
     !(I# rezStepN#) = fromIntegral $ totalDim' @as
     -- Number of primitive elements in the result ArrayBase
     !(I# rezLength#) = fromIntegral $ totalDim' @asbs
-
-
--- | Apply an applicative functor on each element (Lens-like traversal)
-elementWise :: forall s (as' :: [Nat]) (asbs' :: [Nat]) f
-             . ( Applicative f
-               , SubSpace s as' bs asbs'
-               )
-            => (ArrayBase s as' -> f (ArrayBase t as))
-            -> ArrayBase s asbs' -> f (ArrayBase t asbs)
-elementWise = indexWise . const
-{-# INLINE elementWise #-}
-
-
-
 
 -}
 

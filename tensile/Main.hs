@@ -7,9 +7,9 @@ import Data.Tensor --(T(..), fromVector, shape)
 import Data.Tensor.Types
 import Data.Bits
 
-import Numeric.Tensile.Linear.Operations
+import Numeric.Tensile.Operations.Linear.Internal
 
-u :: [Int]
+u :: [Word]
 u = [1..10]
 
 v :: [Float]

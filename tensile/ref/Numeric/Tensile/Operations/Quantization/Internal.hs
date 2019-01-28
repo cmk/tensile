@@ -1,4 +1,4 @@
-module Numeric.Tensile.Quantization.Operations where
+module Numeric.Tensile.Operations.Quantization.Internal where
 
 import Data.Vector (Vector)
 import Data.Tensor.Types (Tensor)
