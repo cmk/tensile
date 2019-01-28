@@ -52,7 +52,7 @@ gen# n f z0 = go (byteSize @t undefined *# n)
           (# z', x #) -> loop0 mba (i +# 1#) z' (writeArray mba i x s)
 {-# INLINE gen# #-}
 
--- | update a single element in an array given an offset
+-- | Update a single element in an array given an offset.
 upd# :: PrimBytes t => Int# -> Int# -> t -> ArrayBase t ds -> ArrayBase t ds
 upd# n i x (ArrayBase (# a | #)) = go (byteSize x)
   where
@@ -75,6 +75,25 @@ upd# _ i x (ArrayBase (# | (# offN , n , ba #) #)) = go (byteSize x)
      ) of (# _, r #) -> ArrayBase (# | (# 0# , n , r #) #)
     {-# NOINLINE go #-}
 {-# INLINE upd# #-}
+
+-- | Set a new value to an element
+update
+  :: forall t as bs asbs. PrimBytes t
+  => ConcatList as bs asbs
+  => Dimensions as
+  => Dimensions bs
+  => Dimensions asbs
+  => Idxs bs -> ArrayBase t as -> ArrayBase t asbs -> ArrayBase t asbs
+update ei x df
+  | I# i <- fromEnum ei
+  , I# len <- fromIntegral $ totalDim' @asbs
+  = case runRW#
+      ( \s0 -> case newByteArray# (len *# byteSize @t undefined) s0 of
+        (# s1, mba #) -> unsafeFreezeByteArray# mba
+          ( writeArray mba i x
+            ( writeBytes mba 0# df s1 )
+          )
+      ) of (# _, r #) -> fromElems 0# len r
 
 -- | Offset of an array in number of elements
 elemOffset :: PrimBytes t => ArrayBase t ds -> Int#
@@ -108,10 +127,10 @@ fromElems off n ba = ArrayBase (# | (# off , n , ba #) #)
 --
 indexOffset# 
   :: forall t as bs asbs. PrimBytes t
-  => ConcatList as bs asbs
   => Dimensions as
   => Dimensions bs
   => Dimensions asbs
+  => ConcatList as bs asbs
   => Int# -- ^ Prim element offset
   -> Int# -- ^ Number of prim elements in the prefix subspace
   -> ArrayBase t asbs -> ArrayBase t as
@@ -120,27 +139,22 @@ indexOffset# i l d = case elemSize0 d of
   0# -> broadcast (ix# 0# d)
   _  -> fromElems (elemOffset d +# i) l (getBytes d)
 
-
 -- | Get an element by its index in the dataframe
 (!.) 
   :: forall t as bs asbs. PrimBytes t
-  => ConcatList as bs asbs
   => Dimensions as
   => Dimensions bs
   => Dimensions asbs
+  => ConcatList as bs asbs
   => Idxs bs -> ArrayBase t asbs -> ArrayBase t as
 (!.) i = case (# totalDim (dims @_ @as), fromEnum i #) of
    (# W# n, I# j #) -> indexOffset# (word2Int# n *# j) (word2Int# n)
 {-# INLINE [1] (!.) #-}
 infixr 4 !.
 
-
 -- | Zip two spaces on a specified subspace index-wise (with index)
 iwzip 
   :: forall r s t as as' as'' bs asbs asbs' asbs''. (PrimBytes r, PrimBytes s, PrimBytes t)
-  => ConcatList as bs asbs
-  => ConcatList as' bs asbs'
-  => ConcatList as'' bs asbs''
   => Dimensions as
   => Dimensions as'
   => Dimensions as''
@@ -148,24 +162,26 @@ iwzip
   => Dimensions asbs
   => Dimensions asbs'
   => Dimensions asbs''
+  => ConcatList as bs asbs
+  => ConcatList as' bs asbs'
+  => ConcatList as'' bs asbs''
   => (Idxs bs -> ArrayBase t as -> ArrayBase s as' -> ArrayBase r as'')
-  -> ArrayBase t (as ++ bs)
-  -> ArrayBase s (as' ++ bs)
-  -> ArrayBase r (as'' ++ bs)
+  -> ArrayBase t asbs -> ArrayBase s asbs' -> ArrayBase r asbs''
 iwzip f dft dfs = iwmap g dft
   where
     g i dft' = f i dft' (i !. dfs)
 {-# INLINE iwzip #-}
 
+-- | Map a function over each element with its index.
 iwmap
   :: forall s t as as' bs asbs asbs'. (PrimBytes s, PrimBytes t)
-  => ConcatList as bs asbs
-  => ConcatList as' bs asbs'
   => Dimensions as
   => Dimensions as'
   => Dimensions bs
   => Dimensions asbs
   => Dimensions asbs'
+  => ConcatList as bs asbs
+  => ConcatList as' bs asbs'
   => (Idxs bs -> ArrayBase s as' -> ArrayBase t as)
   -> ArrayBase s asbs' -> ArrayBase t asbs
 iwmap f df
@@ -188,42 +204,111 @@ iwmap f df
           )
       ) of (# _, r #) -> fromElems 0# lenASBS r
 
-{-
-
-
-
 -- | Zip two spaces on a specified subspace element-wise (without index)
 ewzip
-  :: forall r s t (as :: [Nat]) (as' :: [Nat]) (as'' :: [Nat]) (bs :: [Nat]).
+  :: forall r s t as as' as'' bs asbs asbs' asbs''. (PrimBytes r, PrimBytes s, PrimBytes t)
   => Dimensions as
   => Dimensions as'
   => Dimensions as''
   => Dimensions bs
+  => Dimensions asbs
+  => Dimensions asbs'
+  => Dimensions asbs''
+  => ConcatList as bs asbs
+  => ConcatList as' bs asbs'
+  => ConcatList as'' bs asbs''
   => (ArrayBase t as -> ArrayBase s as' -> ArrayBase r as'')
-  -> ArrayBase t (as ++ bs)
-  -> ArrayBase s (as' ++ bs)
-  -> ArrayBase r (as'' ++ bs)
+  -> ArrayBase t asbs -> ArrayBase s asbs' -> ArrayBase r asbs''
 ewzip = iwzip . const
 {-# INLINE ewzip #-}
 
+-- | Map a function over each element of an array.
+ewmap
+  :: forall s t as as' bs asbs asbs'. (PrimBytes s, PrimBytes t)
+  => Dimensions as
+  => Dimensions as'
+  => Dimensions bs
+  => Dimensions asbs
+  => Dimensions asbs'
+  => ConcatList as bs asbs
+  => ConcatList as' bs asbs'
+  => (ArrayBase s as' -> ArrayBase t as)
+  -> ArrayBase s asbs' -> ArrayBase t asbs
+ewmap f df
+  | elS <- byteSize @t undefined
+  , W# lenBSW <- totalDim' @bs
+  , W# lenASW <- totalDim' @as
+  , W# lenAS'W <- totalDim' @as'
+  , lenBS <- word2Int# lenBSW
+  , lenAS <- word2Int# lenASW
+  , lenAS' <- word2Int# lenAS'W
+  , lenASBS <- lenAS *# lenBS
+  , lenAS'BS <- lenAS' *# lenBS
+  = case runRW#
+      ( \s0 -> case newByteArray# (lenASBS *# elS) s0 of
+        (# s1, mba #) -> unsafeFreezeByteArray# mba
+          ( loopWithI# 0# lenAS' lenAS'BS
+            (\i off -> writeArray mba i (f (indexOffset# off lenAS' df)))
+            s1
+          )
+      ) of (# _, r #) -> fromElems 0# lenASBS r
+{-# INLINE ewmap #-}
 
-
--- | Set a new value to an element
-update :: Idxs bs -> ArrayBase t as -> ArrayBase t asbs -> ArrayBase t asbs
--- | Map a function over each element of ArrayBase
-ewmap  :: forall s (as' :: [Nat]) (asbs' :: [Nat])
-        . SubSpace s as' bs asbs'
-       => (ArrayBase s as' -> ArrayBase t as)
-       -> ArrayBase s asbs' -> ArrayBase t asbs
--- | Map a function over each element with its index of ArrayBase
-iwmap  :: forall s (as' :: [Nat]) (asbs' :: [Nat])
-        . SubSpace s as' bs asbs'
-       => (Idxs bs -> ArrayBase s as' -> ArrayBase t as)
-       -> ArrayBase s asbs' -> ArrayBase t asbs
 -- | Generate a ArrayBase by repeating an element
-ewgen :: ArrayBase t as -> ArrayBase t asbs
+ewgen
+  :: forall t as bs asbs. PrimBytes t
+  => Dimensions as
+  => Dimensions bs
+  => Dimensions asbs
+  => ConcatList as bs asbs
+  => ArrayBase t as -> ArrayBase t asbs
+ewgen x = case elemSize0 x of
+  0# -> broadcast (ix# 0# x)
+  1# -> broadcast (ix# 0# x)
+  lenAS
+    | elS <- byteSize @t undefined
+    , W# lenBSW <- totalDim' @bs
+    , lenBS <- word2Int# lenBSW
+    , lenASBS <- lenAS *# lenBS
+    , bsize <- lenASBS *# elS
+    -> case runRW#
+        ( \s0 -> case newByteArray# bsize s0 of
+          (# s1, mba #) -> unsafeFreezeByteArray# mba
+            ( loop# 0# (lenAS *# elS) bsize
+              (\off -> writeBytes mba off x)
+              s1
+            )
+        ) of (# _, r #) -> fromElems 0# lenASBS r
+{-# INLINE [1] ewgen #-}
+
 -- | Generate a ArrayBase by iterating a function (index -> element)
-iwgen :: (Idxs bs -> ArrayBase t as) -> ArrayBase t asbs
+iwgen
+  :: forall t as bs asbs. PrimBytes t
+  => Dimensions as
+  => Dimensions bs
+  => Dimensions asbs
+  => ConcatList as bs asbs
+  => (Idxs bs -> ArrayBase t as) -> ArrayBase t asbs
+iwgen f
+  | elS <- byteSize @t undefined
+  , dbs <- dims @_ @bs
+  , W# lenBSW <- totalDim dbs
+  , W# lenASW <- totalDim' @as
+  , lenBS <- word2Int# lenBSW
+  , lenAS <- word2Int# lenASW
+  , lenASBS <- lenAS *# lenBS
+  = case runRW#
+      ( \s0 -> case newByteArray# (lenASBS *# elS) s0 of
+        (# s1, mba #) -> unsafeFreezeByteArray# mba
+          ( overDim_# dbs
+            ( \i pos -> writeArray mba pos (f i)
+            ) 0# 1# s1
+          )
+      ) of (# _, r #) -> fromElems 0# lenASBS r
+
+{-
+
+
 -- | Left-associative fold of a ArrayBase.
 --   The fold is strict, so accumulater is evaluated to WHNF;
 --   but you'd better make sure that the function is strict enough to not
@@ -257,79 +342,13 @@ elementWise :: forall s (as' :: [Nat]) (asbs' :: [Nat]) f
 
 
 
-update ei x df
-  | I# i <- fromEnum ei
-  , I# len <- fromIntegral $ totalDim' @asbs
-  = case runRW#
-      ( \s0 -> case newByteArray# (len *# byteSize @t undefined) s0 of
-        (# s1, mba #) -> unsafeFreezeByteArray# mba
-          ( writeArray mba i x
-            ( writeBytes mba 0# df s1 )
-          )
-      ) of (# _, r #) -> fromElems 0# len r
-
-ewmap  :: forall s (as' :: [Nat]) (asbs' :: [Nat])
-        . SubSpace s as' bs asbs'
-       => (ArrayBase s as' -> ArrayBase t as)
-       -> ArrayBase s asbs' -> ArrayBase t asbs
-ewmap f df
-  | elS <- byteSize @t undefined
-  , W# lenBSW <- totalDim' @bs
-  , W# lenASW <- totalDim' @as
-  , W# lenAS'W <- totalDim' @as'
-  , lenBS <- word2Int# lenBSW
-  , lenAS <- word2Int# lenASW
-  , lenAS' <- word2Int# lenAS'W
-  , lenASBS <- lenAS *# lenBS
-  , lenAS'BS <- lenAS' *# lenBS
-  = case runRW#
-      ( \s0 -> case newByteArray# (lenASBS *# elS) s0 of
-        (# s1, mba #) -> unsafeFreezeByteArray# mba
-          ( loopWithI# 0# lenAS' lenAS'BS
-            (\i off -> writeArray mba i (f (indexOffset# off lenAS' df)))
-            s1
-          )
-      ) of (# _, r #) -> fromElems 0# lenASBS r
-{-# INLINE ewmap #-}
 
 
 
 
-ewgen x = case elemSize0 x of
-  0# -> broadcast (ix# 0# x)
-  1# -> broadcast (ix# 0# x)
-  lenAS
-    | elS <- byteSize @t undefined
-    , W# lenBSW <- totalDim' @bs
-    , lenBS <- word2Int# lenBSW
-    , lenASBS <- lenAS *# lenBS
-    , bsize <- lenASBS *# elS
-    -> case runRW#
-        ( \s0 -> case newByteArray# bsize s0 of
-          (# s1, mba #) -> unsafeFreezeByteArray# mba
-            ( loop# 0# (lenAS *# elS) bsize
-              (\off -> writeBytes mba off x)
-              s1
-            )
-        ) of (# _, r #) -> fromElems 0# lenASBS r
-{-# INLINE [1] ewgen #-}
 
-iwgen f
-  | elS <- byteSize @t undefined
-  , dbs <- dims @_ @bs
-  , W# lenBSW <- totalDim dbs
-  , W# lenASW <- totalDim' @as
-  , lenBS <- word2Int# lenBSW
-  , lenAS <- word2Int# lenASW
-  , lenASBS <- lenAS *# lenBS
-  = case runRW#
-      ( \s0 -> case newByteArray# (lenASBS *# elS) s0 of
-        (# s1, mba #) -> unsafeFreezeByteArray# mba
-          ( overDim_# dbs
-            ( \i pos -> writeArray mba pos (f i)
-            ) 0# 1# s1
-          )
-      ) of (# _, r #) -> fromElems 0# lenASBS r
+
+
 
 ewfoldl f x0 df
   | ba <- getBytes df
