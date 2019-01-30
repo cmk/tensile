@@ -11,7 +11,7 @@ import Numeric.Dimensions --(Dimensions(..), KnownDim(..), dimVal)
 --import Numeric.DataFrame
 import Numeric.DataFrame.Internal.Array.Family.ArrayBase
 --import Numeric.DataFrame.Internal.Array.Class
---import Numeric.DataFrame.Internal.Array.PrimOps
+import Numeric.DataFrame.Internal.Array.PrimOps
 
 import Numeric.PrimBytes
 
