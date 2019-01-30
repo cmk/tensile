@@ -6,9 +6,8 @@ import Numeric.Tensile.Operations.Linear.Internal
 
 infixl 7 <#>
 (<#>)  
-  :: forall a b ab x. KnownDim x
-  => ConcatList a b ab -- witness 'a ++ b ~ ab'
+  :: forall a b x. KnownDim x
   => Dimensions a
   => Dimensions b
-  => T (a +: x) -> T (x :+ b) -> T ab
+  => T (a +: x) -> T (x :+ b) -> T (a ++ b)
 (<#>) = matmul

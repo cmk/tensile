@@ -4,7 +4,7 @@ import Data.Tensor.Types
 import Numeric.Dimensions
 
 matmul 
-  :: forall a b ab x. KnownDim x
+  :: forall a b x. KnownDim x
   => Dimensions a
   => Dimensions b
   => T (a +: x) -> T (x :+ b) -> T (a ++ b)
