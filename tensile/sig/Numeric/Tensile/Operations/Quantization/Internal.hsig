@@ -7,10 +7,10 @@ import qualified Prelude as P
 
 
 
-
+round :: T d -> I d
 
 {-
-round :: T d -> I d
+
 truncate :: T d -> I d 
 ceiling :: T d -> I d
 floor :: T d -> I d
