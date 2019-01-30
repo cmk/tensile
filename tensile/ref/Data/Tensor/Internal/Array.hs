@@ -11,7 +11,7 @@ import Numeric.Dimensions --(Dimensions(..), KnownDim(..), dimVal)
 --import Numeric.DataFrame
 import Numeric.DataFrame.Internal.Array.Family.ArrayBase
 --import Numeric.DataFrame.Internal.Array.Class
-import Numeric.DataFrame.Internal.Array.PrimOps
+--import Numeric.DataFrame.Internal.Array.PrimOps
 
 import Numeric.PrimBytes
 
@@ -41,6 +41,7 @@ show' x = case dims @_ @ds of
                               ++ loopInner ds maxBound ++ s
     in drop 1 $ foldr loopOuter "" [minBound..maxBound]
 -}
+
 
 -- | Extract a scalar from a zero-dimensional array.
 unSc :: ArrayBase (t :: Type) ('[] :: [Nat]) -> t

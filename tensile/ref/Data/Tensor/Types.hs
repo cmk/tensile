@@ -45,7 +45,7 @@ instance (KnownDim (Product d), Elt e, Eq e, Bits e, Num e) => Bits (ArrayBase e
   complement = liftF complement
   shift t i = liftF (flip shift i) t
   rotate t i = liftF (flip rotate i) t
-  bit = replicateA (fromIntegral . dimVal $ (dim :: Dim (Product d))) . bit
+  bit = replicateF (fromIntegral . dimVal $ (dim :: Dim (Product d))) . bit
   testBit = testBitDefault
   bitSizeMaybe _ = bitSizeMaybe @e undefined
   bitSize _ = bitSize @e undefined
@@ -149,8 +149,8 @@ coerced False = 0
 undefEl :: ArrayBase t ds -> t
 undefEl = const undefined
 
-replicateA :: (PrimBytes t, KnownDim (Product ds)) => Int -> t -> ArrayBase t ds
-replicateA i = unsafeFromFlatList i . replicate i
+replicateF :: (PrimBytes t, KnownDim (Product ds)) => Int -> t -> ArrayBase t ds
+replicateF i = unsafeFromFlatList i . replicate i
 
 liftF :: PrimBytes t => (t -> t) -> ArrayBase t ds -> ArrayBase t ds
 liftF f (ArrayBase (# t | #))

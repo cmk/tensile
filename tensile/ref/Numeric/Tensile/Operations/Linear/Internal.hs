@@ -90,6 +90,7 @@ matmulL
   -> T (x +: a +: c)
 matmulL = undefined
 
+
 transpose
   :: forall m n x. All KnownDim '[m, n]
   => T '[n, m] --(n :+ m :+ x) 
@@ -98,8 +99,8 @@ transpose t = case elemSize0 t of
   0# -> broadcast (ix# 0# t)
   nm | I# m <- fromIntegral $ dimVal' @m
      , I# n <- fromIntegral $ dimVal' @n
-     -> let f ( I# j,  I# i )
-              | isTrue# (j ==# m) = f ( 0 , I# (i +# 1#) )
-              | otherwise         = (# ( I# (j +# 1#), I# i ), ix# (j *# n +# i) t #)
+     -> let f ( I# i,  I# j )
+              | isTrue# (i ==# m) = f ( 0 , I# (j +# 1#) ) -- skip to next col
+              | otherwise         = (# ( I# (i +# 1#), I# j ), ix# (i *# n +# j) t #) --col-major indexing
         in case gen# nm f (0,0) of
           (# _, r #) -> r

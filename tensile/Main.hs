@@ -18,7 +18,10 @@ v :: [Float]
 v = replicate 8 1.0
 
 w :: [Float]
-w = [1..8]
+w = [1..16]
+
+w' :: [Float]
+w' = replicate 16 1.0
 
 println = putStr "\n"
 
@@ -54,17 +57,20 @@ main = do
           tt' = transpose t'
       print $ tt
       print $ shape tt
-      --print $ tt'
-      --print $ shape tt'
+      print $ tt'
+      print $ shape tt'
       println
     _ -> print "nope"
 
-  case (constant w :: Maybe (T '[2,4]), constant w :: Maybe (T '[2,2,2])) of
+  case (constant w :: Maybe (T '[2,8]), constant w' :: Maybe (T '[8,2])) of
     (Just t, Just t') -> do
       let tt = transpose t
+          tt' = t <#> t' 
           --tt' = transpose t'
-      print $ tt
-      print $ shape tt
+      print $ t
       print $ t'
+      print $ tt
+      print $ tt'
+      --print $ t'
       --print $ tt'
 
