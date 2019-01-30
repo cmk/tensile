@@ -59,12 +59,12 @@ main = do
       println
     _ -> print "nope"
 
-  case (constant w :: Maybe (T '[2,4])) of
-    Just t -> do
-      let t' = transpose t
-      print $ t
-      print $ shape t
+  case (constant w :: Maybe (T '[2,4]), constant w :: Maybe (T '[2,2,2])) of
+    (Just t, Just t') -> do
+      let tt = transpose t
+          --tt' = transpose t'
+      print $ tt
+      print $ shape tt
       print $ t'
-      print $ shape t'
-
+      --print $ tt'
 

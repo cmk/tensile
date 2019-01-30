@@ -9,8 +9,8 @@ import GHC.Base hiding (foldr)
 import GHC.TypeLits
 import Numeric.Dimensions --(Dimensions(..), KnownDim(..), dimVal)
 import Numeric.DataFrame
+import Numeric.DataFrame.Internal.Array
 import Numeric.DataFrame.Internal.Array.Family.ArrayBase
-import Numeric.DataFrame.Internal.Array.Class
 import Numeric.DataFrame.Internal.Array.PrimOps
 
 import Numeric.PrimBytes
@@ -22,7 +22,6 @@ type TVal = Float
 type IVal = Word
 type BVal = TVal
 
--- TODO fix, keep in mind you need BOOLs
 type Elt = PrimBytes
 --class Elt e
 type Tensor = ArrayBase
@@ -150,16 +149,8 @@ coerced False = 0
 undefEl :: ArrayBase t ds -> t
 undefEl = const undefined
 
-ix :: (PrimBytes t, Dimensions ds) => Idxs ds -> ArrayBase t ds -> t
-ix i (ArrayBase a) = case a of
-  (# t | #)  -> t
-  (# | (# off, _, arr #) #) -> case fromEnum i of
-    I# i# -> indexArray arr (off +# i#)
-{-# INLINE ix #-}
-
 replicateA :: (PrimBytes t, KnownDim (Product ds)) => Int -> t -> ArrayBase t ds
 replicateA i = unsafeFromFlatList i . replicate i
-
 
 liftF :: PrimBytes t => (t -> t) -> ArrayBase t ds -> ArrayBase t ds
 liftF f (ArrayBase (# t | #))

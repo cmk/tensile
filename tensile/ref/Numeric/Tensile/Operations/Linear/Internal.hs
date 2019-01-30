@@ -91,16 +91,15 @@ matmulL
 matmulL = undefined
 
 transpose
-  :: forall m n. All KnownDim '[m, n]
-  => T '[n, m]
-  -> T '[m, n]
-transpose df = case elemSize0 df of
-  0# -> broadcast (ix# 0# df)
+  :: forall m n x. All KnownDim '[m, n]
+  => T '[n, m] --(n :+ m :+ x) 
+  -> T '[m, n] --(m :+ n :+ x)
+transpose t = case elemSize0 t of
+  0# -> broadcast (ix# 0# t)
   nm | I# m <- fromIntegral $ dimVal' @m
      , I# n <- fromIntegral $ dimVal' @n
      -> let f ( I# j,  I# i )
               | isTrue# (j ==# m) = f ( 0 , I# (i +# 1#) )
-              | otherwise         = (# ( I# (j +# 1#), I# i )
-                                     , ix# (j *# n +# i) df #)
+              | otherwise         = (# ( I# (j +# 1#), I# i ), ix# (j *# n +# i) t #)
         in case gen# nm f (0,0) of
           (# _, r #) -> r

@@ -15,13 +15,59 @@ import Numeric.DataFrame.Internal.Array.PrimOps
 
 import Numeric.PrimBytes
 
+{-
+show' 
+  :: forall t ds. PrimBytes t 
+  => Show t
+  => Dimensions ds
+  => ArrayBase t ds
+  -> String
+show' x = case dims @_ @ds of
+  U -> "{ " ++ show (ix# 0# x) ++ " }"
+  Dim :* U -> ('{' :) . drop 1 $
+                  foldr (\i s -> ", " ++ show (ix i x) ++ s) " }"
+                          [minBound .. maxBound]
+  (Dim :: Dim n) :* (Dim :: Dim m) :* (Dims :: Dims dss) ->
+    let loopInner :: Idxs dss -> Idxs '[n,m] -> String
+        loopInner ods (n:*m:*_) = ('{' :) . drop 2 $
+                        foldr (\i ss -> '\n':
+                                foldr (\j s ->
+                                         ", " ++ show' (ix (i :* j :* ods) x) ++ s
+                                      ) ss [1..m]
+                              ) " }" [1..n]
+        loopOuter ::  Idxs dss -> String -> String
+        loopOuter U s  = "\n" ++ loopInner U maxBound ++ s
+        loopOuter ds s = "\n(i j" ++ drop 4 (show ds) ++ "):\n"
+                              ++ loopInner ds maxBound ++ s
+    in drop 1 $ foldr loopOuter "" [minBound..maxBound]
+-}
+
+-- | Extract a scalar from a zero-dimensional array.
 unSc :: ArrayBase (t :: Type) ('[] :: [Nat]) -> t
 unSc = unsafeCoerce#
 
--- | Broadcast element into array
+-- | Broadcast an element into an array
 broadcast :: PrimBytes t => t -> ArrayBase t ds
 broadcast t = ArrayBase (# t | #)
 {-# INLINE broadcast #-}
+
+-- | Index array by an integer offset (starting from 0).
+ixOff :: PrimBytes t => Int -> ArrayBase t ds -> t
+ixOff (I# i) = ix# i
+
+ix :: (PrimBytes t, Dimensions ds) => Idxs ds -> ArrayBase t ds -> t
+ix i (ArrayBase a) = case a of
+  (# t | #)  -> t
+  (# | (# off, _, arr #) #) -> case fromEnum i of
+    I# i# -> indexArray arr (off +# i#)
+{-# INLINE ix #-}
+
+-- | Construct an array from a flat list and length
+unsafeFromFlatList :: PrimBytes t => Int -> [t] -> ArrayBase t ds
+unsafeFromFlatList (I# n) vs = case gen# n f vs of (# _, r #) -> r
+  where
+    f [] = (# [], undefined #)
+    f (x:xs) = (# xs, x #)
 
 -- | Index an array given an offset
 ix# :: PrimBytes t => Int# -> ArrayBase t ds -> t
