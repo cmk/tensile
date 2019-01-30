@@ -46,6 +46,34 @@ mul `a` `b` has shape=[2,2,2]
  [[508, 532],
   [697, 730]]]
 -}
+-- | Tensor contraction.
+--   In particular:
+--     1. matrix-matrix product
+--     2. matrix-vector or vector-matrix product
+--     3. dot product of two vectors.
+
+matmul 
+  :: forall m x y. KnownDim m
+  => Dimensions x
+  => Dimensions y
+  => T (x +: m) -> T (m :+ y) -> T (x ++ y)
+matmul t u
+    | I# m <- fromIntegral $ dimVal' @m
+    , I# n <- fromIntegral $ totalDim' @x
+    , I# k <- fromIntegral $ totalDim' @y
+    , nk <- n *# k
+    = let loop1 i j l r | isTrue# (l ==# m) = r
+                        | otherwise = loop1 i j (l +# 1#)
+                          (r + ix# (i +# n *# l) t * ix# (l +# m *# j) u)
+
+          loop2 (T# i j) | isTrue# (j ==# k) = (# T# i j, 0 #)
+                         | isTrue# (i ==# n) = loop2 (T# 0# (j +# 1#))
+                         | otherwise = (# T# (i +# 1#) j, loop1 i j 0# 0 #)
+      in case gen# nk loop2 (T# 0# 0#) of
+          (# _, r #) -> r
+
+data T# = T# Int# Int#
+
 -- #>
 matmulR
   :: All KnownDim '[a, b, c]
@@ -62,41 +90,17 @@ matmulL
   -> T (x +: a +: c)
 matmulL = undefined
 
-
-infixl 7 <#>
-(<#>)  
-  :: forall a b ab x. KnownDim x
-  => ConcatList a b ab -- witness 'a ++ b ~ ab'
-  => Dimensions a
-  => Dimensions b
-  => T (a +: x) -> T (x :+ b) -> T ab
-(<#>) = matmul
-
--- | Tensor contraction.
---   In particular:
---     1. matrix-matrix product
---     2. matrix-vector or vector-matrix product
---     3. dot product of two vectors.
-
-matmul 
-  :: forall a b ab x. KnownDim x
-  => Dimensions a
-  => Dimensions b
-  => T (a +: x) -> T (x :+ b) -> T (a ++ b)
-matmul x y
-    | I# m <- fromIntegral $ dimVal' @x
-    , I# n <- fromIntegral $ totalDim' @a
-    , I# k <- fromIntegral $ totalDim' @b
-    , nk <- n *# k
-    = let loop1 i j l r | isTrue# (l ==# m) = r
-                        | otherwise = loop1 i j (l +# 1#)
-                          (r + ix# (i +# n *# l) x * ix# (l +# m *# j) y)
-
-          loop2 (T# i j) | isTrue# (j ==# k) = (# T# i j, 0 #)
-                         | isTrue# (i ==# n) = loop2 (T# 0# (j +# 1#))
-                         | otherwise = (# T# (i +# 1#) j, loop1 i j 0# 0 #)
-      in case gen# nk loop2 (T# 0# 0#) of
+transpose
+  :: forall m n. All KnownDim '[m, n]
+  => T '[n, m]
+  -> T '[m, n]
+transpose df = case elemSize0 df of
+  0# -> broadcast (ix# 0# df)
+  nm | I# m <- fromIntegral $ dimVal' @m
+     , I# n <- fromIntegral $ dimVal' @n
+     -> let f ( I# j,  I# i )
+              | isTrue# (j ==# m) = f ( 0 , I# (i +# 1#) )
+              | otherwise         = (# ( I# (j +# 1#), I# i )
+                                     , ix# (j *# n +# i) df #)
+        in case gen# nm f (0,0) of
           (# _, r #) -> r
-
-data T# = T# Int# Int#
-

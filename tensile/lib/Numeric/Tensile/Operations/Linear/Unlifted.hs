@@ -6,8 +6,8 @@ import Numeric.Tensile.Operations.Linear.Internal
 
 infixl 7 <#>
 (<#>)  
-  :: forall a b x. KnownDim x
-  => Dimensions a
-  => Dimensions b
-  => T (a +: x) -> T (x :+ b) -> T (a ++ b)
+  :: forall a x y. KnownDim a
+  => Dimensions x
+  => Dimensions y
+  => T (x +: a) -> T (a :+ y) -> T (x ++ y)
 (<#>) = matmul

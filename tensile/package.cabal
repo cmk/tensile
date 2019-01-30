@@ -81,4 +81,4 @@ executable main
         tensile,
         vector
     default-language: Haskell2010
-    default-extensions: DataKinds ScopedTypeVariables OverloadedLists
+    default-extensions: DataKinds ScopedTypeVariables TypeOperators OverloadedLists

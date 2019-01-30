@@ -4,14 +4,17 @@ import Data.Tensor.Types
 import Numeric.Dimensions
 
 matmul 
-  :: forall a b x. KnownDim x
-  => Dimensions a
-  => Dimensions b
-  => T (a +: x) -> T (x :+ b) -> T (a ++ b)
+  :: forall m x y. KnownDim m
+  => Dimensions x
+  => Dimensions y
+  => T (x +: m) -> T (m :+ y) -> T (x ++ y)
+
 
 {-
+
 matmulR
   :: All KnownDim '[a, b, c]
+  => Dimensions x
   => T (a :+ b :+ x)
   -> T (b :+ c :+ x)
   -> T (a :+ c :+ x)
@@ -20,8 +23,25 @@ matmulR = undefined
 -- <#
 matmulL
   :: All KnownDim '[a, b, c]
+  => Dimensions x
   => T (x +: a +: b) 
   -> T (x +: b +: c)
   -> T (x +: a +: c)
 matmulL = undefined
+
+-- TODO use typesig to determine permutation
+transpose 
+  :: forall a x y. All KnownDim '[a, b]
+  => Dimensions x
+  => Dimensions y
+  => T (x ++ '[a,b] ++ y) -> T (x ++ '[b,a] ++ y) 
+
+-- TODO hopefully dont need to define shape '[] tensors as scalars? 
+trace
+  :: All KnownDim '[a, b, c]
+  => Dimensions x
+  => T (x +: a +: b) 
+  -> T x
+trace = undefined
+
 -}

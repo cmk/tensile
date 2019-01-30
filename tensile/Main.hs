@@ -7,13 +7,20 @@ import Data.Tensor --(T(..), fromVector, shape)
 import Data.Tensor.Types
 import Data.Bits
 
-import Numeric.Tensile.Operations.Linear.Internal
+import Numeric.Dimensions
+import Numeric.Tensile.Operations.Linear.Unlifted
+import Numeric.Tensile.Operations.Linear.Internal --TODO: remove
 
 u :: [Word]
 u = [1..10]
 
 v :: [Float]
 v = replicate 8 1.0
+
+w :: [Float]
+w = [1..8]
+
+println = putStr "\n"
 
 main :: IO ()
 main = do
@@ -27,6 +34,7 @@ main = do
       print $ t `xor` t
       print $ bitSize t
       print $ rotate t 1
+      println
    
 
   case (constant v :: Maybe (T '[2,4]), constant v :: Maybe (T '[4,2])) of
@@ -37,12 +45,26 @@ main = do
       --print $ t * t
       --print $ sin t
       --print $ t `gte` t 
+      println
     _ -> print "nope"
 
-  case (constant v :: Maybe (T '[2,2,2]), constant v :: Maybe (T '[2,4])) of
+  case (constant v :: Maybe (T ('[2,2] ++ '[2])), constant v :: Maybe (T '[2,4])) of
     (Just t, Just t') -> do
       let tt = t <#> t' 
+          tt' = transpose t'
       print $ tt
       print $ shape tt
+      --print $ tt'
+      --print $ shape tt'
+      println
     _ -> print "nope"
+
+  case (constant w :: Maybe (T '[2,4])) of
+    Just t -> do
+      let t' = transpose t
+      print $ t
+      print $ shape t
+      print $ t'
+      print $ shape t'
+
 
