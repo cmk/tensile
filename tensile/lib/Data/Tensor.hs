@@ -1,3 +1,4 @@
+{-# LANGUAGE MagicHash              #-}
 module Data.Tensor 
   ( module Data.Tensor,
     module Data.Tensor.Types
@@ -7,13 +8,27 @@ where
 -- TODO: reexport Types module
 
 import Data.Int (Int64)
+import GHC.Base (unsafeCoerce#)
 import GHC.TypeLits (Nat)
 import Numeric.Backprop (BVar(..))
-import Numeric.Dimensions (Dimensions(..))
+import Numeric.Dimensions (Reverse,Dimensions)
 import qualified Numeric.Dimensions as D
 
 import Data.Tensor.Types
 
+type Idxs ds = D.Idxs (Reverse ds)
+type Dims ds = D.Dims (Reverse ds)
+
+--TODO: don't specialize to [Nat]
+--      figure out how to reverse these lists!
+--
+reverseIdxs :: Idxs ds -> D.Idxs (Reverse ds)
+reverseIdxs dims = unsafeCoerce# (reverse (unsafeCoerce# dims))
+{-# INLINE reverseIdxs #-}
+
+reverseDims :: Dims ds -> D.Dims (Reverse ds)
+reverseDims dims = unsafeCoerce# (reverse (unsafeCoerce# dims))
+{-# INLINE reverseDims #-}
 
 
 type T' s d = BVar s (T d)
