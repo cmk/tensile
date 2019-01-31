@@ -93,7 +93,7 @@ floor :: Integral b => a -> b
 
 -}
 
-constant
+toTensor
   :: forall d e. Elt e
   => KnownDim (Product d)
   => [e]

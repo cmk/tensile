@@ -4,27 +4,25 @@ module Data.Tensor.Types where
 
 import Data.Bits
 import Data.Singletons.Prelude.List (Product)
-import Data.Word (Word)
-import GHC.Base hiding (foldr)
+import Data.Int
+import Data.Word
+
 import GHC.TypeLits
 import Numeric.Dimensions --(Dimensions(..), KnownDim(..), dimVal)
-import Numeric.DataFrame
-import Numeric.DataFrame.Internal.Array
-import Numeric.DataFrame.Internal.Array.Family.ArrayBase
-import Numeric.DataFrame.Internal.Array.PrimOps
 
-import Numeric.PrimBytes
-
+import Data.Vector.Storable (Vector(..), Storable(..))
 import qualified Data.Vector.Storable as V
 
+
 -- TODO: move to application / test stanza
+type Elt = Storable
 type TVal = Float
 type IVal = Word
-type BVal = TVal
+type BVal = Bool
 
-type Elt = PrimBytes
 --class Elt e
-type Tensor = ArrayBase
+--TODO update Show instance
+newtype Tensor (t :: *) (ds :: [Nat]) = Tensor { unTensor :: Vector t } deriving (Eq, Show)
 
 -- | A real or complex-valued tensor of shape 'd'. 
 type T d = Tensor TVal d
@@ -35,22 +33,102 @@ type I d = Tensor IVal d
 -- | A boolean-valued tensor of shape 'd'. 
 type B d = Tensor BVal d
 
-instance (KnownDim (Product d), Elt e, Eq e, Bits e, Num e) => Bits (ArrayBase e d) where
-  (.&.) = liftF2 (.&.)
-  {-# INLINE (.&.) #-}
-  (.|.) = liftF2 (.|.)
-  {-# INLINE (.|.) #-}
-  xor = liftF2 xor
-  {-# INLINE xor #-}
-  complement = liftF complement
-  shift t i = liftF (flip shift i) t
-  rotate t i = liftF (flip rotate i) t
-  bit = replicateF (fromIntegral . dimVal $ (dim :: Dim (Product d))) . bit
-  testBit = testBitDefault
-  bitSizeMaybe _ = bitSizeMaybe @e undefined
-  bitSize _ = bitSize @e undefined
-  isSigned _ = isSigned @e undefined
-  popCount = popCountDefault
+instance (Num t, Elt t) => Num (Tensor t ds)  where
+    {-# SPECIALIZE instance Num (Tensor Float ds)  #-}
+    {-# SPECIALIZE instance Num (Tensor Double ds) #-}
+    {-# SPECIALIZE instance Num (Tensor Int ds)    #-}
+    {-# SPECIALIZE instance Num (Tensor Word ds)   #-}
+    {-# SPECIALIZE instance Num (Tensor Int8 ds)   #-}
+    {-# SPECIALIZE instance Num (Tensor Int16 ds)  #-}
+    {-# SPECIALIZE instance Num (Tensor Int32 ds)  #-}
+    {-# SPECIALIZE instance Num (Tensor Int64 ds)  #-}
+    {-# SPECIALIZE instance Num (Tensor Word8 ds)  #-}
+    {-# SPECIALIZE instance Num (Tensor Word16 ds) #-}
+    {-# SPECIALIZE instance Num (Tensor Word32 ds) #-}
+    {-# SPECIALIZE instance Num (Tensor Word64 ds) #-}
+    (+) = liftT2 (+)
+    {-# INLINE (+) #-}
+    (-) = liftT2 (-)
+    {-# INLINE (-) #-}
+    (*) = liftT2 (*)
+    {-# INLINE (*) #-}
+    negate = liftT negate
+    {-# INLINE negate #-}
+    abs = liftT abs
+    {-# INLINE abs #-}
+    signum = liftT signum
+    {-# INLINE signum #-}
+    fromInteger i = Tensor $ V.singleton (fromInteger i) --TODO make this dim safe
+    {-# INLINE fromInteger #-}
+
+instance (Fractional t, Elt t) => Fractional (Tensor t ds)  where
+    {-# SPECIALIZE instance Fractional (Tensor Float ds)  #-}
+    {-# SPECIALIZE instance Fractional (Tensor Double ds) #-}
+    (/) = liftT2 (/)
+    {-# INLINE (/) #-}
+    recip = liftT recip
+    {-# INLINE recip #-}
+    fromRational r = Tensor $ V.singleton (fromRational r) --TODO make this dim safe
+    {-# INLINE fromRational #-}
+
+
+instance (Floating t, Elt t) => Floating (Tensor t ds) where
+    {-# SPECIALIZE instance Floating (Tensor Float ds)  #-}
+    {-# SPECIALIZE instance Floating (Tensor Double ds) #-}
+    pi = Tensor $ V.singleton pi  --TODO make this dim safe
+    {-# INLINE pi #-}
+    exp = liftT exp
+    {-# INLINE exp #-}
+    log = liftT log
+    {-# INLINE log #-}
+    sqrt = liftT sqrt
+    {-# INLINE sqrt #-}
+    sin = liftT sin
+    {-# INLINE sin #-}
+    cos = liftT cos
+    {-# INLINE cos #-}
+    tan = liftT tan
+    {-# INLINE tan #-}
+    asin = liftT asin
+    {-# INLINE asin #-}
+    acos = liftT acos
+    {-# INLINE acos #-}
+    atan = liftT atan
+    {-# INLINE atan #-}
+    sinh = liftT sinh
+    {-# INLINE sinh #-}
+    cosh = liftT cosh
+    {-# INLINE cosh #-}
+    tanh = liftT tanh
+    {-# INLINE tanh #-}
+    (**) = liftT2 (**)
+    {-# INLINE (**) #-}
+    logBase = liftT2 logBase
+    {-# INLINE logBase #-}
+    asinh = liftT asinh
+    {-# INLINE asinh #-}
+    acosh = liftT acosh
+    {-# INLINE acosh #-}
+    atanh = liftT atanh
+    {-# INLINE atanh #-}
+
+
+instance (KnownDim (Product d), Elt e, Eq e, Bits e, Num e) => Bits (Tensor e d) where
+    (.&.) = liftT2 (.&.)
+    {-# INLINE (.&.) #-}
+    (.|.) = liftT2 (.|.)
+    {-# INLINE (.|.) #-}
+    xor = liftT2 xor
+    {-# INLINE xor #-}
+    complement = liftT complement
+    shift t i = liftT (flip shift i) t
+    rotate t i = liftT (flip rotate i) t
+    bit = replicateT (fromIntegral . dimVal $ (dim :: Dim (Product d))) . bit
+    testBit = testBitDefault
+    bitSizeMaybe _ = bitSizeMaybe @e undefined
+    bitSize _ = bitSize @e undefined
+    isSigned _ = isSigned @e undefined
+    popCount = popCountDefault
 
 {-
 
@@ -63,23 +141,23 @@ instance (KnownDim (Product d), Elt e, Enum e) => Enum (Tensor e d) where
   fromEnum = undefined --TODO find a reasonable sum-based implementation or scrap the typeclass
 
 instance (KnownDim (Product d), Elt e, Integral e) => Integral (Tensor e d) where
-  quot (Tensor a) (Tensor b) = liftF2 quot a b
-  rem (Tensor a) (Tensor b) = liftF2 rem a b
-  div (Tensor a) (Tensor b) = liftF2 div a b
-  mod (Tensor a) (Tensor b) = liftF2 mod a b
+  quot (Tensor a) (Tensor b) = liftT2 quot a b
+  rem (Tensor a) (Tensor b) = liftT2 rem a b
+  div (Tensor a) (Tensor b) = liftT2 div a b
+  mod (Tensor a) (Tensor b) = liftT2 mod a b
   quotRem ta tb = (quot ta tb, rem ta tb)
   divMod ta tb = (div ta tb, mod ta tb)
   toInteger _ = undefined --TODO find a reasonable sum-based implementation or scrap the typeclass
 
 -}
 
-constant
+toTensor
   :: forall d e. Elt e
   => KnownDim (Product d)
   => [e]
   -> Maybe (Tensor e d)
-constant v
-  | length v == fromIntegral (dimVal (dim :: Dim (Product d))) = Just $ unsafeFromFlatList (length v) v
+toTensor v
+  | length v == fromIntegral (dimVal (dim :: Dim (Product d))) = Just $ Tensor $ V.fromListN (length v) v
   | otherwise = Nothing
 
 {-
@@ -92,7 +170,7 @@ equal
   => Tensor e d
   -> Tensor e d
   -> Tensor BVal d
-equal = liftF2 (==)
+equal = liftT2 (==)
 
 notEqual
   :: Elt e
@@ -100,27 +178,27 @@ notEqual
   => Tensor e d
   -> Tensor e d
   -> Tensor BVal d
-notEqual = liftF2 (/=)
+notEqual = liftT2 (/=)
 
 -}
 
 eq :: T d -> T d -> B d
-eq = liftF2 $ (.)(.)(.) coerced (==)
+eq = liftT2 (==)
 
 neq :: T d -> T d -> B d
-neq = liftF2 $ (.)(.)(.) coerced (/=)
+neq = liftT2 (/=)
 
 lt :: Ord TVal => T d -> T d -> B d
-lt = liftF2 $ (.)(.)(.) coerced (<)
+lt = liftT2 (<)
 
 lte :: Ord TVal => T d -> T d -> B d
-lte = liftF2 $ (.)(.)(.) coerced (<=)
+lte = liftT2 (<=)
 
 gt :: Ord TVal => T d -> T d -> B d
-gt = liftF2 $ (.)(.)(.) coerced (>)
+gt = liftT2 (>)
 
 gte :: Ord TVal => T d -> T d -> B d
-gte = liftF2 $ (.)(.)(.) coerced (>=)
+gte = liftT2 (>=)
 
 maximum
   :: Elt e
@@ -128,7 +206,7 @@ maximum
   => Tensor e d
   -> Tensor e d
   -> Tensor e d
-maximum = liftF2 max
+maximum = liftT2 max
 
 minimum
   :: Elt e
@@ -136,58 +214,20 @@ minimum
   => Tensor e d
   -> Tensor e d
   -> Tensor e d
-minimum = liftF2 min
+minimum = liftT2 min
 
 --------------------------------------------------------------------------------
 -- * Utility functions
 --------------------------------------------------------------------------------
 
-coerced :: (Num t, PrimBytes t) => Bool -> t
-coerced True = 1
-coerced False = 0
+replicateT :: (Elt t, KnownDim (Product ds)) => Int -> t -> Tensor t ds
+replicateT i = Tensor . V.fromListN i . replicate i
 
-undefEl :: ArrayBase t ds -> t
-undefEl = const undefined
+liftT :: (Elt s, Elt t) => (s -> t) -> Tensor s ds -> Tensor t ds
+liftT f (Tensor v) = Tensor $ V.map f v
+{-# INLINE liftT #-}
 
-replicateF :: (PrimBytes t, KnownDim (Product ds)) => Int -> t -> ArrayBase t ds
-replicateF i = unsafeFromFlatList i . replicate i
-
-liftF :: PrimBytes t => (t -> t) -> ArrayBase t ds -> ArrayBase t ds
-liftF f (ArrayBase (# t | #))
-    = ArrayBase (# f t | #)
-liftF f x@(ArrayBase (# | (# offN, n, ba #) #))
-    | tbs <- byteSize (undefEl x)
-    = go (tbs *# n)
-  where
-    go bsize = case runRW#
-     ( \s0 -> case newByteArray# bsize s0 of
-         (# s1, mba #) -> unsafeFreezeByteArray# mba
-           ( loop1# n
-               (\i -> writeArray mba i (f (indexArray ba (offN +# i)))) s1
-           )
-     ) of (# _, r #) -> ArrayBase (# | (# 0#, n, r #) #)
-    {-# NOINLINE go #-}
-{-# INLINE liftF #-}
-
-liftF2 :: PrimBytes t => (t -> t -> t)
-     -> ArrayBase t ds -> ArrayBase t ds -> ArrayBase t ds
-liftF2 f (ArrayBase (# x | #)) b = liftF (f x) b
-liftF2 f a (ArrayBase (# y | #)) = liftF (flip f y) a
-liftF2 f a@(ArrayBase (# | (# oa, na, ba #) #))
-         (ArrayBase (# | (# ob, nb, bb #) #))
-    | n <- (minInt# na nb)
-    = go n (byteSize (undefEl a) *# n)
-  where
-    go n bsize = case runRW#
-     ( \s0 -> case newByteArray# bsize s0 of
-         (# s1, mba #) -> unsafeFreezeByteArray# mba
-           ( loop1# n
-               (\i -> writeArray mba i
-                        (f (indexArray ba (oa +# i))
-                           (indexArray bb (ob +# i))
-                        )
-               ) s1
-           )
-     ) of (# _, r #) -> ArrayBase (# | (# 0#, n, r #) #)
-    {-# NOINLINE go #-}
-{-# INLINE liftF2 #-}
+liftT2 :: (Elt r, Elt s, Elt t) => (r -> s -> t)
+     -> Tensor r ds -> Tensor s ds -> Tensor t ds
+liftT2 f (Tensor v1) (Tensor v2) = Tensor $ V.zipWith f v1 v2
+{-# INLINE liftT2 #-}

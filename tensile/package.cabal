@@ -70,9 +70,9 @@ library reference
     default-language: Haskell2010
     default-extensions: ConstraintKinds DataKinds FlexibleContexts TypeApplications TypeFamilies TypeOperators ScopedTypeVariables OverloadedLists
 
-library ref2
+library old
     hs-source-dirs: 
-        ref2
+        ref-old
     exposed-modules:
         Data.Tensor.Types
         Data.Tensor.Internal.Array
