@@ -10,16 +10,24 @@ import Data.Word
 import GHC.TypeLits
 import Numeric.Dimensions --(Dimensions(..), KnownDim(..), dimVal)
 
+--import Data.Vector.Storable (Vector(..), Storable(..))
+--import qualified Data.Vector.Storable as P
 import Data.Vector.Primitive (Vector(..), Prim(..))
 import qualified Data.Vector.Primitive as P
 
 
 -- TODO: move to application / test stanza
+type Elt = Storable
 type TVal = Float
 type IVal = Word
 type BVal = TVal
 
-type Elt = Prim
+-- type Elt = Storable
+-- type TVal = Float
+-- type IVal = Word
+-- type BVal = Bool
+
+
 --class Elt e
 newtype Tensor (t :: *) (ds :: [Nat]) = Tensor { unTensor :: Vector t } deriving Eq
 
@@ -32,7 +40,7 @@ type I d = Tensor IVal d
 -- | A boolean-valued tensor of shape 'd'. 
 type B d = Tensor BVal d
 
-instance (Num t, Prim t) => Num (Tensor t ds)  where
+instance (Num t, Elt t) => Num (Tensor t ds)  where
     {-# SPECIALIZE instance Num (Tensor Float ds)  #-}
     {-# SPECIALIZE instance Num (Tensor Double ds) #-}
     {-# SPECIALIZE instance Num (Tensor Int ds)    #-}
@@ -60,7 +68,7 @@ instance (Num t, Prim t) => Num (Tensor t ds)  where
     fromInteger i = Tensor $ P.singleton (fromInteger i) --TODO make this dim safe
     {-# INLINE fromInteger #-}
 
-instance (Fractional t, Prim t) => Fractional (Tensor t ds)  where
+instance (Fractional t, Elt t) => Fractional (Tensor t ds)  where
     {-# SPECIALIZE instance Fractional (Tensor Float ds)  #-}
     {-# SPECIALIZE instance Fractional (Tensor Double ds) #-}
     (/) = liftT2 (/)
@@ -71,7 +79,7 @@ instance (Fractional t, Prim t) => Fractional (Tensor t ds)  where
     {-# INLINE fromRational #-}
 
 
-instance (Floating t, Prim t) => Floating (Tensor t ds) where
+instance (Floating t, Elt t) => Floating (Tensor t ds) where
     {-# SPECIALIZE instance Floating (Tensor Float ds)  #-}
     {-# SPECIALIZE instance Floating (Tensor Double ds) #-}
     pi = Tensor $ P.singleton pi  --TODO make this dim safe
@@ -219,18 +227,18 @@ minimum = liftT2 min
 -- * Utility functions
 --------------------------------------------------------------------------------
 
-coerced :: (Num t, Prim t) => Bool -> t
+coerced :: (Num t, Elt t) => Bool -> t
 coerced True = 1
 coerced False = 0
 
-replicateT :: (Prim t, KnownDim (Product ds)) => Int -> t -> Tensor t ds
+replicateT :: (Elt t, KnownDim (Product ds)) => Int -> t -> Tensor t ds
 replicateT i = Tensor . P.fromListN i . replicate i
 
-liftT :: (Prim s, Prim t) => (s -> t) -> Tensor s ds -> Tensor t ds
+liftT :: (Elt s, Elt t) => (s -> t) -> Tensor s ds -> Tensor t ds
 liftT f (Tensor v) = Tensor $ P.map f v
 {-# INLINE liftT #-}
 
-liftT2 :: (Prim r, Prim s, Prim t) => (r -> s -> t)
+liftT2 :: (Elt r, Elt s, Elt t) => (r -> s -> t)
      -> Tensor r ds -> Tensor s ds -> Tensor t ds
 liftT2 f (Tensor v1) (Tensor v2) = Tensor $ P.zipWith f v1 v2
 {-# INLINE liftT2 #-}

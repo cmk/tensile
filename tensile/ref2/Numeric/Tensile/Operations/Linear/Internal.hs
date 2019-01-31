@@ -46,19 +46,15 @@ mul `a` `b` has shape=[2,2,2]
  [[508, 532],
   [697, 730]]]
 -}
--- | Tensor contraction.
---   In particular:
---     1. matrix-matrix product
---     2. matrix-vector or vector-matrix product
---     3. dot product of two vectors.
+
 
 {-
-matmul 
+product 
   :: forall m x y. KnownDim m
   => Dimensions x
   => Dimensions y
   => T (x +: m) -> T (m :+ y) -> T (x ++ y)
-matmul t u
+product t u
     | I# m <- fromIntegral $ dimVal' @m
     , I# n <- fromIntegral $ totalDim' @x
     , I# k <- fromIntegral $ totalDim' @y
@@ -75,21 +71,34 @@ matmul t u
 
 data T# = T# Int# Int#
 
+-- mode-i tensor-matrix product
+-- see http://citeseerx.ist.psu.edu/viewdoc/download;jsessionid=4A0663C7848627DADDBA6A243BC43E78?doi=10.1.1.130.782&rep=rep1&type=pdf
+product
+  :: forall m x y. KnownDim m
+  => Dimensions x
+  => Dimensions y
+  => T (x ++ [m] ++ y) 
+  -> T '[m, n]
+  -> T (x ++ n ++ y)
+
 -- #>
-matmulR
+productR
   :: All KnownDim '[a, b, c]
+  => Dimensions x
   => T (a :+ b :+ x)
   -> T (b :+ c :+ x)
   -> T (a :+ c :+ x)
-matmulR = undefined
+productR = undefined
 
 -- <#
-matmulL
+-- same as tf.matmul
+productN
   :: All KnownDim '[a, b, c]
+  => Dimensions x
   => T (x +: a +: b) 
   -> T (x +: b +: c)
   -> T (x +: a +: c)
-matmulL = undefined
+productN = undefined
 
 
 transpose
@@ -105,4 +114,8 @@ transpose t = case elemSize0 t of
               | otherwise         = (# ( I# (i +# 1#), I# j ), ix# (i *# n +# j) t #) --col-major indexing
         in case gen# nm f (0,0) of
           (# _, r #) -> r
+
+
 -}
+
+
