@@ -10,23 +10,15 @@ import Data.Word
 import GHC.TypeLits
 import Numeric.Dimensions --(Dimensions(..), KnownDim(..), dimVal)
 
---import Data.Vector.Storable (Vector(..), Storable(..))
---import qualified Data.Vector.Storable as P
-import Data.Vector.Primitive (Vector(..), Prim(..))
-import qualified Data.Vector.Primitive as P
+import Data.Vector.Storable (Vector(..), Storable(..))
+import qualified Data.Vector.Storable as V
 
 
 -- TODO: move to application / test stanza
 type Elt = Storable
 type TVal = Float
 type IVal = Word
-type BVal = TVal
-
--- type Elt = Storable
--- type TVal = Float
--- type IVal = Word
--- type BVal = Bool
-
+type BVal = Bool
 
 --class Elt e
 newtype Tensor (t :: *) (ds :: [Nat]) = Tensor { unTensor :: Vector t } deriving Eq
@@ -65,7 +57,7 @@ instance (Num t, Elt t) => Num (Tensor t ds)  where
     {-# INLINE abs #-}
     signum = liftT signum
     {-# INLINE signum #-}
-    fromInteger i = Tensor $ P.singleton (fromInteger i) --TODO make this dim safe
+    fromInteger i = Tensor $ V.singleton (fromInteger i) --TODO make this dim safe
     {-# INLINE fromInteger #-}
 
 instance (Fractional t, Elt t) => Fractional (Tensor t ds)  where
@@ -75,14 +67,14 @@ instance (Fractional t, Elt t) => Fractional (Tensor t ds)  where
     {-# INLINE (/) #-}
     recip = liftT recip
     {-# INLINE recip #-}
-    fromRational r = Tensor $ P.singleton (fromRational r) --TODO make this dim safe
+    fromRational r = Tensor $ V.singleton (fromRational r) --TODO make this dim safe
     {-# INLINE fromRational #-}
 
 
 instance (Floating t, Elt t) => Floating (Tensor t ds) where
     {-# SPECIALIZE instance Floating (Tensor Float ds)  #-}
     {-# SPECIALIZE instance Floating (Tensor Double ds) #-}
-    pi = Tensor $ P.singleton pi  --TODO make this dim safe
+    pi = Tensor $ V.singleton pi  --TODO make this dim safe
     {-# INLINE pi #-}
     exp = liftT exp
     {-# INLINE exp #-}
@@ -158,13 +150,13 @@ instance (KnownDim (Product d), Elt e, Integral e) => Integral (Tensor e d) wher
 
 -}
 
-constant
+toTensor
   :: forall d e. Elt e
   => KnownDim (Product d)
   => [e]
   -> Maybe (Tensor e d)
-constant v
-  | length v == fromIntegral (dimVal (dim :: Dim (Product d))) = Just $ Tensor $ P.fromListN (length v) v
+toTensor v
+  | length v == fromIntegral (dimVal (dim :: Dim (Product d))) = Just $ Tensor $ V.fromListN (length v) v
   | otherwise = Nothing
 
 {-
@@ -190,22 +182,22 @@ notEqual = liftT2 (/=)
 -}
 
 eq :: T d -> T d -> B d
-eq = liftT2 $ (.)(.)(.) coerced (==)
+eq = liftT2 (==)
 
 neq :: T d -> T d -> B d
-neq = liftT2 $ (.)(.)(.) coerced (/=)
+neq = liftT2 (/=)
 
 lt :: Ord TVal => T d -> T d -> B d
-lt = liftT2 $ (.)(.)(.) coerced (<)
+lt = liftT2 (<)
 
 lte :: Ord TVal => T d -> T d -> B d
-lte = liftT2 $ (.)(.)(.) coerced (<=)
+lte = liftT2 (<=)
 
 gt :: Ord TVal => T d -> T d -> B d
-gt = liftT2 $ (.)(.)(.) coerced (>)
+gt = liftT2 (>)
 
 gte :: Ord TVal => T d -> T d -> B d
-gte = liftT2 $ (.)(.)(.) coerced (>=)
+gte = liftT2 (>=)
 
 maximum
   :: Elt e
@@ -227,18 +219,14 @@ minimum = liftT2 min
 -- * Utility functions
 --------------------------------------------------------------------------------
 
-coerced :: (Num t, Elt t) => Bool -> t
-coerced True = 1
-coerced False = 0
-
 replicateT :: (Elt t, KnownDim (Product ds)) => Int -> t -> Tensor t ds
-replicateT i = Tensor . P.fromListN i . replicate i
+replicateT i = Tensor . V.fromListN i . replicate i
 
 liftT :: (Elt s, Elt t) => (s -> t) -> Tensor s ds -> Tensor t ds
-liftT f (Tensor v) = Tensor $ P.map f v
+liftT f (Tensor v) = Tensor $ V.map f v
 {-# INLINE liftT #-}
 
 liftT2 :: (Elt r, Elt s, Elt t) => (r -> s -> t)
      -> Tensor r ds -> Tensor s ds -> Tensor t ds
-liftT2 f (Tensor v1) (Tensor v2) = Tensor $ P.zipWith f v1 v2
+liftT2 f (Tensor v1) (Tensor v2) = Tensor $ V.zipWith f v1 v2
 {-# INLINE liftT2 #-}

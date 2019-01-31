@@ -10,19 +10,171 @@
 {-# LANGUAGE TypeFamilies           #-}
 {-# LANGUAGE TypeOperators          #-}
 {-# LANGUAGE UnboxedTuples          #-}
-{-# LANGUAGE UndecidableInstances   #-}
+{-# LANGUAGE UndecidableInstances, RankNTypes   #-}
 
 module Numeric.Tensile.Operations.Linear.Internal where
 
-import Data.Tensor.Types
+import Data.Tensor.Types hiding (constant)
 import Data.Tensor.Internal.Array
+import Data.Vector.Storable (Vector(..), Storable(..))
+import Control.Monad.ST
+import Control.Monad
 
+import GHC.Base (unsafeCoerce#)
 import GHC.TypeLits
-import Numeric.Dimensions
-import Data.Vector.Primitive (Vector(..), Prim(..))
-import qualified Data.Vector.Primitive as P
+import Numeric.Dimensions (Dimensions(..), Dims, Idxs, Reverse)
+import qualified Data.Vector.Storable as V
+import qualified Data.Vector.Storable.Mutable as M
+import qualified Numeric.Dimensions as D
+
+
+
+--TODO: don't specialize to [Nat]
+--      figure out how to reverse these lists!
+--
+reverseIdxs :: Idxs (ds :: [Nat]) -> Idxs (Reverse ds)
+reverseIdxs dims = unsafeCoerce# (reverse (unsafeCoerce# dims))
+{-# INLINE reverseIdxs #-}
+
+reverseDims :: Dims (ds :: [Nat]) -> Dims (Reverse ds)
+reverseDims dims = unsafeCoerce# (reverse (unsafeCoerce# dims))
+{-# INLINE reverseDims #-}
+
+constant :: Storable t => Dims (ds :: [Nat]) -> t -> Vector t
+constant dims t = fill dims $ const t
+
+fill :: Storable t => Dims (ds :: [Nat]) -> (Int -> t) -> Vector t
+fill dims act = V.create $ do
+  v <- M.new (fromIntegral $ D.totalDim dims)
+  let f i = M.write v i $ act i
+  D.overDimOff_ dims f 0 1
+  return v
+
+fill' :: (Storable t, Dimensions ds) => Dims (ds :: [Nat]) -> (Idxs ds -> t) -> Vector t
+fill' dims act = V.create $ do
+  v <- M.new (fromIntegral $ D.totalDim dims)
+  let f i = M.write v (fromEnum i) $ act i
+  D.overDimIdx_ dims f
+  return v
 
 {-
+ -
+fill (dims @_ @'[2, 2, 3]) id
+fill' (dims @_ @'[2, 2, 3]) $ sum . listIdxs
+
+fill' :: (Storable t, Dimensions ds) => Dims (ds :: [Nat]) -> (Idxs ds -> t) -> Vector t
+fill' dims act = V.create $ do
+  v <- M.new (fromIntegral $ D.totalDim dims)
+  let f i = M.write v (fromEnum (reverseIdxs i)) $ act i
+      dims' = reverseDims dims
+  D.overDimIdx_ dims' f
+  return v
+
+
+t dims f = Tensor $ V.create $ st dims f
+
+overDimIdx_ :: Monad m	=> Dims ds-> (Idxs ds -> m ()) -> m ()
+
+
+Function to call on each dimension
+
+write = 
+overDimOff_ M.write 
+
+overDimOff_ Source#
+
+:: Monad m	 
+=> Dims ds	
+Shape of a space
+-> (Int -> m ())	
+Function to call with each offset value
+-> Int	
+Initial offset
+-> Int	
+Offset step
+-> m ()
+
+constant
+  :: forall s t ds. Storable t
+  => Dims ds
+  -> t
+  -> Tensor t ds
+constant dims t = Tensor $ V.create st
+  where
+    st :: ST s (M.MVector s t)
+    st = M.new (fromIntegral $ totalDim dims) >>= overDim dims f 0 1
+
+    f :: Idxs ds -> Int -> (M.MVector s t) -> ST s (M.MVector s t)
+    f _ i v = M.write v i t >> return v --M.replicate n t
+
+
+--
+M.new :: (PrimMonad m, Storable a) => Int -> m (MVector (PrimState m) a)
+M.write :: (PrimMonad m, Storable a) => MVector (PrimState m) a -> Int -> a -> m ()
+
+create :: Storable a => (forall s. ST s (MVector s a)) -> Vector a
+
+
+
+replicate :: (PrimMonad m, Storable a) => Int -> a -> m (MVector (PrimState m) a) Source#
+
+
+Int -> m (MVector (PrimState m) a)
+
+          ( overDim_# dbs
+            ( \i pos ->
+                writeArray mba pos (f i (indexOffset# (pos *# lenAS') lenAS' df))
+            ) 0# 1# s1
+
+overDim_# :: Dims (ds :: [k])
+          -> (Idxs ds -> Int# -> State# s -> State# s) -- ^ function to map over each dimension
+          -> Int# -- ^ Initial offset
+          -> Int# -- ^ offset step
+          -> State# s
+          -> State# s
+
+overDim_'# :: Dims (ds :: [k])
+           -> (Idxs ds -> Int# -> State# s -> (# State# s, Int# #)) -- ^ function to map over each dimension
+           -> Int# -- ^ Initial offset
+           -> State# s
+           -> (# State# s, Int# #)
+
+overDimOff_ :: Monad m
+            => Dims ds -- ^ Shape of a space
+            -> (Int -> m ()) -- ^ Function to call with each offset value
+            -> Int -- ^ Initial offset
+            -> Int -- ^ Offset step
+            -> m ()
+
+overDim :: Monad m
+        => Dims ds -- ^ Shape of a space
+        -> (Idxs ds -> Int -> a -> m a) -- ^ Function to call on each dimension
+        -> Int -- ^ Initial offset
+        -> Int -- ^ Offset step
+        -> a -- ^ Initial value
+        -> m a
+
+
+
+gen# 
+  :: forall s t ds. PrimBytes t 
+  => Int# -- ^ number of elements, not checked!
+             --   Avoid using this argument if possible.
+  -> (s -> (# s, t #))
+  -> s -> (# s, ArrayBase t ds #)
+gen# n f z0 = go (byteSize @t undefined *# n)
+  where
+    go bsize = case runRW#
+     ( \s0 -> case newByteArray# bsize s0 of
+         (# s1, mba #) -> case loop0 mba 0# z0 s1 of
+           (# s2, z1 #) -> case unsafeFreezeByteArray# mba s2 of
+             (# s3, ba #) -> (# s3, (# z1, ba #) #)
+     ) of (# _, (# z1, ba #) #) -> (# z1, ArrayBase (# | (# 0# , n , ba #) #) #)
+    {-# NOINLINE go #-}
+    loop0 mba i z s
+      | isTrue# (i ==# n) = (# s, z #)
+      | otherwise = case f z of
+          (# z', x #) -> loop0 mba (i +# 1#) z' (writeArray mba i x s)
 
 3-D tensor `a` w shape=[2, 2, 3]
 [[[ 1,  2,  3],

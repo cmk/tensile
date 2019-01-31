@@ -19,6 +19,7 @@ library
         lib
     exposed-modules:
         Data.Tensor
+        Data.Index
         Numeric.Tensile.Operations.Linear.Unlifted
     build-depends:
         base          >= 4 && < 5,
