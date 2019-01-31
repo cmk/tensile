@@ -1,4 +1,4 @@
-{-# LANGUAGE DataKinds, KindSignatures, GADTs #-}
+{-# LANGUAGE DataKinds, KindSignatures, OverloadedLists, GADTs #-}
 
 module Main where
 
