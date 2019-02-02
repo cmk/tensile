@@ -18,7 +18,7 @@ import Data.Tensor.Types
 import Data.Tensor.Internal.Array
 import Data.Vector.Storable (Vector(..), Storable(..))
 import Control.Monad.ST
-import Control.Monad
+import Control.Monad (void)
 
 import GHC.TypeLits
 import Numeric.Dimensions (TypedList(..), Dimensions(..), Idx(..), Idxs(..), Dims(..), Reverse)
@@ -30,43 +30,15 @@ import Numeric.Type.Evidence
 
 import Debug.Trace
 import GHC.Base (unsafeCoerce#)
---import Data.Singletons.Prelude.List (Reverse)
-
-{-
-type Idxs (ds :: [Nat]) = D.Idxs (Reverse ds)
-type Dims (ds :: [Nat]) = D.Dims (Reverse ds)
-
---TODO: don't specialize to [Nat]
---      figure out how to reverse these lists!
---
-reverseIdxs :: forall ds. Idxs ds -> D.Idxs (Reverse ds)
-reverseIdxs dims = unsafeCoerce# (reverse (unsafeCoerce# dims))
-{-# INLINE reverseIdxs #-}
-
-reverseDims :: forall ds. Dims ds -> D.Dims (Reverse ds)
-reverseDims dims = unsafeCoerce# (reverse (unsafeCoerce# dims))
-{-# INLINE reverseDims #-}
-
-reverseDims' :: forall ds. D.Dims ds -> Dims (Reverse ds)
-reverseDims' dims = unsafeCoerce# (reverse (unsafeCoerce# dims))
-{-# INLINE reverseDims' #-}
--}
 
 
 
 
-d :: D.Dims '[2, 2, 3]
-d = D.dims @_ @'[2, 2, 3]
 
 
-rev :: [Word] -> Bool
-rev xs
-  | D.SomeDims ds <- D.someDimsVal xs
-  = case ds of
-      D.Reverse rds -> traceShow rds $ case rds of
-        D.Reverse rrds -> ds == rrds
 
-
+constant :: Storable t => Dims (ds :: [Nat]) -> t -> Vector t
+constant dims t = fill dims $ const t
 
 fill :: Storable t => Dims (ds :: [Nat]) -> (Int -> t) -> Vector t
 fill dims act = 
@@ -83,185 +55,110 @@ fill' dims act = V.create $ do
 
 {-
 
-> fillI (dims @_ @'[2, 2, 3]) $ sum . listIdxs
+> fillIdx (dims @_ @'[2, 2, 3]) $ sum . listIdxs
 [3,4,5,4,5,6,4,5,6,5,6,7]
-> fillI' (dims @_ @'[2, 2, 3]) $ sum . listIdxs
+> fillIdx' (dims @_ @'[2, 2, 3]) $ sum . listIdxs
 [3,4,4,5,4,5,5,6,5,6,6,7]
 
+overDimIdx_ (dims @_ @'[2, 2, 3]) (\i -> print i >> print (fromEnum i))
+
+
+transpose ds p v = modifyIdx ds act v
+  where swap' v i i' = M.swap v (fromEnum i) (fromEnum i') 
+        act i v = swap' i (p i) v
 -}
 
-fillI 
+fillIdx 
   :: forall t ds sd. Storable t
   => ds ~ Reverse sd
   => sd ~ Reverse ds
   => Dimensions ds
   => Dimensions sd
   => Dims ds -> (Idxs sd -> t) -> Vector t
-fillI dims act = 
+fillIdx dims act = 
   case dims of 
-    D.Reverse dims' -> withEvidence (E :: Evidence (Dimensions sd)) $ fillI' dims' act
+    D.Reverse dims' -> withEvidence (E :: Evidence (Dimensions sd)) $ fillIdx' dims' act
 
-fillI' :: forall t ds. (Storable t, Dimensions ds) => Dims ds -> (Idxs ds -> t) -> Vector t
-fillI' dims act = V.create $ do
-  v <- M.new (fromIntegral $ D.totalDim dims)
-  let f i = M.write v (fromEnum i) $ act i
-  D.overDimIdx_ dims f
-  return v
+fillIdx' :: forall t ds. (Storable t, Dimensions ds) => Dims ds -> (Idxs ds -> t) -> Vector t
+fillIdx' dims f = V.create $ do
+  mv <- M.new (fromIntegral $ D.totalDim dims)
+  let act idxs = M.write mv (fromEnum idxs) $ f idxs
+  D.overDimIdx_ dims act
+  return mv
 
 {-
+> mod idxs m = M.swap m 0 (fromEnum idxs)
+> v = V.fromList [1..12]
+> v
+[1.0,2.0,3.0,4.0,5.0,6.0,7.0,8.0,9.0,10.0,11.0,12.0]
+> modifyIdx (dims @_ @'[2, 2, 3]) mod v
+[12.0,1.0,2.0,3.0,4.0,5.0,6.0,7.0,8.0,9.0,10.0,11.0]
 
 
-fillI 
-  :: forall t ds sd. Storable t
-  => ds ~ Reverse sd
-  => sd ~ Reverse ds
-  => Dimensions ds
-  => Dimensions sd
-  => Dims ds -> (forall is. Idxs is -> t) -> Vector t
-fillI dims act = 
-  case dims of 
-    D.Reverse dims' -> withEvidence (E :: Evidence (Dimensions sd)) $ fillI' dims' act
+-}
+
+modifyIdx :: forall t ds. (Storable t, Dimensions ds) => Dims ds -> (forall s. Idxs ds -> M.MVector s t -> ST s ()) -> Vector t -> Vector t
+modifyIdx dims f = V.modify $ \mv -> do
+  let act i = f i mv
+  D.overDimIdx_ dims act
+
+-- TODO
+-- replace Vector t w/ Tensor t ds
+-- Permutation ds -> Dims ds -> Idxs ds - > Idxs ds
+{-
+
+modify :: Storable a => (forall s. MVector s a -> ST s ()) -> Vector a -> Vector a
+swap :: (PrimMonad m, Storable a) => MVector (PrimState m) a -> Int -> Int -> m () Source#
 
 
-fillI 
-  :: forall t ds sd. Storable t
-  => ds ~ Reverse sd
-  => sd ~ Reverse ds
-  => Dimensions ds
-  => Dimensions sd
-  => Dims ds -> (forall ds. Dimensions dsDims ds -> Idxs ds -> t) -> Vector t
-fillI dims act = 
-  case dims of 
-    D.Reverse dims' -> fillI' dims' 
+foldIdx = undefined
 
-
-data Evidence :: Constraint -> Type where Source#
-
-Bring an instance of certain class or constaint satisfaction evidence into scope.
-
-Constructors
-
-E :: a => Evidence a	 
-withEvidence :: Evidence a -> (a => r) -> r Source#
-
-Pattern match agains evidence to get constraints info
-
-
-
-fill (dims @_ @'[2, 2, 3]) id
-fill' (dims @_ @'[2, 2, 3]) $ sum . listIdxs
-
-
-constant :: Storable t => Dims (ds :: [Nat]) -> t -> Vector t
-constant dims t = fill dims $ const t
-
-
-
-fill' :: (Storable t, Dimensions ds) => Dims ds -> (Idxs ds -> t) -> Vector t
-fill' dims act = V.create $ do
+foldIdx' :: forall t ds. (Storable t, Dimensions ds) => Dims ds -> (Idxs ds -> t -> t) -> Vector t 
+foldIdx' dims act = V.create $ do
   v <- M.new (fromIntegral $ D.totalDim dims)
   let f i = M.write v (fromEnum i) $ act i
   D.overDimIdx_ dims f
   return v
 
-t dims f = Tensor $ V.create $ st dims f
-
--- | Go over all dimensions keeping track of index
 overDimIdx_ :: Monad m
             => Dims ds -- ^ Shape of a space
             -> (Idxs ds -> m ()) -- ^ Function to call on each dimension
             -> m ()
-overDimIdx_ U k = k U
-overDimIdx_ (d :* ds) k = overDimIdx_ ds k'
-  where
-    dw = D.dimVal d
-    k' is = case is of 
-      D.Reverse si -> go 1
-        where
-          go i
-            | i > dw = return ()
-            | otherwise = k (Idx i :* si) >> go (i+1)
 
-overDimIdx_ :: Monad m	=> Dims ds-> (Idxs ds -> m ()) -> m ()
+overDimIdx :: Monad m
+           => Dims ds -- ^ Shape of a space
+           -> (Idxs ds -> a -> m a) -- ^ Function to call on each dimension
+           -> a -- ^ Initial value
+           -> m a
 
 
-Function to call on each dimension
-
-write = 
-overDimOff_ M.write 
-
-overDimOff_ Source#
-
-:: Monad m	 
-=> Dims ds	
-Shape of a space
--> (Int -> m ())	
-Function to call with each offset value
--> Int	
-Initial offset
--> Int	
-Offset step
--> m ()
-
-constant
-  :: forall s t ds. Storable t
-  => Dims ds
-  -> t
-  -> Tensor t ds
-constant dims t = Tensor $ V.create st
-  where
-    st :: ST s (M.MVector s t)
-    st = M.new (fromIntegral $ totalDim dims) >>= overDim dims f 0 1
-
-    f :: Idxs ds -> Int -> (M.MVector s t) -> ST s (M.MVector s t)
-    f _ i v = M.write v i t >> return v --M.replicate n t
+-- | Fold over all dimensions keeping track of index
+foldDimIdx :: Dims ds -- ^ Shape of a space
+           -> (Idxs ds -> a -> a) -- ^ Function to call on each dimension
+           -> a -- ^ Initial value
+           -> a
 
 
+-- Use for matmul??
 --
-M.new :: (PrimMonad m, Storable a) => Int -> m (MVector (PrimState m) a)
-M.write :: (PrimMonad m, Storable a) => MVector (PrimState m) a -> Int -> a -> m ()
+--
+-- | Traverse from the first index to the second index in each dimension.
+--   You can combine positive and negative traversal directions
+--   along different dimensions.
+--
+--   Note, initial and final indices are included in the range;
+--   the argument function is guaranteed to execute at least once.
+overDimPartIdx :: Monad m
+               => Idxs ds -- ^ Initial indices
+               -> Idxs ds -- ^ Final indices
+               -> (Idxs ds -> a -> m a)
+                          -- ^ Function to call on each dimension
+               -> a       -- ^ initial value
+               -> m a
+overDimPartIdx U U k = k U
 
-create :: Storable a => (forall s. ST s (MVector s a)) -> Vector a
 
-
-
-replicate :: (PrimMonad m, Storable a) => Int -> a -> m (MVector (PrimState m) a) Source#
-
-
-Int -> m (MVector (PrimState m) a)
-
-          ( overDim_# dbs
-            ( \i pos ->
-                writeArray mba pos (f i (indexOffset# (pos *# lenAS') lenAS' df))
-            ) 0# 1# s1
-
-overDim_# :: Dims (ds :: [k])
-          -> (Idxs ds -> Int# -> State# s -> State# s) -- ^ function to map over each dimension
-          -> Int# -- ^ Initial offset
-          -> Int# -- ^ offset step
-          -> State# s
-          -> State# s
-
-overDim_'# :: Dims (ds :: [k])
-           -> (Idxs ds -> Int# -> State# s -> (# State# s, Int# #)) -- ^ function to map over each dimension
-           -> Int# -- ^ Initial offset
-           -> State# s
-           -> (# State# s, Int# #)
-
-overDimOff_ :: Monad m
-            => Dims ds -- ^ Shape of a space
-            -> (Int -> m ()) -- ^ Function to call with each offset value
-            -> Int -- ^ Initial offset
-            -> Int -- ^ Offset step
-            -> m ()
-
-overDim :: Monad m
-        => Dims ds -- ^ Shape of a space
-        -> (Idxs ds -> Int -> a -> m a) -- ^ Function to call on each dimension
-        -> Int -- ^ Initial offset
-        -> Int -- ^ Offset step
-        -> a -- ^ Initial value
-        -> m a
+Swap the elements at the given positions.
 
 
 

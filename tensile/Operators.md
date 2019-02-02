@@ -131,16 +131,7 @@ RandomNormalLike
 RandomUniform
 RandomUniformLike
 Reciprocal
-ReduceL1
-ReduceL2
-ReduceLogSum
-ReduceLogSumExp
-ReduceMax
-ReduceMean
-ReduceMin
-ReduceProd
-ReduceSum
-ReduceSumSquare
+
 Relu
 Reshape
 Scan
@@ -261,71 +252,6 @@ diag1d t = diagUnsafe t 0
 
 ----- shape manipulation
 
--- | Static call to 'Dynamic.cat'
-cat
-  :: '(ls, r0:+rs) ~ Sing.SplitAt i d
-  => '(ls, r1:+rs) ~ Sing.SplitAt i d'
-  => Tensor d
-  -> Tensor d'
-  -> Dim (i::Nat)
-  -> Tensor (ls ++ '[r0 + r1] ++ rs)
-cat a b d = fromRight (error "impossible: cat type should not allow this branch") $
-  asStatic <$> Dynamic.cat (asDynamic a) (asDynamic b) (fromIntegral $ dimVal d)
-
--- | convenience function, specifying a type-safe 'cat' operation.
-cat1d
-  :: (All KnownDim '[n1,n2,n], n ~ Sing.Sum [n1, n2])
-  => Tensor '[n1] -> Tensor '[n2] -> Tensor '[n]
-cat1d a b = cat a b (dim :: Dim 0)
-
--- | convenience function, specifying a type-safe 'cat' operation.
-cat2d0 :: (All KnownDim '[n,m,n0,n1], n ~ Sing.Sum [n0, n1]) => Tensor '[n0, m] -> Tensor '[n1, m] -> Tensor '[n, m]
-cat2d0 a b = cat a b (dim :: Dim 0)
-
--- | convenience function, stack two rank-1 tensors along the 0-dimension
-stack1d0 :: KnownDim m => Tensor '[m] -> Tensor '[m] -> (Tensor '[2, m])
-stack1d0 a b = cat2d0
-  (unsqueeze1d (dim :: Dim 0) a)
-  (unsqueeze1d (dim :: Dim 0) b)
-
--- | convenience function, specifying a type-safe 'cat' operation.
-cat2d1 :: (All KnownDim '[n,m,m0,m1], m ~ Sing.Sum [m0, m1]) => Tensor '[n, m0] -> Tensor '[n, m1] -> (Tensor '[n, m])
-cat2d1 a b = cat a b (dim :: Dim 1)
-
--- | convenience function, stack two rank-1 tensors along the 1-dimension
-stack1d1 :: KnownDim n => Tensor '[n] -> Tensor '[n] -> (Tensor '[n, 2])
-stack1d1 a b = cat2d1
-  (unsqueeze1d (dim :: Dim 1) a)
-  (unsqueeze1d (dim :: Dim 1) b)
-
-
--- tf dep typed
-reshape :: forall t shape1 shape2 phs v.
-           (TF.TensorType t, ShapeProduct shape1 ~ ShapeProduct shape2, KnownNatList shape2)
-        => Tensor shape1 phs v t
-        -> Tensor shape2 phs Build t
-reshape (Tensor t) = Tensor $ TF.reshape t $ TF.vector $ map
-            (fromInteger :: Integer -> Int32)
-            (natListVal (Proxy :: Proxy shape2))
-
-
--- WARNING: This might be not be garbage collected as you expect since the input argument becomes a dangling phantom type.
-reshape :: forall d d' . (All Dimensions [d,d'], Product d ~ Product d') => Tensor d -> Tensor d'
-reshape src = unsafeDupablePerformIO $
-  resizeAsT_ (newClone src :: Tensor d) (new :: Tensor d')
-{-# NOINLINE resizeAs #-}
-
--- | flatten a tensor (pure, dupable)
-flatten :: (Dimensions d, KnownDim (Product d)) => Tensor d -> Tensor '[Product d]
-flatten = resizeAs
-
-unsqueeze1d
-  :: Dimensions d
-  => '(rs, ls) ~ (SplitAt n d)
-  => Dim n
-  -> Tensor d
-  -> Tensor (rs ++ '[1] ++ ls)
-
 getDim
   :: forall d i d'
   .  All Dimensions '[d, i:+d']
@@ -393,19 +319,7 @@ https://stackoverflow.com/questions/35146444/tensorflow-python-accessing-individ
 modify :: (Elem a, KnownNat n, KnownNat m) => (forall s. MMatrix n m s a -> ST s ()) -> Matrix n m a -> Matrix n m a
 
 
--- | Select a dimension of a tensor. If a vector is passed in, return a singleton tensor
--- with the index value of the vector.
-slice
-  :: forall d ls r rs i
-  .  '(ls, r:+rs) ~ SplitAt i d
-  => KnownDim i
-  => Dimensions d
-  => Tensor d
-  -> Dim i
-  -> Tensor (ls ++ rs)
-slice t i = unsafePerformIO $
 
-(!!) = slice -- hasktorch
 
 -- | Retrieve a single row from a matrix
 --
@@ -499,18 +413,7 @@ instance Dim n => Metric (V n) where
   dot (V a) (V b) = V.sum $ V.zipWith (*) a b
 
 
-signature Reduce where
 
-ReduceL1
-ReduceL2
-ReduceLogSum
-ReduceLogSumExp
-ReduceMax
-ReduceMean
-ReduceMin
-ReduceProd
-ReduceSum
-ReduceSumSquare
 
 
 class Boolean where
@@ -618,31 +521,7 @@ class (Tensor t, Shape s, Elt e) => Tensile (t s e) where
   http://hackage.haskell.org/package/linear-accelerate-0.6.0.0/docs/src/Data-Array-Accelerate-Linear-V1.html#line-154
   tmap :: (t n a -> t s2 a) -> t s3 a -> t s4 a
 
-  -- transpose :: f (g a) -> g (f a)
-  -- https://github.com/GU-CLASP/TypedFlow/blob/9f053e9cb8ee54aed411fb6c7d93eb29d28a6862/TypedFlow/Abstract.hs#L245
-  transpose :: (Perm s s') => t s a -> t s' a
 
-  slice :: (In s s') => t s e -> t s' e
-
-  shape :: (Integral i, Nat n, n ~ Size s) t s e -> t n i
-
-  -- https://github.com/onnx/onnx/blob/master/docs/Operators.md#Reshape
-  -- https://github.com/GU-CLASP/TypedFlow/blob/9f053e9cb8ee54aed411fb6c7d93eb29d28a6862/TypedFlow/Abstract.hs#L266
-  reshape :: (Size s ~ Size s') => t s e -> t s' e
-
-  -- https://github.com/onnx/onnx/blob/master/docs/Operators.md#Tile
-  tile ::
-
-  -- like TF.pack (python tf.stack) 
-  -- https://github.com/onnx/onnx/blob/master/docs/Operators.md#concat
-  concat :: V n (t s a) -> t (n:s) a
-
-
-  -- https://www.tensorflow.org/xla/broadcasting
-  -- https://github.com/onnx/onnx/blob/master/docs/Broadcasting.md
-  -- Need a recursive typelevel function for Comp
-  -- https://github.com/onnx/onnx/blob/master/docs/Operators.md#Expand
-  bcast (Comp s s') :: t s e -> t s' e
 
 
 

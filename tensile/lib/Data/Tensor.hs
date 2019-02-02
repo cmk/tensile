@@ -16,21 +16,6 @@ import qualified Numeric.Dimensions as D
 
 import Data.Tensor.Types
 
-type Idxs ds = D.Idxs (Reverse ds)
-type Dims ds = D.Dims (Reverse ds)
-
---TODO: don't specialize to [Nat]
---      figure out how to reverse these lists!
---
-reverseIdxs :: Idxs ds -> D.Idxs (Reverse ds)
-reverseIdxs dims = unsafeCoerce# (reverse (unsafeCoerce# dims))
-{-# INLINE reverseIdxs #-}
-
-reverseDims :: Dims ds -> D.Dims (Reverse ds)
-reverseDims dims = unsafeCoerce# (reverse (unsafeCoerce# dims))
-{-# INLINE reverseDims #-}
-
-
 type T' s d = BVar s (T d)
 
 -- | return the a runtime shape representing the dimensions of a tensor.
