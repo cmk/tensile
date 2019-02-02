@@ -12,6 +12,13 @@
 {-# LANGUAGE UnboxedTuples          #-}
 {-# LANGUAGE UndecidableInstances, RankNTypes, AllowAmbiguousTypes, PolyKinds  #-}
 
+{-# LANGUAGE Rank2Types #-}
+{-# LANGUAGE KindSignatures#-} 
+{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE DefaultSignatures #-}
+{-# LANGUAGE ExistentialQuantification #-}
+{-# LANGUAGE DeriveFunctor #-}
+
 module Numeric.Tensile.Operations.Linear.Internal where
 
 import Data.Tensor.Types
@@ -21,7 +28,7 @@ import Control.Monad.ST
 import Control.Monad (void)
 
 import GHC.TypeLits
-import Numeric.Dimensions (TypedList(..), Dimensions(..), Idx(..), Idxs(..), Dims(..), Reverse)
+import Numeric.Dimensions (TypedList(..), Dimensions(..), Idx(..), Idxs(..), Dims(..), KnownDim(..), Reverse, Length)
 import qualified Data.Vector.Storable as V
 import qualified Data.Vector.Storable.Mutable as M
 import qualified Numeric.Dimensions as D
@@ -30,12 +37,111 @@ import Numeric.Type.Evidence
 
 import Debug.Trace
 import GHC.Base (unsafeCoerce#)
+import GHC.TypeNats
+
+import qualified Math.Combinat.Permutations as P
+
+import Data.Monoid
+
+import Control.Lens (Iso', from, view) -- TODO remove lens dep
+import Control.Lens.TH (makePrisms)
+import Data.Constraint
+import Data.Constraint.Unsafe
+import Data.Proxy
+import Data.Reflection
+-- TODO
+-- replace Vector t w/ Tensor t ds
+-- Perm n -> Dims ds -> Idxs ds - > Idxs ds
+
+{-
+newtype Lift p s a = Lift { lower :: a }
+   deriving (Functor)
+   
+
+makePrisms ''Lift
+
+newtype ProxyLift p a s = PLift { plower :: a }
+
+makePrisms ''ProxyLift 
 
 
 
+class ReifiableConstraint p where
+  data Def p a :: *
+  reifiedIns :: forall s a. Reifies s (Def p a) :- p (Lift p s a)
+--  default reifiedIns :: forall s a. p (Lift p s a)
+--                     => Reifies s (Def p a) :- p (Lift p s a)
+--  reifiedIns = Sub (Dict :: Reifies s (Def p a) 
+--                         => Dict (p (Lift p s a)))
 
+instance ReifiableConstraint Dimensions where
+  data Def Dimensions ds = Dimensions { dims_ :: Dims ds }
+  reifiedIns = Sub Dict
 
+instance Reifies s (Def Dimensions ds) => Dimensions (Lift Dimensions ds s) where
+  dims = ds where ds = Lift $ dims_ (reflect ds)
 
+--------------------------------------------------------------------------------
+-- Machinery
+
+flipS :: Iso' (Lift p s a) (ProxyLift p a s) 
+flipS = from lift . pLift
+
+with :: forall p a. Def p a -> (forall s. Reifies s (Def p a) => Lift p s a) -> a
+with d v = reify d (plower . asProxyOf (view flipS v))
+
+reifyInstance :: Def p a -> (forall (s :: *). Reifies s (Def p a) => Proxy s -> r) -> r
+reifyInstance = reify
+
+asProxyOf :: f s -> Proxy s -> f s
+asProxyOf a _ = a
+
+-- | Choose a dictionary for a local type class instance.
+--   
+--   >>> using (Monoid (+) 0) $ mempty <> 10 <> 12
+--   > 12
+--   
+using :: forall p a. ReifiableConstraint p => Def p a -> (p a => a) -> a
+using d m = reify d $ \(_ :: Proxy s) ->
+  let replaceProof :: Reifies s (Def p a) :- p a
+      replaceProof = trans proof reifiedIns
+        where proof = unsafeCoerceConstraint :: p (Lift p s a) :- p a
+  in m \\ replaceProof
+
+usingT :: forall p f a. ReifiableConstraint p => Def p a -> (p a => f a) -> f a
+usingT d m = reify d $ \(_ :: Proxy s) ->
+  let replaceProof :: Reifies s (Def p a) :- p a
+      replaceProof = trans proof reifiedIns
+        where proof = unsafeCoerceConstraint :: p (Lift p s a) :- p a
+  in m \\ replaceProof
+-}
+
+withDims :: forall ds r. Dims ds -> (Dimensions ds => Idxs ds -> r) -> r
+withDims = undefined
+{-
+
+p = P.transposition 12 (3,4)
+
+t :: Perm 12
+t = transposition 3 4
+-}
+
+instance KnownDim n => Semigroup (Perm n) where
+  (Perm p) <> (Perm q) = Perm $ P.multiply p q
+
+instance KnownDim n => Monoid (Perm n) where
+  mempty = Perm $ P.identity (fromIntegral $ D.dimVal' @n)
+
+newtype Perm (n :: Nat) = Perm P.Permutation deriving (Eq, Ord, Show)
+
+permuteIdx :: Perm (Length ds) -> Idxs ds -> Idxs ds
+permuteIdx (Perm p) = unsafeCoerce# . P.permuteList p . D.listIdxs
+
+-- TODO make this safe
+transposition :: forall n. KnownDim n => Int -> Int -> Perm n
+transposition i j = Perm $ P.transposition n' (i,j)
+  where
+    n' = fromIntegral $ D.dimVal' @n
 
 constant :: Storable t => Dims (ds :: [Nat]) -> t -> Vector t
 constant dims t = fill dims $ const t
@@ -62,12 +168,13 @@ fill' dims act = V.create $ do
 
 overDimIdx_ (dims @_ @'[2, 2, 3]) (\i -> print i >> print (fromEnum i))
 
-
+transpose :: forall t ds. (Storable t, Dimensions ds) => Dims ds ->  -> Vector t
 transpose ds p v = modifyIdx ds act v
   where swap' v i i' = M.swap v (fromEnum i) (fromEnum i') 
         act i v = swap' i (p i) v
 -}
 
+--TODO Dimensions / Dims arg are redundant
 fillIdx 
   :: forall t ds sd. Storable t
   => ds ~ Reverse sd
@@ -80,13 +187,35 @@ fillIdx dims act =
     D.Reverse dims' -> withEvidence (E :: Evidence (Dimensions sd)) $ fillIdx' dims' act
 
 fillIdx' :: forall t ds. (Storable t, Dimensions ds) => Dims ds -> (Idxs ds -> t) -> Vector t
-fillIdx' dims f = V.create $ do
-  mv <- M.new (fromIntegral $ D.totalDim dims)
+fillIdx' _ f = V.create $ do
+  mv <- M.new (fromIntegral $ D.totalDim' @ds)
   let act idxs = M.write mv (fromEnum idxs) $ f idxs
-  D.overDimIdx_ dims act
+  D.overDimIdx_ (dims @_ @ds) act
+  return mv
+
+
+
+fillIdx'' :: forall t ds. (Storable t, Dimensions ds) => (Idxs ds -> t) -> Vector t
+fillIdx'' f = V.create $ do
+  mv <- M.new (fromIntegral $ D.totalDim' @ds)
+  let act idxs = M.write mv (fromEnum idxs) $ f idxs
+  D.overDimIdx_ (dims @_ @ds) act
   return mv
 
 {-
+
+--TODO Dimensions / Dims arg are redundant
+fillIdx' :: forall t ds. Storable t => Dims ds -> (Dimensions ds => Idxs ds -> t) -> Vector t
+fillIdx' ds f = V.create $ do
+  mv <- M.new (fromIntegral $ D.totalDim ds)
+  let act idxs = M.write mv (fromEnum idxs) $ f idxs
+  D.overDimIdx_ ds act
+  return mv
+
+
+
+
+TODO add tests:
 > mod idxs m = M.swap m 0 (fromEnum idxs)
 > v = V.fromList [1..12]
 > v
@@ -94,17 +223,17 @@ fillIdx' dims f = V.create $ do
 > modifyIdx (dims @_ @'[2, 2, 3]) mod v
 [12.0,1.0,2.0,3.0,4.0,5.0,6.0,7.0,8.0,9.0,10.0,11.0]
 
-
+> modifyIdx (dims @_ @'[2, 2, 3]) (\_ m -> M.set m 0) v
+[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]
 -}
 
+--TODO Dimensions / Dims arg are redundant
 modifyIdx :: forall t ds. (Storable t, Dimensions ds) => Dims ds -> (forall s. Idxs ds -> M.MVector s t -> ST s ()) -> Vector t -> Vector t
 modifyIdx dims f = V.modify $ \mv -> do
   let act i = f i mv
   D.overDimIdx_ dims act
 
--- TODO
--- replace Vector t w/ Tensor t ds
--- Permutation ds -> Dims ds -> Idxs ds - > Idxs ds
+
 {-
 
 modify :: Storable a => (forall s. MVector s a -> ST s ()) -> Vector a -> Vector a

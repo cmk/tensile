@@ -66,7 +66,11 @@ library reference
         dimensions,
         easytensor,
         singletons,
-        vector
+        vector,
+        lens,
+        combinat,
+        reflection,
+        constraints
     default-language: Haskell2010
     default-extensions: ConstraintKinds DataKinds FlexibleContexts TypeApplications TypeFamilies TypeOperators ScopedTypeVariables OverloadedLists
 
