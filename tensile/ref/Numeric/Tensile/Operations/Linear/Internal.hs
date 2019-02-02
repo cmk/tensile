@@ -27,7 +27,7 @@ import Data.Vector.Storable (Vector(..), Storable(..))
 import Control.Monad.ST
 import Control.Monad (void)
 
-import GHC.TypeLits
+
 import Numeric.Dimensions (TypedList(..), Dimensions(..), Idx(..), Idxs(..), Dims(..), KnownDim(..), Reverse, Length)
 import qualified Data.Vector.Storable as V
 import qualified Data.Vector.Storable.Mutable as M
@@ -37,47 +37,50 @@ import Numeric.Type.Evidence
 
 import Debug.Trace
 import GHC.Base (unsafeCoerce#)
-import GHC.TypeNats
 
-import qualified Math.Combinat.Permutations as P
 
 import Data.Monoid
 import Data.Word
 
-import Data.Constraint
-import Data.Constraint.Unsafe
-import Data.Proxy
-import Data.Reflection
--- TODO
--- replace Vector t w/ Tensor t ds
--- Perm n -> Dims ds -> Idxs ds - > Idxs ds
 
-withDims :: forall ds r. Dims ds -> (Dimensions ds => Idxs ds -> r) -> r
-withDims = undefined
-{-
+---------------- Data.Dimensions
 
-p = P.transposition 12 (3,4)
+import GHC.TypeNats
+import qualified Math.Combinat.Permutations as P
 
-t :: Perm 12
-t = transposition 3 4
--}
 
-instance KnownDim n => Semigroup (Perm n) where
+instance Semigroup (Perm n) where
   (Perm p) <> (Perm q) = Perm $ P.multiply p q
 
-instance KnownDim n => Monoid (Perm n) where
-  mempty = Perm $ P.identity (fromIntegral $ D.dimVal' @n)
+instance KnownNat n => Monoid (Perm n) where
+  mempty = Perm $ P.identity (fromIntegral $ natVal @n undefined)
 
 newtype Perm (n :: Nat) = Perm P.Permutation deriving (Eq, Ord, Show)
 
-permuteIdx :: Perm (Length ds) -> Idxs ds -> Idxs ds
-permuteIdx (Perm p) = unsafeCoerce# . P.permuteList p . D.listIdxs
 
--- TODO make this safe
 transposition :: forall n. KnownDim n => Int -> Int -> Perm n
 transposition i j = Perm $ P.transposition n' (i,j)
   where
     n' = fromIntegral $ D.dimVal' @n
+
+transposition' 
+  :: forall i j n. KnownNat n
+  => KnownNat i
+  => KnownNat j
+  => i <= n
+  => j <= n
+  => Perm n
+transposition'  = Perm $ P.transposition n (i,j)
+  where
+    n = fromIntegral $ natVal @n undefined
+    i = fromIntegral $ natVal @i undefined
+    j = fromIntegral $ natVal @j undefined
+
+-----------------------
+
+-- TODO
+-- replace Vector t w/ Tensor t ds
+-- relocate general utils
 
 fromEnumD :: forall ds i. Integral i => Dims ds -> Idxs ds -> i
 fromEnumD dims = fromIntegral . go 1 dims
@@ -85,6 +88,11 @@ fromEnumD dims = fromIntegral . go 1 dims
     go :: forall ns . Word -> Dims ns -> Idxs ns -> Word
     go _ U U                     = 0
     go m (d :* ds) (Idx i :* is) = m * (i - 1) + go (m * D.dimVal d) ds is
+
+
+permuteIdx :: Perm (Length ds) -> Idxs ds -> Idxs ds
+permuteIdx (Perm p) = unsafeCoerce# . P.permuteList p . D.listIdxs
+
 
 
 constant :: Storable t => Dims (ds :: [Nat]) -> t -> Vector t
@@ -110,7 +118,7 @@ fill' dims act = V.create $ do
 > fillIdx' (dims @_ @'[2, 2, 3]) $ sum . listIdxs
 [3,4,4,5,4,5,5,6,5,6,6,7]
 
-overDimIdx_ (dims @_ @'[2, 2, 3]) (\i -> print i >> print (fromEnum i))
+overDimIdx_ d (\i -> print i >> print (fromEnumD d i) >> print (fromEnumD d $ permuteIdx tt i))
 
 transpose :: forall t ds. (Storable t, Dimensions ds) => Dims ds ->  -> Vector t
 transpose ds p v = modifyIdx ds act v
@@ -144,6 +152,7 @@ fillIdx' ds f = V.create $ do
   return mv
 
 
+mod dims idxs m = M.swap m (fromEnumD dims idxs) (fromEnumD dims $ permuteIdx tt idxs)
 
 
 TODO add tests:
@@ -164,7 +173,33 @@ modifyIdx dims f = V.modify $ \mv -> do
   let act i = f i mv
   D.overDimIdx_ dims act
 
+t :: Perm 12
+t = transposition 3 4
 
+tt :: Perm 2
+tt = transposition' @1 @2
+
+modd
+  :: (Storable a, Length ds ~ 2) =>
+     Dims (ds :: [Nat])
+     -> Idxs ds
+     -> V.MVector s a 
+     -> ST s ()
+modd dims idxs m = M.swap m (fromEnumD dims idxs) (fromEnumD dims $ permuteIdx tt idxs)
+
+modifyIdx' :: forall t (ds :: [Nat]) . Storable t => Dims ds -> (forall s.  Dims (Reverse ds) -> Idxs (Reverse ds) -> M.MVector s t -> ST s ()) -> Vector t -> Vector t
+modifyIdx' dims f = 
+  case dims of 
+    D.Reverse dims' -> V.modify mod
+      where
+        mod :: forall s. M.MVector s t -> ST s () 
+        mod mv = D.overDimIdx_ dims' $ \i -> f dims' i mv
+
+v :: Tensor Float '[3, 4]
+v = Tensor $ V.fromList [1..15]
+
+out :: Tensor Float '[4, 3]
+out = Tensor $ modifyIdx' (dims @_ @'[3,4]) modd (unTensor v)
 {-
 
 modify :: Storable a => (forall s. MVector s a -> ST s ()) -> Vector a -> Vector a
