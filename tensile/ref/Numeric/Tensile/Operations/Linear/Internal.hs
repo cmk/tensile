@@ -42,13 +42,22 @@ import GHC.Base (unsafeCoerce#)
 import Data.Monoid
 import Data.Word
 
-
+import Data.List (sort)
 ---------------- Data.Dimensions
 
 import GHC.TypeNats
 import qualified Math.Combinat.Permutations as P
 
+-- Data.Tensor.Dimension
+type family Order (xs :: [k]) :: Nat where
+    Order '[] = 0
+    Order (_ ': xs) = 1 + Order xs
 
+type family Size (xs :: [k]) :: Nat where
+    Size '[] = 1
+    Size (x ': xs) = x * Size xs
+
+-- Numeric.Tensile.Permutation
 instance Semigroup (Perm n) where
   (Perm p) <> (Perm q) = Perm $ P.multiply p q
 
@@ -60,6 +69,11 @@ newtype Perm (n :: Nat) = Perm P.Permutation deriving (Eq, Ord, Show)
 
 transposition :: forall n. KnownDim n => Int -> Int -> Perm n
 transposition i j = Perm $ P.transposition n' (i,j)
+  where
+    n' = fromIntegral $ D.dimVal' @n
+
+transpositionP :: forall n. KnownDim n => Int -> Int -> Perm n
+transpositionP i j = Perm $ P.transposition n' (i+1,j+1)
   where
     n' = fromIntegral $ D.dimVal' @n
 
@@ -76,24 +90,59 @@ transposition'  = Perm $ P.transposition n (i,j)
     i = fromIntegral $ natVal @i undefined
     j = fromIntegral $ natVal @j undefined
 
+transposition'' 
+  :: forall i j n. KnownNat n
+  => KnownNat i
+  => KnownNat j
+  => i <= n
+  => j <= n
+  => Perm n
+transposition''  = Perm $ P.transposition n (i+1,j+1)
+  where
+    n = fromIntegral $ natVal @n undefined
+    i = fromIntegral $ natVal @i undefined
+    j = fromIntegral $ natVal @j undefined
+
 -----------------------
+
+-- | Transform a permutation of tensor modes into a permutation of array indices.
+-- permute (lowerPerm p1) . permute (lowerPerm p2) == permute (lowerPerm $ p1 <> p2)
+lowerPerm 
+  :: forall ds. KnownNat (Size ds) 
+  => Dims ds 
+  -> Perm (Order ds) -- ^ Order-level permutation
+  -> (Dims ds -> Idxs ds -> Perm (Order ds) -> Perm (Size ds)) -- ^ Index filter
+  -> Perm (Size ds)  -- ^ Index-level permutation
+lowerPerm d p f = D.foldDimIdx d (\i p' -> p' <> f d i p) (mempty :: Perm (Size ds))
+
+-- minorToMajor = permute (lowerPerm reversal)
+-- see https://www.tensorflow.org/xla/shapes#minor-to-major_dimension_ordering
+
+reversal :: forall n. KnownNat n => Perm n
+reversal = Perm $ P.reversePermutation n
+  where n = fromIntegral $ natVal @n undefined
+
+-- Unsafe use w/ care
+permuteIdxs :: Perm (Order ds) -> Idxs ds -> Idxs ds
+permuteIdxs (Perm p) = unsafeCoerce# . P.permuteList p . D.listIdxs
+
+-- Unsafe use w/ care
+permuteDims :: Perm (Order ds) -> Dims ds -> Dims ds
+permuteDims (Perm p) = unsafeCoerce# . P.permuteList p . D.listDims
+
+reversed :: forall ds i. (Integral i, KnownNat (Order ds)) => Dims ds -> Idxs ds -> i
+reversed ds = fromEnumD ds . permuteIdxs (reversal :: Perm (Order ds)) 
 
 -- TODO
 -- replace Vector t w/ Tensor t ds
 -- relocate general utils
-
+-- consider undoing index offset here
 fromEnumD :: forall ds i. Integral i => Dims ds -> Idxs ds -> i
 fromEnumD dims = fromIntegral . go 1 dims
   where
     go :: forall ns . Word -> Dims ns -> Idxs ns -> Word
     go _ U U                     = 0
     go m (d :* ds) (Idx i :* is) = m * (i - 1) + go (m * D.dimVal d) ds is
-
-
-permuteIdx :: Perm (Length ds) -> Idxs ds -> Idxs ds
-permuteIdx (Perm p) = unsafeCoerce# . P.permuteList p . D.listIdxs
-
-
 
 constant :: Storable t => Dims (ds :: [Nat]) -> t -> Vector t
 constant dims t = fill dims $ const t
@@ -115,16 +164,26 @@ fill' dims act = V.create $ do
 
 > fillIdx (dims @_ @'[2, 2, 3]) $ sum . listIdxs
 [3,4,5,4,5,6,4,5,6,5,6,7]
+
 > fillIdx' (dims @_ @'[2, 2, 3]) $ sum . listIdxs
 [3,4,4,5,4,5,5,6,5,6,6,7]
 
-overDimIdx_ d (\i -> print i >> print (fromEnumD d i) >> print (fromEnumD d $ permuteIdx tt i))
+> baz (dims @_ @'[2, 2, 3]) $ sum . listIdxs
+[3,4,5,4,5,6,4,5,6,5,6,7]
 
-transpose :: forall t ds. (Storable t, Dimensions ds) => Dims ds ->  -> Vector t
-transpose ds p v = modifyIdx ds act v
-  where swap' v i i' = M.swap v (fromEnum i) (fromEnum i') 
-        act i v = swap' i (p i) v
+> foobar (dims @_ @'[2, 2, 3]) $ sum . listIdxs
+[3,4,4,5,4,5,5,6,5,6,6,7]
 -}
+
+-- TODO use this pattern
+baz :: forall t ds. (Storable t, KnownNat (Order ds)) => Dims ds -> (Idxs ds -> t) -> Vector t
+baz ds f = fillIdx' (pd ds) $ f -- . pi
+  where
+    pd = permuteDims (reversal :: Perm (Order ds))
+    --pi = permuteIdxs (reversal :: Perm (Order ds))
+
+foobar :: forall t ds. (Storable t, KnownNat (Order ds)) => Dims ds -> (Idxs ds -> t) -> Vector t
+foobar ds f = fillIdx' ds $ f . permuteIdxs (reversal :: Perm (Order ds)) 
 
 
 fillIdx 
@@ -143,16 +202,10 @@ fillIdx' dims f = V.create $ do
 
 {-
 
---TODO Dimensions / Dims arg are redundant
-fillIdx' :: forall t ds. Storable t => Dims ds -> (Dimensions ds => Idxs ds -> t) -> Vector t
-fillIdx' ds f = V.create $ do
-  mv <- M.new (fromIntegral $ D.totalDim ds)
-  let act idxs = M.write mv (fromEnum idxs) $ f idxs
-  D.overDimIdx_ ds act
-  return mv
 
 
-mod dims idxs m = M.swap m (fromEnumD dims idxs) (fromEnumD dims $ permuteIdx tt idxs)
+
+mod dims idxs m = M.swap m (fromEnumD dims idxs) (fromEnumD dims $ permuteIdxs tt idxs)
 
 
 TODO add tests:
@@ -180,14 +233,15 @@ tt :: Perm 2
 tt = transposition' @1 @2
 
 modd
-  :: (Storable a, Length ds ~ 2) =>
+  :: (Storable a, Order ds ~ 2) =>
      Dims (ds :: [Nat])
      -> Idxs ds
      -> V.MVector s a 
      -> ST s ()
-modd dims idxs m = M.swap m (fromEnumD dims idxs) (fromEnumD dims $ permuteIdx tt idxs)
+modd dims idxs m = if ord idxs then M.swap m (fromEnumD dims idxs) (fromEnumD dims $ permuteIdxs tt idxs) else return ()
+  where ord idxs = sort (D.listIdxs idxs) == D.listIdxs idxs
 
-modifyIdx' :: forall t (ds :: [Nat]) . Storable t => Dims ds -> (forall s.  Dims (Reverse ds) -> Idxs (Reverse ds) -> M.MVector s t -> ST s ()) -> Vector t -> Vector t
+modifyIdx' :: forall t (ds :: [Nat]) . Storable t => Dims ds -> (forall s. Dims (Reverse ds) -> Idxs (Reverse ds) -> M.MVector s t -> ST s ()) -> Vector t -> Vector t
 modifyIdx' dims f = 
   case dims of 
     D.Reverse dims' -> V.modify mod
@@ -195,12 +249,37 @@ modifyIdx' dims f =
         mod :: forall s. M.MVector s t -> ST s () 
         mod mv = D.overDimIdx_ dims' $ \i -> f dims' i mv
 
-v :: Tensor Float '[3, 4]
-v = Tensor $ V.fromList [1..15]
+v :: Tensor Float '[3, 3]
+v = Tensor $ V.fromList [0..8]
 
-out :: Tensor Float '[4, 3]
-out = Tensor $ modifyIdx' (dims @_ @'[3,4]) modd (unTensor v)
+-- TODO fix we are swapping twice!
+out :: Tensor Float '[3, 3]
+out = Tensor $ modifyIdx' (dims @_ @'[3,3]) modd (unTensor v)
+
+d = (dims @_ @'[3,3])
+
+foo (Perm t) = P.permutationToDisjointCycles $ t
+
+
+maybeSwap :: forall ds. KnownNat (Size ds) => Dims ds -> Idxs ds -> Perm (Order ds) -> Perm (Size ds)
+maybeSwap d idxs p = if ord idxs then p' else (mempty :: Perm (Size ds))
+  where
+    p' = Perm $ P.transposition td ((fromEnumD d idxs)+1,(fromEnumD d $ permuteIdxs p idxs)+1)
+    ord idxs = sort (D.listIdxs idxs) == D.listIdxs idxs
+    td = fromIntegral $ D.totalDim d
 {-
+
+p = toRowMajor d tt maybeSwap
+> p = D.foldDimIdx d (\i p -> p <> maybeSwap d i) mempty
+> p
+Perm (toPermutation [1,4,7,2,5,8,3,6,9])
+> foo p
+DisjointCycles [[2,4],[3,7],[6,8]]
+
+overDimIdx_ d (\i -> print (fromEnumD d i, fromEnumD d $ permuteIdxs tt i) )
+
+
+
 
 modify :: Storable a => (forall s. MVector s a -> ST s ()) -> Vector a -> Vector a
 swap :: (PrimMonad m, Storable a) => MVector (PrimState m) a -> Int -> Int -> m () Source#
@@ -208,12 +287,6 @@ swap :: (PrimMonad m, Storable a) => MVector (PrimState m) a -> Int -> Int -> m 
 
 foldIdx = undefined
 
-foldIdx' :: forall t ds. (Storable t, Dimensions ds) => Dims ds -> (Idxs ds -> t -> t) -> Vector t 
-foldIdx' dims act = V.create $ do
-  v <- M.new (fromIntegral $ D.totalDim dims)
-  let f i = M.write v (fromEnum i) $ act i
-  D.overDimIdx_ dims f
-  return v
 
 overDimIdx_ :: Monad m
             => Dims ds -- ^ Shape of a space
@@ -232,6 +305,7 @@ foldDimIdx :: Dims ds -- ^ Shape of a space
            -> (Idxs ds -> a -> a) -- ^ Function to call on each dimension
            -> a -- ^ Initial value
            -> a
+
 
 
 -- Use for matmul??
