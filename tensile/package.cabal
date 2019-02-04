@@ -67,7 +67,8 @@ library reference
         easytensor,
         singletons,
         vector,
-        combinat
+        combinat,
+        reflection
     default-language: Haskell2010
     default-extensions: ConstraintKinds DataKinds FlexibleContexts TypeApplications TypeFamilies TypeOperators ScopedTypeVariables OverloadedLists
 
