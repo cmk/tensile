@@ -25,7 +25,8 @@ import Data.Tensor.Types
 import Data.Tensor.Internal.Array
 import Data.Vector.Storable (Vector(..), Storable(..))
 import Control.Monad.ST (ST(..))
-import Numeric.Dimensions (TypedList(..), Dimensions(..), Idx(..), Idxs(..), Dims(..), KnownDim(..), Reverse, Length)
+import Numeric.Dimensions (Nat, TypedList(..), Dimensions(..), Idx(..), Idxs(..), Dims(..), Dim(..), KnownDim(..), Reverse, Length)
+import Numeric.Dim
 
 import qualified Data.Vector.Storable as V
 import qualified Data.Vector.Storable.Mutable as M
@@ -39,13 +40,13 @@ import Data.Word
 
 ---------------- Data.Dimensions
 
-import GHC.TypeNats
+-- import GHC.TypeNats
 import qualified Math.Combinat.Permutations as P
 
 -- Numeric.Tensile.Dimensions
 --
 
-import Data.Reflection
+-- import Data.Reflection hiding (KnownNat(..))
 import Data.Singletons.Prelude.List (Sort(..))
 import Data.Proxy
 import Unsafe.Coerce (unsafeCoerce)
@@ -61,6 +62,11 @@ type family Size (xs :: [k]) :: Nat where
 type Permutable ds ds' = (Sort ds ~ Sort ds')
 type Reshapable ds ds' = (Size ds ~ Size ds')
 
+class Reifies s a | s -> a where
+  -- | Recover a value inside a 'reify' context, given a proxy for its
+  -- reified type.
+  reflect :: proxy s -> a
+
 instance Dimensions (ds :: [Nat]) => Reifies ds (Dims ds) where
   reflect _ = dims
 
@@ -69,6 +75,13 @@ newtype MagicDims r = MagicDims (forall (ds :: [Nat]). Dimensions ds => Proxy ds
 reifyDims :: forall r. [Word] -> (forall (ds :: [Nat]). Dimensions ds => Proxy ds -> r) -> r
 reifyDims ds k = unsafeCoerce (MagicDims k :: MagicDims r) ds Proxy
 
+instance KnownDim (d :: Nat) => Reifies d (Dim d) where
+  reflect _ = dim
+
+newtype MagicDim r = MagicDim (forall (d :: Nat). KnownDim d => Proxy d -> r)
+
+reifyDim :: forall r. Word -> (forall (d :: Nat). KnownDim d => Proxy d -> r) -> r
+reifyDim d k = unsafeCoerce (MagicDim k :: MagicDim r) d Proxy
 
 -- | Remaps the index argument to the index with the same 'Int' representation under the permuted dimensions.
 remapIdxs 
@@ -80,6 +93,7 @@ remapIdxs
 remapIdxs (Perm p) ds ix f = 
   reifyDims (P.permuteList p $ D.listDims ds) $ \ds' -> 
     f (reflect ds') (toIdxs (reflect ds') . fromIdxs ds $ ix)
+
 
 
 
@@ -135,7 +149,7 @@ Idxs [3,3,2]
 -- test -
 
 re :: Perm (Rank '[2, 3, 3])
-re = reversal'
+re = reversal
 
 a :: Idxs '[2, 3, 3]
 a = fromJust $ idxsFromWords [2, 1, 3]  
@@ -187,10 +201,6 @@ D.overDimIdx_ f (\i -> remapIdxs re f i (\_ j -> print j))
 
 -}
 
--- TODO
--- replace Vector t w/ Tensor t ds
--- relocate general utils
--- consider undoing index offset here
 majorToMinor :: forall ds i. Integral i => Dims ds -> Idxs ds -> i
 majorToMinor dims = fromIntegral . go 1 dims
   where
@@ -198,13 +208,27 @@ majorToMinor dims = fromIntegral . go 1 dims
     go _ U U                     = 0
     go m (d :* ds) (Idx i :* is) = m * (i - 1) + go (m * D.dimVal d) ds is
 
-
--- NOTE unless you're using enum you dont need to reverse idxs
 minorToMajor :: forall ds i. Integral i => Dims ds -> Idxs ds -> i
 minorToMajor d i = majorToMinor (reversed d) (reversed i)
 
--- TODO these are col-major yet everything still works, why?
-toIdxs :: Dims ds -> Int -> Idxs ds
+fromIdxs :: forall ds i. Integral i => Dims ds -> Idxs ds -> i
+fromIdxs = minorToMajor
+
+toIdxs :: forall ds i. Integral i => Dims ds -> i -> Idxs ds
+toIdxs dsd i = go dsd $ fromIntegral i
+  where
+    go :: forall ns . Dims ns -> Word -> Idxs ns
+    go U 0 = U
+    go U _ = error ("Idxs " ++ show (D.listDims dsd))
+    go (T.Snoc ds d) off = case divMod off (D.dimVal d) of
+      (off', j) -> go ds off' `T.snoc` Idx (j+1)
+
+
+
+
+
+{-
+toIdxs :: forall ds i. Integral i => Dims ds -> i -> Idxs ds
 toIdxs dds i = go dds $ fromIntegral i
   where
     go :: forall ns . Dims ns -> Word -> Idxs ns
@@ -213,23 +237,6 @@ toIdxs dds i = go dds $ fromIntegral i
     go (d :* ds) off = case divMod off (D.dimVal d) of
       (off', j) -> Idx (j+1) :* go ds off'
 
-fromIdxs :: Dims ds -> Idxs ds -> Int
-fromIdxs dds = fromIntegral . go 1 dds
-  where
-    go :: forall ns . Word -> Dims ns -> Idxs ns -> Word
-    go _ U U                     = 0
-    go m (d :* ds) (Idx i :* is) = m * (i - 1) + go (m * D.dimVal d) ds is
-
-{-
-
-toIdxs :: Dims ds -> Int -> Idxs ds
-toIdxs dsd i = go dsd $ fromIntegral i
-  where
-    go :: forall ns . Dims ns -> Word -> Idxs ns
-    go U 0 = U
-    go U _ = error ("Idxs " ++ show (D.listDims dsd))
-    go (T.Snoc ds d) off = case divMod off (D.dimVal d) of
-      (off', j) -> go ds off' `T.snoc` Idx (j+1)
 
 --TODO why wont this compile
 fromIdxs :: Dims ds -> Idxs ds -> Int
@@ -314,8 +321,8 @@ overDimIdx_ (T.Snoc ds d) k = overDimIdx_ ds k'
 instance Semigroup (Perm n) where
   (Perm p) <> (Perm q) = Perm $ P.multiply p q
 
-instance KnownNat n => Monoid (Perm n) where
-  mempty = Perm $ P.identity (fromIntegral $ natVal @n undefined)
+instance KnownDim n => Monoid (Perm n) where
+  mempty = Perm $ P.identity (fromIntegral $ D.dimVal' @n)
 
 newtype Perm (n :: Nat) = Perm { unPerm :: P.Permutation } deriving (Eq, Ord, Show)
 
@@ -325,7 +332,7 @@ cycles (Perm t) = P.permutationToDisjointCycles $ t
 -- | Transform a permutation of tensor modes into a permutation of array indices.
 -- transpose (lowerPerm p1) . transpose (lowerPerm p2) == transpose (lowerPerm $ p1 <> p2)
 lowerPerm 
-  :: forall ds. KnownNat (Size ds) 
+  :: forall ds. KnownDim (Size ds) 
   => Dims ds 
   -> Perm (Rank ds) -- ^ Rank-level permutation
   -> (Dims ds -> Idxs ds -> Perm (Rank ds) -> Perm (Size ds)) -- ^ Index filter
@@ -334,7 +341,7 @@ lowerPerm d p f = D.foldDimIdx d (\i p' -> p' <> f d i p) (mempty :: Perm (Size 
 
 {-
 lowerPerm'
-  :: forall ds. KnownNat (Size ds) 
+  :: forall ds. KnownDim (Size ds) 
   => (Dims ds' -> Idxs ds' -> Perm (Rank ds) -> Perm (Rank ds))
   -> Dims ds 
   -> Perm (Rank ds) -- ^ Rank-level permutation
@@ -352,7 +359,7 @@ lowerPerm' d p f = D.foldDimIdx d (\i p' -> p' <> f d i p) (mempty :: Perm (Size
 -- otherwise consider using the raw index folds and lowerPerm???
 -- could also create :  Perm ds ds'
 
--- minorToMajor = transpose (lowerPerm reversal')
+-- minorToMajor = transpose (lowerPerm reversal)
 -- see https://www.tensorflow.org/xla/shapes#minor-to-major_dimension_ordering
 
 
@@ -366,16 +373,43 @@ permuted (Perm p) = unsafeCoerce . P.permuteList p . unsafeCoerce
 reversed :: TypedList f ds -> TypedList f ds'
 reversed = unsafeCoerce . reverse . unsafeCoerce 
 
-reversal :: Word -> Perm n
-reversal n = Perm $ P.reversePermutation (fromIntegral n)
+reversal :: forall n. KnownDim n => Perm n
+reversal = Perm $ P.reversePermutation n
+  where n = fromIntegral $ D.dimVal' @n 
 
-reversal' :: forall n. KnownNat n => Perm n
-reversal' = Perm $ P.reversePermutation n
-  where n = fromIntegral $ natVal @n Proxy
+reversal' :: Word -> Perm n
+reversal' n = Perm $ P.reversePermutation (fromIntegral n)
 
+transposition' :: forall n. KnownDim n => Word -> Word -> Maybe (Perm n)
+transposition' i j = if i <= n' && j <= n' then Just p else Nothing
+  where
+    p = Perm $ P.transposition n (fromIntegral i, fromIntegral j)
+    n = fromIntegral $ D.dimVal' @n 
+    n' = fromIntegral n
+
+{-
+transposition'' :: Word -> Word -> Word -> Maybe (Perm n)
+transposition'' n i j = 
+  reifyDim n $ \n ->
+    reifyDim i $ \i -> 
+      reifyDim j $ \j -> transposition' (reflect i) (reflect j)
+
+-- TODO clean up type sig
+transposition
+  :: forall i j n. (i <= n, j <= n)
+  => (KnownDim i, KnownDim j, KnownDim n) --All KnownDim [i,j,n]
+  => Perm n
+transposition = Perm $ P.transposition n (i,j)
+  where
+    n = fromIntegral $ D.dimVal' @n 
+    i = fromIntegral $ D.dimVal' @i 
+    j = fromIntegral $ D.dimVal' @j 
 
 --ttt :: Perm 3
---ttt = transposition' @2 @3
+--ttt = transposition @2 @3
+
+-}
+
 
 
 reshape 
@@ -396,6 +430,9 @@ transpose p (Tensor v) = Tensor v'
            remapIdxs p d i $ \d' i' -> 
              M.modify m (const $ v V.! fromIdxs d' (permuted p i)) (fromIdxs d' i')
 
+
+fromScalar :: Elt t => t -> Tensor t '[]
+fromScalar = constant (D.dims @_ @'[])
 
 constant :: Elt t => Dims ds -> t -> Tensor t ds
 constant dims t = fill dims $ const t
@@ -459,25 +496,29 @@ w' = fill d233 $ minorToMajor d233 :: Vector Int -- row major
 --test - transposing a matrix
 --
 re :: Perm (Rank '[2, 4])
-re = reversal'
+re = reversal
 
 d24 = (dims @_ @'[2, 4])
 d42 = (dims @_ @'[4, 2])
 
-t :: Tensor Int '[4, 2]
-t = fill d42 $ majorToMinor d42 -- col major
+t :: Tensor Int '[2, 4]
+t = fill d24 $ majorToMinor d24 -- col major
 
 t' :: Tensor Int '[2, 4] 
 t' = fill d24 $ minorToMajor d24 -- row major
 
-res = transpose re t' :: Tensor Int '[4, 2]
+t'' :: Tensor Int '[4, 2] 
+t'' = fill d42 $ minorToMajor d42 -- row major
 
-transpose t' == t && transpose t == t'
+res = reshape t :: Tensor Int '[4, 2]
+res' = transpose re t' :: Tensor Int '[4, 2]
+
+transpose t' == reshape t && transpose t == reshape t'
 
 --test - reversing a cube
 
 re :: Perm (Rank '[3, 3, 3])
-re = reversal'
+re = reversal
 
 d333 = (dims @_ @'[3,3,3])
 
@@ -490,7 +531,7 @@ t' = fill d333 $ minorToMajor d333 -- row major
 res :: Tensor Int '[3, 3, 3] 
 res = transpose re t'
 
-transpose re t' == t && transpose re t == t'
+transpose re t' == reshape t && transpose re t == reshape t'
 
 
 
