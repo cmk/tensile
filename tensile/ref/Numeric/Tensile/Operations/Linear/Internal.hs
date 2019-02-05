@@ -45,6 +45,9 @@ import Data.Word
 
 import Data.Maybe (fromJust)
 import Data.List (sort)
+
+import Data.Singletons.Prelude.Eq -- ((==))
+import Data.Singletons.Prelude.Bool --((&&))
 ---------------- Data.Dimensions
 
 import GHC.TypeNats
@@ -56,37 +59,44 @@ import Data.Reflection
 import Data.Proxy
 import Unsafe.Coerce (unsafeCoerce)
 
-type family Order (xs :: [k]) :: Nat where
-    Order '[] = 0
-    Order (_ ': xs) = 1 + Order xs
+type family Rank (xs :: [k]) :: Nat where
+    Rank '[] = 0
+    Rank (_ ': xs) = 1 + Rank xs
 
 type family Size (xs :: [k]) :: Nat where
     Size '[] = 1
     Size (x ': xs) = x * Size xs
 
+type Permutable ds ds'= (Rank ds ~ Rank ds', Size ds ~ Size ds')
+
 instance Dimensions (ds :: [Nat]) => Reifies ds (Dims ds) where
   reflect _ = dims
-
---reify :: a -> (forall s. Reifies s a => Proxy s -> r) -> r
-
---reify d233 $ \p -> D.totalDim' $ reflect p
 
 newtype MagicDims r = MagicDims (forall (ds :: [Nat]). Dimensions ds => Proxy ds -> r)
 
 reifyDims :: forall r. [Word] -> (forall (ds :: [Nat]). Dimensions ds => Proxy ds -> r) -> r
 reifyDims ds k = unsafeCoerce (MagicDims k :: MagicDims r) ds Proxy
 
-newtype MagicDim r = MagicDim (forall (n :: Nat). KnownDim n => Proxy n -> r)
 
-reifyDim :: forall r. Word -> (forall (n :: Nat). KnownDim n => Proxy n -> r) -> r
-reifyDim d k = unsafeCoerce (MagicDim k :: MagicDim r) d Proxy
+-- | Remaps the index argument to the index with the same 'Int' representation under the permuted dimensions.
+remapIdxs 
+  :: forall r (ds :: [Nat]). Perm (Rank ds) 
+  -> Dims ds 
+  -> Idxs ds 
+  -> (forall (ds' :: [Nat]). Dims ds' -> Idxs ds' -> r) 
+  -> r
+remapIdxs (Perm p) ds ix f = 
+  reifyDims (P.permuteList p $ D.listDims ds) $ \ds' -> 
+    f (reflect ds') (toIdxs (reflect ds') . fromIdxs ds $ ix)
 
-remapIdxs :: forall r (sd :: [Nat]). Perm (Order sd) -> Dims sd -> Idxs sd -> (forall (ds :: [Nat]). Dimensions ds => Dims ds -> Idxs ds -> r) -> r
-remapIdxs p sd ix f = reifyDims (permuteDims p sd) $ \p -> f (reflect p) (toIdxs (reflect p) . fromIdxs sd $ ix)
 
 
 {-
-<D-]>
+
+--reify :: a -> (forall s. Reifies s a => Proxy s -> r) -> r
+
+reify d233 $ \p -> D.totalDim' $ reflect p
+
 reifyDims (reverse [2,3,3]) $ \p -> overDimIdx_ (reflect p) print
 > reifyDims (reverse [2,3,3]) $ \p -> D.overDimIdx_ (reflect p) print
 Idxs [1,1,1]
@@ -130,8 +140,8 @@ Idxs [3,3,2]
 
 
 
-re :: Perm (Order '[2, 3, 3])
-re = reversal
+re :: Perm (Rank '[2, 3, 3])
+re = reversal'
 
 a :: Idxs '[2, 3, 3]
 a = fromJust $ idxsFromWords [2, 1, 3]  
@@ -182,6 +192,23 @@ D.overDimIdx_ f (\i -> remapIdxs re f i (\_ j -> print j))
 
 
 -}
+
+-- TODO
+-- replace Vector t w/ Tensor t ds
+-- relocate general utils
+-- consider undoing index offset here
+majorToMinor :: forall ds i. Integral i => Dims ds -> Idxs ds -> i
+majorToMinor dims = fromIntegral . go 1 dims
+  where
+    go :: forall ns . Word -> Dims ns -> Idxs ns -> Word
+    go _ U U                     = 0
+    go m (d :* ds) (Idx i :* is) = m * (i - 1) + go (m * D.dimVal d) ds is
+
+
+-- NOTE unless you're using enum you dont need to reverse idxs
+minorToMajor :: forall ds i. Integral i => Dims ds -> Idxs ds -> i
+minorToMajor d i = majorToMinor (reversed d) (reversed i)
+
 
 toIdxs :: Dims ds -> Int -> Idxs ds
 toIdxs dds i = go dds $ fromIntegral i
@@ -287,6 +314,8 @@ overDimIdx_ (T.Snoc ds d) k = overDimIdx_ ds k'
           | otherwise = k (is `T.snoc` Idx i) >> go (i+1)
 
 
+-----------------------
+
 -- Numeric.Tensile.Permutation
 instance Semigroup (Perm n) where
   (Perm p) <> (Perm q) = Perm $ P.multiply p q
@@ -297,154 +326,95 @@ instance KnownNat n => Monoid (Perm n) where
 newtype Perm (n :: Nat) = Perm { unPerm :: P.Permutation } deriving (Eq, Ord, Show)
 
 
-
------------------------
+cycles (Perm t) = P.permutationToDisjointCycles $ t
 
 -- | Transform a permutation of tensor modes into a permutation of array indices.
--- permute (lowerPerm p1) . permute (lowerPerm p2) == permute (lowerPerm $ p1 <> p2)
+-- transpose (lowerPerm p1) . transpose (lowerPerm p2) == transpose (lowerPerm $ p1 <> p2)
 lowerPerm 
   :: forall ds. KnownNat (Size ds) 
   => Dims ds 
-  -> Perm (Order ds) -- ^ Order-level permutation
-  -> (Dims ds -> Idxs ds -> Perm (Order ds) -> Perm (Size ds)) -- ^ Index filter
+  -> Perm (Rank ds) -- ^ Rank-level permutation
+  -> (Dims ds -> Idxs ds -> Perm (Rank ds) -> Perm (Size ds)) -- ^ Index filter
   -> Perm (Size ds)  -- ^ Index-level permutation
 lowerPerm d p f = D.foldDimIdx d (\i p' -> p' <> f d i p) (mempty :: Perm (Size ds))
 
 {-
 lowerPerm'
   :: forall ds. KnownNat (Size ds) 
-  => (Dims ds' -> Idxs ds' -> Perm (Order ds) -> Perm (Order ds))
+  => (Dims ds' -> Idxs ds' -> Perm (Rank ds) -> Perm (Rank ds))
   -> Dims ds 
-  -> Perm (Order ds) -- ^ Order-level permutation
-  -> Perm (Order ds)  -- ^ Index-level permutation
+  -> Perm (Rank ds) -- ^ Rank-level permutation
+  -> Perm (Rank ds)  -- ^ Index-level permutation
 lowerPerm' d p f = D.foldDimIdx d (\i p' -> p' <> f d i p) (mempty :: Perm (Size ds))
 -}
 -- f :: (Dims ds' -> Perm n -> Perm n) -> Perm n -> Tensor t ds -> Tensor t ds'
 -- f dim2Idx perm t = Tensor $ reifyDims (permuteDims perm (dims @_ @ds)) $ \p ->
 --   modifyIdx (reflect p) (modify (permuteIdxs (dim2Idx (reflect p) perm) _)) (reflect p)) t -- basically make user derive the Idxs ds' -> Idxs ds'
 
--- dim2Idx :: Order ds ~ n => Dims ds -> Perm n -> Perm n
+-- dim2Idx :: Rank ds ~ n => Dims ds -> Perm n -> Perm n
 -- takes a perm on dimensions and derives a perm in indices, eg
 -- dim2Idx d p = lowerPerm' ...
 -- --
 -- otherwise consider using the raw index folds and lowerPerm???
 -- could also create :  Perm ds ds'
-{-
-permute 
-  :: forall ds ds' n t. Storable t
-  => KnownNat n
-  => Dimensions ds
-  => Order ds ~ n
-  => Order ds' ~ n
-  => Perm n -> Tensor t ds -> Tensor t ds'
-permute p (Tensor t) = Tensor $ reifyDims (permuteDims p (dims @_ @ds)) $ \p ->
-  modifyIdx (reflect p) (modify (filterIdx' triangular' reverseIdxs) (reflect p)) t
--}
--- minorToMajor = permute (lowerPerm reversal)
+
+-- minorToMajor = transpose (lowerPerm reversal')
 -- see https://www.tensorflow.org/xla/shapes#minor-to-major_dimension_ordering
 
-reversal :: forall n. KnownNat n => Perm n
-reversal = Perm $ P.reversePermutation n
-  where n = fromIntegral $ natVal @n undefined
+
+--------------------------------------
+--
 
 
--- Unsafe use w/ care
-unsafePermuteIdxs :: Perm (Order ds) -> Idxs ds -> Idxs ds
-unsafePermuteIdxs (Perm p) = unsafeCoerce# . P.permuteList p . D.listIdxs
+permuted :: Perm (Rank ds) -> TypedList f ds -> TypedList f ds'
+permuted (Perm p) = unsafeCoerce# . P.permuteList p . unsafeCoerce# 
 
-{-
- - > d233 = (dims @_ @'[2,3,4])
-> permuteDims ttt d233
-Dims [2,4,3]
-> :t permuteDims ttt d233
-permuteDims ttt d233 :: Dims '[2, 3, 4]
--}
--- Unsafe use w/ care
-permuteDims :: Perm (Order ds) -> Dims ds -> [Word]
-permuteDims (Perm p) = P.permuteList p . D.listDims
+reversed :: TypedList f ds -> TypedList f ds'
+reversed = unsafeCoerce# . reverse . unsafeCoerce# 
 
--- Unsafe use w/ care
-reverseDims :: Dims ds -> Dims sd
-reverseDims = unsafeCoerce# . reverse . D.listDims
+reversal :: Word -> Perm n
+reversal n = Perm $ P.reversePermutation (fromIntegral n)
 
-reverseIdxs :: Idxs ds -> Idxs sd
-reverseIdxs = unsafeCoerce# . reverse . D.listIdxs
-
-reverse' :: TypedList f sd -> TypedList f sd
-reverse' = unsafeCoerce# . reverse . unsafeCoerce# 
+reversal' :: forall n. KnownNat n => Perm n
+reversal' = Perm $ P.reversePermutation n
+  where n = fromIntegral $ natVal @n Proxy
 
 
--- TODO
--- replace Vector t w/ Tensor t ds
--- relocate general utils
--- consider undoing index offset here
-majorToMinor :: forall ds i. Integral i => Dims ds -> Idxs ds -> i
-majorToMinor dims = fromIntegral . go 1 dims
+--ttt :: Perm 3
+--ttt = transposition' @2 @3
+
+-- type Permutable ds ds' = Rank ds == Rank ds' && Size ds == Size ds'
+
+
+
+transpose 
+  :: forall t ds ds'. Storable t 
+  => Dimensions ds
+  => Permutable ds ds'
+  => Perm (Rank ds) -> Tensor t ds -> Tensor t ds'
+transpose p (Tensor v) = Tensor v'
   where
-    go :: forall ns . Word -> Dims ns -> Idxs ns -> Word
-    go _ U U                     = 0
-    go m (d :* ds) (Idx i :* is) = m * (i - 1) + go (m * D.dimVal d) ds is
+    d = D.dims @_ @ds
+    v' = modifyIdxs d v $ \i m -> 
+           remapIdxs p d i $ \d' i' -> 
+             M.modify m (const $ v V.! fromIdxs d' (permuted p i)) (fromIdxs d' i')
 
-
--- NOTE unless you're using enum you dont need to reverse idxs
-
-minorToMajor :: forall ds i. Integral i => Dims ds -> Idxs ds -> i
-minorToMajor d i = majorToMinor (reverseDims d) (reverseIdxs i)
 
 constant :: Storable t => Dims (ds :: [Nat]) -> t -> Vector t
 constant dims t = fill dims $ const t
 
-fill :: Storable t => Dims (ds :: [Nat]) -> (Int -> t) -> Vector t
+fill :: Storable t => Dims ds -> (Int -> t) -> Vector t
 fill dims act = 
   case dims of 
     D.Reverse dims' -> fill' dims act
    
-fill' :: Storable t => Dims (ds :: [Nat]) -> (Int -> t) -> Vector t
+fill' :: Storable t => Dims ds -> (Int -> t) -> Vector t
 fill' dims act = V.create $ do
   v <- M.new (fromIntegral $ D.totalDim dims)
   let f i = M.write v i $ act i
   D.overDimOff_ dims f 0 1 -- either control the offset ourselves or fix type issues
   return v
 
-
-{-
-
-
-> fillIdx' (dims @_ @'[2, 3, 3]) $ sum . listIdxs
-[3,4,4,5,5,6,4,5,5,6,6,7,5,6,6,7,7,8]
-
-> reversed d233 $ sum . listIdxs
-[3,4,5,4,5,6,5,6,7,4,5,6,5,6,7,6,7,8]
-> reversed233 d233 $ sum . listIdxs
-[3,4,5,4,5,6,5,6,7,4,5,6,5,6,7,6,7,8]
-
-
-> V.map (+1) $ reversed d233 (majorToMinor d233) :: Vector Int
-[1,7,13,3,9,15,5,11,17,2,8,14,4,10,16,6,12,18]
-
-V.map (+1) $ shuffled e d233 (majorToMinor d233) :: Vector Int
-
-
-fillIdx d233 $ sum . listIdxs
-
-[1,7,13,3,9,15,5,11,17,2,8,14,4,10,16,6,12,18]
-
--- TODO use this pattern
-reversed :: forall t ds. (Storable t, KnownNat (Order ds)) => Dims ds -> (Idxs ds -> t) -> Vector t
-reversed = shuffled (reversal :: Perm (Order ds))
-
-shuffled :: forall t ds. (Storable t) => Perm (Order ds) -> Dims ds -> (Idxs ds -> t) -> Vector t
-shuffled p ds f = fillIdx' (permuteDims p ds) $ f . unsafePermuteIdxs p
-
--}
-
-
-fillIdx 
-  :: forall t ds. Storable t
-  => Dims ds -> (Idxs (Reverse ds) -> t) -> Vector t
-fillIdx dims act = 
-  case dims of 
-    D.Reverse dims' -> fillIdx' dims' act
 
 fillIdx' :: forall t ds. Storable t => Dims ds -> (Idxs ds -> t) -> Vector t
 fillIdx' dims f = V.create $ do
@@ -462,98 +432,36 @@ fillIdx'' dims f = V.create $ do
 
 {-
 
-mod dims idxs m = M.swap m (majorToMinor dims idxs) (majorToMinor dims $ unsafePermuteIdxs tt idxs)
-
-
 TODO add tests:
-> mod idxs m = M.swap m 0 (fromEnum idxs)
+> mod ds idxs m = M.swap m 0 (fromIdxs ds idxs)
 > v = V.fromList [1..12]
 > v
 [1.0,2.0,3.0,4.0,5.0,6.0,7.0,8.0,9.0,10.0,11.0,12.0]
-> modifyIdx (dims @_ @'[2, 2, 3]) mod v
+> modifyIdxs (dims @_ @'[2, 2, 3]) v $ mod (dims @_ @'[2, 2, 3])
 [12.0,1.0,2.0,3.0,4.0,5.0,6.0,7.0,8.0,9.0,10.0,11.0]
 
-> modifyIdx (dims @_ @'[2, 2, 3]) (\_ m -> M.set m 0) v
+> modifyIdxs (dims @_ @'[2, 2, 3]) v (\_ m -> M.set m 0)
 [0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]
+
+
+
+modifyIdxs' :: forall t ds. Storable t => Dims ds -> (forall s. Idxs ds -> M.MVector s t -> ST s ()) -> Vector t -> Vector t
+modifyIdxs' dims f = V.modify $ \mv -> overDimIdx_ dims (\i -> f i mv)
+
+modifyIdxs :: forall t ds. Storable t => Dims ds -> Tensor t ds -> (forall s. Idxs ds -> M.MVector s t -> ST s ()) -> Tensor t ds
+modifyIdxs ds (Tensor v) f = Tensor $ modifyIdxs' dims f v
 -}
 
 
-modifyIdx :: forall t ds. Storable t => Dims ds -> (forall s. Idxs ds -> M.MVector s t -> ST s ()) -> Vector t -> Vector t
-modifyIdx dims f = V.modify $ \mv -> do
-  let act i = f i mv
-  overDimIdx_ dims act
+modifyIdxs' :: forall t ds. Storable t => Dims ds -> (forall s. Idxs ds -> M.MVector s t -> ST s ()) -> Vector t -> Vector t
+modifyIdxs' dims f = V.modify $ \mv -> overDimIdx_ dims (\i -> f i mv)
 
-
-{-
---typesafe version
-modifyIdx' :: forall t ds . Storable t => Dims ds -> (forall s. Dims (Reverse ds) -> Idxs (Reverse ds) -> M.MVector s t -> ST s ()) -> Vector t -> Vector t
-modifyIdx' dims f = 
-  case dims of 
-    D.Reverse dims' -> V.modify mod
-      where
-        mod :: forall s. M.MVector s t -> ST s () 
-        mod mv = overDimIdx_ dims' $ \i -> f dims' i mv
-
--}
+modifyIdxs :: forall t ds. Storable t => Dims ds -> Vector t -> (forall s. Idxs ds -> M.MVector s t -> ST s ()) -> Vector t
+modifyIdxs dims v f = modifyIdxs' dims f v
 
 
 
 
-cycles (Perm t) = P.permutationToDisjointCycles $ t
-
-
-triangular :: forall ds. KnownNat (Size ds) => Dims ds -> Idxs ds -> Perm (Order ds) -> Perm (Size ds)
-triangular d idxs p = if ord idxs then p' else (mempty :: Perm (Size ds))
-  where
-    p' = Perm $ P.transposition td ((majorToMinor d idxs)+1,(majorToMinor d $ unsafePermuteIdxs p idxs)+1)
-    ord idxs = sort (D.listIdxs idxs) == D.listIdxs idxs
-    td = fromIntegral $ D.totalDim d
-
-filterIdx 
-  :: (Idxs ds -> Bool)
-  -> Perm (Order ds) 
-  -> Idxs ds 
-  -> Idxs ds
-filterIdx c p i = if c i then i' else i where i' = unsafePermuteIdxs p i
-   
-filterIdx'
-  :: (Idxs ds -> Bool)
-  -> (Idxs ds -> Idxs ds)
-  -> Idxs ds 
-  -> Idxs ds
-filterIdx' c f i = if c i then i else f i
-
-
-debug :: Dims ds -> Perm (Order ds) -> (Perm (Order ds) -> Idxs ds -> Idxs ds) -> IO ()
-debug d p f = overDimIdx_ d $ \i -> 
-  unless False (print (minorToMajor d i, minorToMajor d (f p i))) 
-
-debug' :: (KnownNat n) => Dims ds -> Perm n -> (Perm n -> Idxs ds -> Idxs ds) -> IO ()
-debug' d p f = overDimIdx_ d $ \i -> 
-  unless False (print (minorToMajor d i, minorToMajor d (f p i))) 
-
-idd :: KnownNat n => proxy n -> Perm n
-idd _ = mempty
-
-
-
-modify :: forall t ds s. Storable t => (Idxs ds -> Idxs ds) -> Dims ds -> Idxs ds -> M.MVector s t -> ST s ()
-modify p d i m = M.swap m (minorToMajor d (p i)) (minorToMajor d i)
-
-
-triangular'' :: Idxs ds -> Bool
-triangular'' i = sort (tail $ D.listIdxs i) == tail (D.listIdxs i)
-
-
-re :: Perm (Order '[2, 4])
-re = reversal
-
-f = (dims @_ @'[2,4])
-sq = V.map (+1) $ fillIdx'' f $ minorToMajor f :: Vector Int -- row major
-sq' = modifyIdx f (\i m -> remapIdxs re f i (\f' i' -> M.swap m (fromIdxs f i) (fromIdxs f' i'))) sq  :: Vector Int 
-
-foo :: Vector Int -> Vector Int
-foo v = modifyIdx f (\i m -> remapIdxs re f i (\f' i' -> M.modify m (const $ v V.! (fromIdxs f' (unsafeCoerce (reverseIdxs i))) ) (fromIdxs f' i'))) v
 
 
 {- unit tests
@@ -563,90 +471,47 @@ foo v = modifyIdx f (\i m -> remapIdxs re f i (\f' i' -> M.modify m (const $ v V
 d233 = (dims @_ @'[2,3,3])
 d332 = (dims @_ @'[3,3,2])
 
-d333 = (dims @_ @'[3,3,3])
-
-e :: Perm 3
-e = mempty
-
-rev :: Perm 3
-rev = reversal 
-
 ttt :: Perm 3
-ttt = transposition' @2 @3
-
-triangular' :: Idxs ds -> Bool
-triangular' i = sort (D.listIdxs i) == D.listIdxs i
-
-
+ttt = transposition @2 @3
 
 w = V.map (+1) $ fillIdx'' d233 $ majorToMinor d233 :: Vector Int -- col major
 w' = V.map (+1) $ fillIdx'' d233 $ minorToMajor d233 :: Vector Int -- row major
 
 
-v = V.map (+1) $ fillIdx'' d333 $ majorToMinor d333 :: Vector Int -- col major
---[1,10,19,4,13,22,7,8,25,2,11,12,5,14,23,16,17,26,3,20,21,6,15,24,9,18,27]
 
-v' = V.map (+1) $ fillIdx'' d333 $ minorToMajor d333 :: Vector Int -- row major
---[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27]
+--test - transposing a matrix
+--
+re :: Perm (Rank '[2, 4])
+re = reversal'
 
+d24 = (dims @_ @'[2, 4])
 
---test 0
+t :: Tensor Int '[2, 4]
+t = Tensor $ V.map (+1) $ fillIdx'' d24 $ majorToMinor d24 -- col major
 
-x <- gen
+t' :: Tensor Int '[2, 4] 
+t' = Tensor $ V.map (+1) $ fillIdx'' d24 $ minorToMajor d24 -- row major
 
-res = modifyIdx d233 (modify (filterIdx triangular'' e) d233) x
+res = transpose re t' :: Tensor Int '[4, 2]
 
-res == x
-
-y   = reifyDims (reverse . D.listDims $ d233) $ \p -> 
-        modifyIdx (reflect p) $ \i ->
-          reifyDims (reverse . D.listIdxs $ i) $ \q -> 
-            (modify (if triangular' i then i else (reflect q)) (reflect p))
-
-
-
+transpose t' == t && transpose t == t'
 
 --test - reversing a cube
 
-t :: Tensor Int '[3,3,3]
-t = Tensor $ V.map (+1) $ fillIdx'' (dims @_ @'[3,3,3]) $ minorToMajor (dims @_ @'[3,3,3]) 
+re :: Perm (Rank '[3, 3, 3])
+re = reversal'
 
-tr :: Tensor Int '[3,3,3]
-tr = Tensor $ V.map (+1) $ fillIdx'' (dims @_ @'[3,3,3]) $ majorToMinor (dims @_ @'[3,3,3]) 
+d333 = (dims @_ @'[3,3,3])
 
-t' :: Tensor Int '[3,3,3]
-t' = permute reversal t 
+t :: Tensor Int '[3, 3, 3] 
+t = Tensor $ V.map (+1) $ fillIdx'' d333 $ majorToMinor d333 -- col major
 
-v = V.map (+1) $ fillIdx'' d333 $ majorToMinor d333 :: Vector Int -- col major
-[1,10,19,4,13,22,7,8,25,2,11,12,5,14,23,16,17,26,3,20,21,6,15,24,9,18,27] -- t'
+t' :: Tensor Int '[3, 3, 3] 
+t' = Tensor $ V.map (+1) $ fillIdx'' d333 $ minorToMajor d333 -- row major
 
-[1,10,19,4,13,22,7,8,25,2,11,12,5,14,23,16,17,26,3,20,21,6,15,24,9,18,27] -- res
-
-[1,10,19,4,13,22,7,16,25,2,11,20,5,14,23,8,17,26,3,12,21,6,15,24,9,18,27] --tr
-
-[1,10,19,4,13,22,7,16,25,2,11,20,5,14,23,8,17,26,3,12,21,6,15,24,9,18,27] --v
+transpose re t' == t && transpose re t == t'
 
 
---16,8,20,12??
--- whats going on here ^
-
-v' = V.map (+1) $ fillIdx'' d333 $ minorToMajor d333 :: Vector Int -- row major
-[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27]
-
-res = reifyDims (reverse . D.listDims $ d333) $ \p ->  modifyIdx (reflect p) (modify (filterIdx' triangular' reverseIdxs) (reflect p)) v'
-
-res === v
-
---test - reversing a non-cube
-
-w = V.map (+1) $ fillIdx'' d332 $ majorToMinor d332 :: Vector Int -- col major
-w' = V.map (+1) $ fillIdx'' d233 $ minorToMajor d233 :: Vector Int -- row major
-> w
-[1,7,13,3,9,15,5,11,17,2,8,14,4,10,16,6,12,18]
-> w'
-[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18]
-
-res = reifyDims (reverse . D.listDims $ d233) $ \p ->  modifyIdx (reflect p) (modify (filterIdx' triangular' reverseIdxs) (reflect p)) w'
 
 --test 2:
 
@@ -654,14 +519,14 @@ res = modifyIdx d233 (modify (filterIdx triangular'' ttt) d233) w'
 res == [1,4,7,2,5,8,3,6,9,10,13,16,11,14,17,12,15,18]
 
 
---test 3:
+--test 
 a :: Maybe (Idxs '[2, 3, 3])
 a = idxsFromWords [2, 1, 1]  
 
 b :: Maybe (Idxs '[2, 3, 3])
 b = idxsFromWords [2, 3, 3] 
 
-check :: Dims ds -> Idxs ds -> Idxs ds -> Perm (Order ds) -> (Perm (Order ds) -> Idxs ds -> Idxs ds) -> [(Int, Int)]
+check :: Dims ds -> Idxs ds -> Idxs ds -> Perm (Rank ds) -> (Perm (Rank ds) -> Idxs ds -> Idxs ds) -> [(Int, Int)]
 check d i j p f = foldDimPartIdx i j acc []
   where 
     acc i l = if (i/=f p i) then (1 + minorToMajor d i, 1 + minorToMajor d (f p i)) : l else l
@@ -673,109 +538,10 @@ res == Just [(11,13),(12,16),(15,17)]
 
 -}
 
+
+
+
 {-
-
-> debug d233 rev $ filterIdx triangular'
-(0,0)
-(9,9)
-(3,3)
-(12,12)
-(6,6)
-(15,15)
-(1,9)
-(10,10)
-(4,12)
-(13,13)
-(7,7)
-(16,16)
-(2,18) --
-(11,11)
-(5,21)
-(14,22)
-(8,24)
-(17,25)
-
-> modifyIdx d233 (modify (filterIdx triangular' rev) d233) w'
-Idxs [1,1,1] - 0
-Idxs [2,1,1] - 9 
-Idxs [1,2,1] - 3
-Idxs [2,2,1] - 12
-Idxs [1,3,1] - 6
-Idxs [2,3,1] - 15
-Idxs [1,1,2] - 1
-Idxs [2,1,2] - 10
-Idxs [1,2,2] - 4
-Idxs [2,2,2] - 13
-Idxs [1,3,2] - 7
-Idxs [2,3,2] - 16
-Idxs [1,1,3] - 2
-
-> lowerPerm d233 ttt triangular
-Perm {unPerm = toPermutation [1,2,7,4,13,6,3,8,9,10,15,16,5,14,11,12,17,18]}
-
-> lowerPerm d233 ttt' triangular
-Perm {unPerm = toPermutation [1,2,3,4,5,6,7,9,8,10,11,12,13,15,17,16,18,14]}
-
-> lowerPerm d (reversal :: Perm 2) triangular
-Perm (toPermutation [1,4,7,2,5,8,3,6,9])
-
-p = D.foldDimIdx d233 (\i p -> p <> triangular d233 i ttt) mempty
-> p
-> foo p
-DisjointCycles [[2,4],[3,7],[6,8]]
-
-
-
-
-
-modify :: Storable a => (forall s. MVector s a -> ST s ()) -> Vector a -> Vector a
-swap :: (PrimMonad m, Storable a) => MVector (PrimState m) a -> Int -> Int -> m () Source#
-
-
-foldIdx = undefined
-
-
-overDimIdx_ :: Monad m
-            => Dims ds -- ^ Shape of a space
-            -> (Idxs ds -> m ()) -- ^ Function to call on each dimension
-            -> m ()
-
-overDimIdx :: Monad m
-           => Dims ds -- ^ Shape of a space
-           -> (Idxs ds -> a -> m a) -- ^ Function to call on each dimension
-           -> a -- ^ Initial value
-           -> m a
-
-
--- | Fold over all dimensions keeping track of index
-foldDimIdx :: Dims ds -- ^ Shape of a space
-           -> (Idxs ds -> a -> a) -- ^ Function to call on each dimension
-           -> a -- ^ Initial value
-           -> a
-
-
--- Use for matmul??
---
---
--- | Traverse from the first index to the second index in each dimension.
---   You can combine positive and negative traversal directions
---   along different dimensions.
---
---   Note, initial and final indices are included in the range;
---   the argument function is guaranteed to execute at least once.
-overDimPartIdx :: Monad m
-               => Idxs ds -- ^ Initial indices
-               -> Idxs ds -- ^ Final indices
-               -> (Idxs ds -> a -> m a)
-                          -- ^ Function to call on each dimension
-               -> a       -- ^ initial value
-               -> m a
-overDimPartIdx U U k = k U
-
-
-Swap the elements at the given positions.
-
-
 
 gen# 
   :: forall s t ds. PrimBytes t 
