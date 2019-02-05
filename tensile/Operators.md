@@ -483,14 +483,7 @@ softmax
 softmax = softmaxN (dim :: Dim 0)
 
 
-  shape :: (KnownShape s, Len s ~ n, Elt e) => T t s e -> V n Int
-  shape = 
 
-  constant :: (KnownShape s, Len s ~ n, Size s ~ n', Elt e) => V n' e -> T t s e
-  -- constant v = fill $ const v
-
-  -- forces a denotation of data ordering (e.g. row-major, col-major etc)
-  fill :: Monad m => (Idxs s -> e) -> m (T t s e)
 
 
   -- contract 

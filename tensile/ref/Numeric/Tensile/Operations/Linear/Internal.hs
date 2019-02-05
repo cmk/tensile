@@ -24,11 +24,9 @@ module Numeric.Tensile.Operations.Linear.Internal where
 import Data.Tensor.Types
 import Data.Tensor.Internal.Array
 import Data.Vector.Storable (Vector(..), Storable(..))
-import Control.Monad.ST
-import Control.Monad (void, unless)
-
-
+import Control.Monad.ST (ST(..))
 import Numeric.Dimensions (TypedList(..), Dimensions(..), Idx(..), Idxs(..), Dims(..), KnownDim(..), Reverse, Length)
+
 import qualified Data.Vector.Storable as V
 import qualified Data.Vector.Storable.Mutable as M
 import qualified Numeric.Dimensions as D hiding (idxsFromWords) -- broken function
@@ -36,18 +34,9 @@ import qualified Numeric.Dimensions as D hiding (idxsFromWords) -- broken functi
 import Numeric.Type.Evidence
 import qualified Numeric.TypedList as T
 
-import Debug.Trace
-import GHC.Base (unsafeCoerce#)
-
-
 import Data.Monoid
 import Data.Word
 
-import Data.Maybe (fromJust)
-import Data.List (sort)
-
-import Data.Singletons.Prelude.Eq -- ((==))
-import Data.Singletons.Prelude.Bool --((&&))
 ---------------- Data.Dimensions
 
 import GHC.TypeNats
@@ -55,7 +44,9 @@ import qualified Math.Combinat.Permutations as P
 
 -- Numeric.Tensile.Dimensions
 --
+
 import Data.Reflection
+import Data.Singletons.Prelude.List (Sort(..))
 import Data.Proxy
 import Unsafe.Coerce (unsafeCoerce)
 
@@ -67,7 +58,8 @@ type family Size (xs :: [k]) :: Nat where
     Size '[] = 1
     Size (x ': xs) = x * Size xs
 
-type Permutable ds ds'= (Rank ds ~ Rank ds', Size ds ~ Size ds')
+type Permutable ds ds' = (Sort ds ~ Sort ds')
+type Reshapable ds ds' = (Size ds ~ Size ds')
 
 instance Dimensions (ds :: [Nat]) => Reifies ds (Dims ds) where
   reflect _ = dims
@@ -92,6 +84,8 @@ remapIdxs (Perm p) ds ix f =
 
 
 {-
+ -
+-- test -
 
 --reify :: a -> (forall s. Reifies s a => Proxy s -> r) -> r
 
@@ -138,7 +132,7 @@ Idxs [3,2,2]
 Idxs [3,3,1]
 Idxs [3,3,2]
 
-
+-- test -
 
 re :: Perm (Rank '[2, 3, 3])
 re = reversal'
@@ -209,7 +203,7 @@ majorToMinor dims = fromIntegral . go 1 dims
 minorToMajor :: forall ds i. Integral i => Dims ds -> Idxs ds -> i
 minorToMajor d i = majorToMinor (reversed d) (reversed i)
 
-
+-- TODO these are col-major yet everything still works, why?
 toIdxs :: Dims ds -> Int -> Idxs ds
 toIdxs dds i = go dds $ fromIntegral i
   where
@@ -247,7 +241,7 @@ fromIdxs dsd = fromIntegral . go 1 dsd
 -}
 
 idxsFromWords :: forall ds . Dimensions ds => [Word] -> Maybe (Idxs ds)
-idxsFromWords = unsafeCoerce# . go (D.listDims (D.dims @_ @ds))
+idxsFromWords = unsafeCoerce . go (D.listDims (D.dims @_ @ds))
   where
     go [] [] = Just []
     go (d : ds) (i : is)
@@ -367,10 +361,10 @@ lowerPerm' d p f = D.foldDimIdx d (\i p' -> p' <> f d i p) (mempty :: Perm (Size
 
 
 permuted :: Perm (Rank ds) -> TypedList f ds -> TypedList f ds'
-permuted (Perm p) = unsafeCoerce# . P.permuteList p . unsafeCoerce# 
+permuted (Perm p) = unsafeCoerce . P.permuteList p . unsafeCoerce
 
 reversed :: TypedList f ds -> TypedList f ds'
-reversed = unsafeCoerce# . reverse . unsafeCoerce# 
+reversed = unsafeCoerce . reverse . unsafeCoerce 
 
 reversal :: Word -> Perm n
 reversal n = Perm $ P.reversePermutation (fromIntegral n)
@@ -383,12 +377,15 @@ reversal' = Perm $ P.reversePermutation n
 --ttt :: Perm 3
 --ttt = transposition' @2 @3
 
--- type Permutable ds ds' = Rank ds == Rank ds' && Size ds == Size ds'
 
-
+reshape 
+  :: forall t ds ds'. Elt t 
+  => Reshapable ds ds'
+  => Tensor t ds -> Tensor t ds'
+reshape = unsafeCoerce
 
 transpose 
-  :: forall t ds ds'. Storable t 
+  :: forall t ds ds'. Elt t 
   => Dimensions ds
   => Permutable ds ds'
   => Perm (Rank ds) -> Tensor t ds -> Tensor t ds'
@@ -400,37 +397,29 @@ transpose p (Tensor v) = Tensor v'
              M.modify m (const $ v V.! fromIdxs d' (permuted p i)) (fromIdxs d' i')
 
 
-constant :: Storable t => Dims (ds :: [Nat]) -> t -> Vector t
+constant :: Elt t => Dims ds -> t -> Tensor t ds
 constant dims t = fill dims $ const t
 
-fill :: Storable t => Dims ds -> (Int -> t) -> Vector t
-fill dims act = 
-  case dims of 
-    D.Reverse dims' -> fill' dims act
-   
-fill' :: Storable t => Dims ds -> (Int -> t) -> Vector t
-fill' dims act = V.create $ do
-  v <- M.new (fromIntegral $ D.totalDim dims)
-  let f i = M.write v i $ act i
-  D.overDimOff_ dims f 0 1 -- either control the offset ourselves or fix type issues
-  return v
-
-
-fillIdx' :: forall t ds. Storable t => Dims ds -> (Idxs ds -> t) -> Vector t
-fillIdx' dims f = V.create $ do
-  mv <- M.new (fromIntegral $ D.totalDim dims)
-  let act idxs = M.write mv (majorToMinor dims idxs) $ f idxs
-  D.overDimIdx_ dims act
-  return mv
-
-fillIdx'' :: forall t ds. Storable t => Dims ds -> (Idxs ds -> t) -> Vector t
-fillIdx'' dims f = V.create $ do
+fill :: forall t ds. Elt t => Dims ds -> (Idxs ds -> t) -> Tensor t ds
+fill dims f = Tensor $ V.create $ do
   mv <- M.new (fromIntegral $ D.totalDim dims)
   let act idxs = M.write mv (minorToMajor dims idxs) $ f idxs
   overDimIdx_ dims act
   return mv
 
 {-
+
+fill :: Elt t => Dims ds -> (Int -> t) -> Vector t
+fill dims act = 
+  case dims of 
+    D.Reverse dims' -> fill' dims act
+   
+fill' :: Elt t => Dims ds -> (Int -> t) -> Vector t
+fill' dims act = V.create $ do
+  v <- M.new (fromIntegral $ D.totalDim dims)
+  let f i = M.write v i $ act i
+  D.overDimOff_ dims f 0 1 -- either control the offset ourselves or fix type issues
+  return v
 
 TODO add tests:
 > mod ds idxs m = M.swap m 0 (fromIdxs ds idxs)
@@ -443,23 +432,11 @@ TODO add tests:
 > modifyIdxs (dims @_ @'[2, 2, 3]) v (\_ m -> M.set m 0)
 [0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]
 
-
-
-modifyIdxs' :: forall t ds. Storable t => Dims ds -> (forall s. Idxs ds -> M.MVector s t -> ST s ()) -> Vector t -> Vector t
-modifyIdxs' dims f = V.modify $ \mv -> overDimIdx_ dims (\i -> f i mv)
-
-modifyIdxs :: forall t ds. Storable t => Dims ds -> Tensor t ds -> (forall s. Idxs ds -> M.MVector s t -> ST s ()) -> Tensor t ds
-modifyIdxs ds (Tensor v) f = Tensor $ modifyIdxs' dims f v
 -}
 
 
-modifyIdxs' :: forall t ds. Storable t => Dims ds -> (forall s. Idxs ds -> M.MVector s t -> ST s ()) -> Vector t -> Vector t
-modifyIdxs' dims f = V.modify $ \mv -> overDimIdx_ dims (\i -> f i mv)
-
 modifyIdxs :: forall t ds. Storable t => Dims ds -> Vector t -> (forall s. Idxs ds -> M.MVector s t -> ST s ()) -> Vector t
-modifyIdxs dims v f = modifyIdxs' dims f v
-
-
+modifyIdxs dims v f = V.modify (\mv -> overDimIdx_ dims (\i -> f i mv)) v
 
 
 
@@ -474,8 +451,8 @@ d332 = (dims @_ @'[3,3,2])
 ttt :: Perm 3
 ttt = transposition @2 @3
 
-w = V.map (+1) $ fillIdx'' d233 $ majorToMinor d233 :: Vector Int -- col major
-w' = V.map (+1) $ fillIdx'' d233 $ minorToMajor d233 :: Vector Int -- row major
+w = fill d233 $ majorToMinor d233 :: Vector Int -- col major
+w' = fill d233 $ minorToMajor d233 :: Vector Int -- row major
 
 
 
@@ -485,12 +462,13 @@ re :: Perm (Rank '[2, 4])
 re = reversal'
 
 d24 = (dims @_ @'[2, 4])
+d42 = (dims @_ @'[4, 2])
 
-t :: Tensor Int '[2, 4]
-t = Tensor $ V.map (+1) $ fillIdx'' d24 $ majorToMinor d24 -- col major
+t :: Tensor Int '[4, 2]
+t = fill d42 $ majorToMinor d42 -- col major
 
 t' :: Tensor Int '[2, 4] 
-t' = Tensor $ V.map (+1) $ fillIdx'' d24 $ minorToMajor d24 -- row major
+t' = fill d24 $ minorToMajor d24 -- row major
 
 res = transpose re t' :: Tensor Int '[4, 2]
 
@@ -504,10 +482,13 @@ re = reversal'
 d333 = (dims @_ @'[3,3,3])
 
 t :: Tensor Int '[3, 3, 3] 
-t = Tensor $ V.map (+1) $ fillIdx'' d333 $ majorToMinor d333 -- col major
+t = fill d333 $ majorToMinor d333 -- col major
 
 t' :: Tensor Int '[3, 3, 3] 
-t' = Tensor $ V.map (+1) $ fillIdx'' d333 $ minorToMajor d333 -- row major
+t' = fill d333 $ minorToMajor d333 -- row major
+
+res :: Tensor Int '[3, 3, 3] 
+res = transpose re t'
 
 transpose re t' == t && transpose re t == t'
 
