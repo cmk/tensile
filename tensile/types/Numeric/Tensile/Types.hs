@@ -4,14 +4,14 @@
 {-# LANGUAGE FunctionalDependencies #-}
 {-# LANGUAGE InstanceSigs           #-}
 {-# LANGUAGE MultiParamTypeClasses  #-}
-{-# LANGUAGE PolyKinds              #-}
 {-# LANGUAGE UndecidableInstances   #-}  
 module Numeric.Tensile.Types (
   Data.Singletons.Prelude.List.Sort,
+  Numeric.TypedList.TypedList(..),
+  Numeric.TypedList.snoc,
   module Numeric.Dim,
   module Numeric.Dimensions.Dims,
   module Numeric.Type.Evidence,
-  module Numeric.TypedList, 
   module Numeric.Tensile.Types
 ) where
 

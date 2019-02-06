@@ -1,4 +1,3 @@
-{-# LANGUAGE PolyKinds  #-}
 module Numeric.Tensile.Index (
   module Numeric.Dimensions.Idxs,
   module Numeric.Tensile.Index 

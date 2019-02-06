@@ -1,3 +1,4 @@
+{-
 {-# LANGUAGE DataKinds              #-}
 {-# LANGUAGE FlexibleContexts       #-}
 {-# LANGUAGE FlexibleInstances      #-}
@@ -17,7 +18,7 @@
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE DefaultSignatures #-}
 {-# LANGUAGE ExistentialQuantification #-}
-{-# LANGUAGE DeriveFunctor #-}
+-}
 
 module Numeric.Tensile.Operations.Linear.Internal where
 
@@ -25,325 +26,18 @@ import Data.Tensor.Types
 import Data.Tensor.Internal.Array
 import Data.Vector.Storable (Vector(..), Storable(..))
 import Control.Monad.ST (ST(..))
-import Numeric.Dimensions (Nat, TypedList(..), Dimensions(..), Idx(..), Idxs(..), Dims(..), Dim(..), KnownDim(..), Reverse, Length)
-import Numeric.Dim
+import Numeric.Tensile.Types
+import Numeric.Tensile.Index
+import Numeric.Tensile.Permutation
+import Unsafe.Coerce (unsafeCoerce)
 
 import qualified Data.Vector.Storable as V
 import qualified Data.Vector.Storable.Mutable as M
-import qualified Numeric.Dimensions as D hiding (idxsFromWords) -- broken function
-
-import Numeric.Type.Evidence
-import qualified Numeric.TypedList as T
-
-import Data.Monoid
-import Data.Word
-
----------------- Data.KnownDims
-
--- import GHC.TypeNats
-import qualified Math.Combinat.Permutations as P
-
--- Numeric.Tensile.Dimensions
---
-
--- import Data.Reflection hiding (KnownNat(..))
-import Data.Singletons.Prelude.List (Sort(..))
-import Data.Proxy
-import Unsafe.Coerce (unsafeCoerce)
 
 
-impossible :: a
-impossible = error "Numeric.Tensile: impossible"
-
-type family Rank (xs :: [k]) :: Nat where
-    Rank '[] = 0
-    Rank (_ ': xs) = 1 + Rank xs
-
-type family Size (xs :: [k]) :: Nat where
-    Size '[] = 1
-    Size (x ': xs) = x * Size xs
-
-type KnownDims = Dimensions
-
-type Permutable ds ds' = (Sort ds ~ Sort ds')
-type Reshapable ds ds' = (Size ds ~ Size ds')
-
-class Reifies s a | s -> a where
-  -- | Recover a value inside a 'reify' context, given a proxy for its
-  -- reified type.
-  reflect :: proxy s -> a
-
-instance KnownDims (ds :: [Nat]) => Reifies ds (Dims ds) where
-  reflect _ = dims
-
-newtype MagicDims r = MagicDims (forall (ds :: [Nat]). KnownDims ds => Proxy ds -> r)
-
-reifyDims :: forall r. [Word] -> (forall (ds :: [Nat]). KnownDims ds => Proxy ds -> r) -> r
-reifyDims ds k = unsafeCoerce (MagicDims k :: MagicDims r) ds Proxy
-
-instance KnownDim (d :: Nat) => Reifies d (Dim d) where
-  reflect _ = dim
-
-newtype MagicDim r = MagicDim (forall (d :: Nat). KnownDim d => Proxy d -> r)
-
-reifyDim :: forall r. Word -> (forall (d :: Nat). KnownDim d => Proxy d -> r) -> r
-reifyDim d k = unsafeCoerce (MagicDim k :: MagicDim r) d Proxy
-
--- | Remaps the index argument to the index with the same 'Int' representation under the permuted dimensions.
-remapIdxs 
-  :: forall r (ds :: [Nat]). Perm (Rank ds) 
-  -> Dims ds 
-  -> Idxs ds 
-  -> (forall (ds' :: [Nat]). Dims ds' -> Idxs ds' -> r) 
-  -> r
-remapIdxs (Perm p) ds ix f = 
-  reifyDims (P.permuteList p $ D.listDims ds) $ \ds' -> 
-    f (reflect ds') (toIdxs (reflect ds') . fromIdxs ds $ ix)
+-- import Data.Word
 
 
-
-
-{-
- -
--- test -
-
---reify :: a -> (forall s. Reifies s a => Proxy s -> r) -> r
-
-reify d233 $ \p -> D.totalDim' $ reflect p
-
-reifyDims (reverse [2,3,3]) $ \p -> overDimIdx_ (reflect p) print
-> reifyDims (reverse [2,3,3]) $ \p -> D.overDimIdx_ (reflect p) print
-Idxs [1,1,1]
-Idxs [2,1,1]
-Idxs [3,1,1]
-Idxs [1,2,1]
-Idxs [2,2,1]
-Idxs [3,2,1]
-Idxs [1,3,1]
-Idxs [2,3,1]
-Idxs [3,3,1]
-Idxs [1,1,2]
-Idxs [2,1,2]
-Idxs [3,1,2]
-Idxs [1,2,2]
-Idxs [2,2,2]
-Idxs [3,2,2]
-Idxs [1,3,2]
-Idxs [2,3,2]
-Idxs [3,3,2]
-
-> reifyDims (reverse [2,3,3]) $ \p -> Numeric.Tensile.Operations.Linear.Internal.overDimIdx_ (reflect p) print
-Idxs [1,1,1]
-Idxs [1,1,2]
-Idxs [1,2,1]
-Idxs [1,2,2]
-Idxs [1,3,1]
-Idxs [1,3,2]
-Idxs [2,1,1]
-Idxs [2,1,2]
-Idxs [2,2,1]
-Idxs [2,2,2]
-Idxs [2,3,1]
-Idxs [2,3,2]
-Idxs [3,1,1]
-Idxs [3,1,2]
-Idxs [3,2,1]
-Idxs [3,2,2]
-Idxs [3,3,1]
-Idxs [3,3,2]
-
--- test -
-
-re :: Perm (Rank '[2, 3, 3])
-re = reversal
-
-a :: Idxs '[2, 3, 3]
-a = fromJust $ idxsFromWords [2, 1, 3]  
-
-> D.overDimIdx_ (dims @_ @'[2,3,3]) print
-Idxs [1,1,1]
-Idxs [2,1,1]
-Idxs [1,2,1]
-Idxs [2,2,1]
-Idxs [1,3,1]
-Idxs [2,3,1]
-Idxs [1,1,2]
-Idxs [2,1,2]
-Idxs [1,2,2]
-Idxs [2,2,2]
-Idxs [1,3,2]
-Idxs [2,3,2]
-Idxs [1,1,3]
-Idxs [2,1,3]
-Idxs [1,2,3]
-Idxs [2,2,3]
-Idxs [1,3,3]
-Idxs [2,3,3]
-
-> D.overDimIdx_ (dims @_ @'[2,3,3]) (\i -> remapIdxs re (dims @_ @'[2,3,3]) i print)
-Idxs [1,1,1]
-Idxs [2,1,1]
-Idxs [3,1,1]
-Idxs [1,2,1]
-Idxs [2,2,1]
-Idxs [3,2,1]
-Idxs [1,3,1]
-Idxs [2,3,1]
-Idxs [3,3,1]
-Idxs [1,1,2]
-Idxs [2,1,2]
-Idxs [3,1,2]
-Idxs [1,2,2]
-Idxs [2,2,2]
-Idxs [3,2,2]
-Idxs [1,3,2]
-Idxs [2,3,2]
-Idxs [3,3,2]
-
-D.overDimIdx_ f print
-D.overDimIdx_ f (\i -> remapIdxs re f i (\_ j -> print j))
-
-
-
--}
-
-majorToMinor :: forall ds i. Integral i => Dims ds -> Idxs ds -> i
-majorToMinor dims = fromIntegral . go 1 dims
-  where
-    go :: forall ns . Word -> Dims ns -> Idxs ns -> Word
-    go _ U U                     = 0
-    go m (d :* ds) (Idx i :* is) = m * (i - 1) + go (m * D.dimVal d) ds is
-
-minorToMajor :: forall ds i. Integral i => Dims ds -> Idxs ds -> i
-minorToMajor d i = majorToMinor (reversed d) (reversed i)
-
-fromIdxs :: forall ds i. Integral i => Dims ds -> Idxs ds -> i
-fromIdxs = minorToMajor
-
-toIdxs :: forall ds i. Integral i => Dims ds -> i -> Idxs ds
-toIdxs dsd i = go dsd $ fromIntegral i
-  where
-    go :: forall ns . Dims ns -> Word -> Idxs ns
-    go U 0 = U
-    go U _ = error ("Idxs " ++ show (D.listDims dsd))
-    go (T.Snoc ds d) off = case divMod off (D.dimVal d) of
-      (off', j) -> go ds off' `T.snoc` Idx (j+1)
-
-
-
-
-
-{-
-toIdxs :: forall ds i. Integral i => Dims ds -> i -> Idxs ds
-toIdxs dds i = go dds $ fromIntegral i
-  where
-    go :: forall ns . Dims ns -> Word -> Idxs ns
-    go U 0 = U
-    go U _ = error ("Idxs " ++ show (D.listDims dds))
-    go (d :* ds) off = case divMod off (D.dimVal d) of
-      (off', j) -> Idx (j+1) :* go ds off'
-
-
---TODO why wont this compile
-fromIdxs :: Dims ds -> Idxs ds -> Int
-fromIdxs dsd = fromIntegral . go 1 dsd
-  where
-    go :: forall ns . Word -> Dims ns -> Idxs ns -> Word
-    go _ U U                     = 0
-    go m (T.Snoc ds d) (T.Snoc is (Idx i)) = m * (i - 1) + go (m * D.dimVal d) ds is
--}
-
-idxsFromWords :: forall ds . KnownDims ds => [Word] -> Maybe (Idxs ds)
-idxsFromWords = unsafeCoerce . go (D.listDims (D.dims @_ @ds))
-  where
-    go [] [] = Just []
-    go (d : ds) (i : is)
-      | i > 0 && i <= d = (i:) <$> go ds is
-    go _ _   = Nothing
-
-foldDimPartIdx :: Idxs ds -- ^ Initial indices
-               -> Idxs ds -- ^ Final indices
-               -> (Idxs ds -> a -> a)
-                          -- ^ Function to call on each dimension
-               -> a       -- ^ initial value
-               -> a
-foldDimPartIdx U U k = k U
-foldDimPartIdx (start :* starts) (end :* ends) k
-  | iEnd >= iStart = foldDimPartIdx starts ends (loop iStart)
-  | otherwise      = foldDimPartIdx starts ends (looi iStart)
-  where
-    Idx iStart = start
-    Idx iEnd   = end
-    loop i is
-      | i > iEnd = id
-      | otherwise = k (Idx i :* is) . loop (i+1) is
-    looi i is
-      | i < iEnd = id
-      | otherwise = k (Idx i :* is) . looi (i-1) is
-
-overDimPartIdx_ :: Monad m
-               => Idxs ds -- ^ Initial indices
-               -> Idxs ds -- ^ Final indices
-               -> (Idxs ds -> m ())
-                          -- ^ Function to call on each dimension
-               -> m ()
-overDimPartIdx_ U U k = k U
-overDimPartIdx_ (start :* starts) (end :* ends) k
-  | iEnd >= iStart = overDimPartIdx_ starts ends loop'
-  | otherwise      = overDimPartIdx_ starts ends looi'
-  where
-    Idx iStart = start
-    Idx iEnd   = end
-    loop' is = loop iStart
-      where
-        loop i
-          | i > iEnd = return ()
-          | otherwise = k (Idx i :* is) >> loop (i+1)
-    looi' is = looi iStart
-      where
-        looi i
-          | i < iEnd = return ()
-          | otherwise = k (Idx i :* is) >> looi (i-1)
-
-
-overDimIdx_ :: Monad m
-            => Dims ds -- ^ Shape of a space
-            -> (Idxs ds -> m ()) -- ^ Function to call on each dimension
-            -> m ()
-overDimIdx_ U k = k U
-overDimIdx_ (T.Snoc ds d) k = overDimIdx_ ds k'
-  where
-    dw = D.dimVal d
-    k' is = go 1
-      where
-        go i
-          | i > dw = return ()
-          | otherwise = k (is `T.snoc` Idx i) >> go (i+1)
-
-
------------------------
-
--- Numeric.Tensile.Permutation
-instance Semigroup (Perm n) where
-  (Perm p) <> (Perm q) = Perm $ P.multiply p q
-
-instance KnownDim n => Monoid (Perm n) where
-  mempty = Perm $ P.identity (fromIntegral $ D.dimVal' @n)
-
-newtype Perm (n :: Nat) = Perm { unPerm :: P.Permutation } deriving (Eq, Ord, Show)
-
-
-cycles (Perm t) = P.permutationToDisjointCycles $ t
-
--- | Transform a permutation of tensor modes into a permutation of array indices.
--- transpose (lowerPerm p1) . transpose (lowerPerm p2) == transpose (lowerPerm $ p1 <> p2)
-lowerPerm 
-  :: forall ds. KnownDim (Size ds) 
-  => Dims ds 
-  -> Perm (Rank ds) -- ^ Rank-level permutation
-  -> (Dims ds -> Idxs ds -> Perm (Rank ds) -> Perm (Size ds)) -- ^ Index filter
-  -> Perm (Size ds)  -- ^ Index-level permutation
-lowerPerm d p f = D.foldDimIdx d (\i p' -> p' <> f d i p) (mempty :: Perm (Size ds))
 
 {-
 lowerPerm'
@@ -352,7 +46,7 @@ lowerPerm'
   -> Dims ds 
   -> Perm (Rank ds) -- ^ Rank-level permutation
   -> Perm (Rank ds)  -- ^ Index-level permutation
-lowerPerm' d p f = D.foldDimIdx d (\i p' -> p' <> f d i p) (mempty :: Perm (Size ds))
+lowerPerm' d p f = foldDimIdx d (\i p' -> p' <> f d i p) (mempty :: Perm (Size ds))
 -}
 -- f :: (Dims ds' -> Perm n -> Perm n) -> Perm n -> Tensor t ds -> Tensor t ds'
 -- f dim2Idx perm t = Tensor $ reifyDims (permuteDims perm (dims @_ @ds)) $ \p ->
@@ -373,49 +67,6 @@ lowerPerm' d p f = D.foldDimIdx d (\i p' -> p' <> f d i p) (mempty :: Perm (Size
 --
 
 
-permuted :: Perm (Rank ds) -> TypedList f ds -> TypedList f ds'
-permuted (Perm p) = unsafeCoerce . P.permuteList p . unsafeCoerce
-
-reversed :: TypedList f ds -> TypedList f ds'
-reversed = unsafeCoerce . reverse . unsafeCoerce 
-
-reversal :: forall n. KnownDim n => Perm n
-reversal = Perm $ P.reversePermutation n
-  where n = fromIntegral $ D.dimVal' @n 
-
-reversal' :: Word -> Perm n
-reversal' n = Perm $ P.reversePermutation (fromIntegral n)
-
-transposition' :: forall n. KnownDim n => Word -> Word -> Maybe (Perm n)
-transposition' i j = if i <= n' && j <= n' then Just p else Nothing
-  where
-    p = Perm $ P.transposition n (fromIntegral i, fromIntegral j)
-    n = fromIntegral $ D.dimVal' @n 
-    n' = fromIntegral n
-
-{-
-transposition'' :: Word -> Word -> Word -> Maybe (Perm n)
-transposition'' n i j = 
-  reifyDim n $ \n ->
-    reifyDim i $ \i -> 
-      reifyDim j $ \j -> transposition' (reflect i) (reflect j)
-
--- TODO clean up type sig
-transposition
-  :: forall i j n. (i <= n, j <= n)
-  => (KnownDim i, KnownDim j, KnownDim n) --All KnownDim [i,j,n]
-  => Perm n
-transposition = Perm $ P.transposition n (i,j)
-  where
-    n = fromIntegral $ D.dimVal' @n 
-    i = fromIntegral $ D.dimVal' @i 
-    j = fromIntegral $ D.dimVal' @j 
-
---ttt :: Perm 3
---ttt = transposition @2 @3
-
--}
-
 
 
 reshape 
@@ -431,10 +82,10 @@ transpose
   => Perm (Rank ds) -> Tensor t ds -> Tensor t ds'
 transpose p (Tensor v) = Tensor v'
   where
-    d = D.dims @_ @ds
+    d = dims @_ @ds
     v' = modifyIdxs d v $ \i m -> 
            remapIdxs p d i $ \d' i' -> 
-             M.modify m (const $ v V.! fromIdxs d' (permuted p i)) (fromIdxs d' i')
+             M.modify m (const $ v V.! fromIdxs d' (_permuted p i)) (fromIdxs d' i')
 
 {-
 vector :: forall n . KnownDim n => KnownNat n => [HsReal] -> ExceptT String IO (Tensor '[n])
@@ -453,14 +104,14 @@ fromVector' :: (Elt t, KnownDims ds) => Dims ds -> Vector t -> Maybe (Tensor t d
 fromVector' v = undefined
 
 fromScalar :: Elt t => t -> Tensor t '[]
-fromScalar = constant (D.dims @_ @'[])
+fromScalar = constant (dims @_ @'[])
 
 constant :: Elt t => Dims ds -> t -> Tensor t ds
 constant ds t = fill ds $ const t
 
 fill :: forall t ds. Elt t => Dims ds -> (Idxs ds -> t) -> Tensor t ds
 fill ds f = Tensor $ V.create $ do
-  mv <- M.new (fromIntegral $ D.totalDim ds)
+  mv <- M.new (fromIntegral $ totalDim ds)
   let act ix = M.write mv (minorToMajor ds ix) $ f ix
   overDimIdx_ ds act
   return mv
@@ -470,13 +121,13 @@ fill ds f = Tensor $ V.create $ do
 fill :: Elt t => Dims ds -> (Int -> t) -> Vector t
 fill dims act = 
   case dims of 
-    D.Reverse dims' -> fill' dims act
+    Reverse dims' -> fill' dims act
    
 fill' :: Elt t => Dims ds -> (Int -> t) -> Vector t
 fill' dims act = V.create $ do
-  v <- M.new (fromIntegral $ D.totalDim dims)
+  v <- M.new (fromIntegral $ totalDim dims)
   let f i = M.write v i $ act i
-  D.overDimOff_ dims f 0 1 -- either control the offset ourselves or fix type issues
+  overDimOff_ dims f 0 1 -- either control the offset ourselves or fix type issues
   return v
 
 TODO add tests:

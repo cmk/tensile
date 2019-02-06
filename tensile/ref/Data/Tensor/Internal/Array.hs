@@ -3,7 +3,6 @@
 module Data.Tensor.Internal.Array where
 
 import Data.Bits
-import Data.Singletons.Prelude.List (Product)
 import Data.Word (Word8)
 import GHC.TypeLits
 import Numeric.Dimensions

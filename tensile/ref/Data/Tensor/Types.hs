@@ -3,12 +3,12 @@
 module Data.Tensor.Types where
 
 import Data.Bits
-import Data.Singletons.Prelude.List (Product)
 import Data.Int
 import Data.Word
 
 import GHC.TypeLits
-import Numeric.Dimensions --(Dimensions(..), KnownDim(..), dimVal)
+--import Numeric.Dimensions --(Dimensions(..), KnownDim(..), dimVal)
+import Numeric.Tensile.Types
 
 import Data.Vector.Storable (Vector(..), Storable(..))
 import qualified Data.Vector.Storable as V
@@ -113,7 +113,7 @@ instance (Floating t, Elt t) => Floating (Tensor t ds) where
     {-# INLINE atanh #-}
 
 
-instance (KnownDim (Product d), Elt e, Eq e, Bits e, Num e) => Bits (Tensor e d) where
+instance (KnownDim (Size d), Elt e, Eq e, Bits e, Num e) => Bits (Tensor e d) where
     (.&.) = liftT2 (.&.)
     {-# INLINE (.&.) #-}
     (.|.) = liftT2 (.|.)
@@ -123,7 +123,7 @@ instance (KnownDim (Product d), Elt e, Eq e, Bits e, Num e) => Bits (Tensor e d)
     complement = liftT complement
     shift t i = liftT (flip shift i) t
     rotate t i = liftT (flip rotate i) t
-    bit = replicateT (fromIntegral . dimVal $ (dim :: Dim (Product d))) . bit
+    bit = replicateT (fromIntegral . dimVal $ (dim :: Dim (Size d))) . bit
     testBit = testBitDefault
     bitSizeMaybe _ = bitSizeMaybe @e undefined
     bitSize _ = bitSize @e undefined
@@ -132,15 +132,15 @@ instance (KnownDim (Product d), Elt e, Eq e, Bits e, Num e) => Bits (Tensor e d)
 
 {-
 
-instance (KnownDim (Product d), Elt e, Real e) => Real (Tensor e d) where
+instance (KnownDim (Size d), Elt e, Real e) => Real (Tensor e d) where
   toRational = undefined --TODO find a reasonable sum-based implementation or scrap the typeclass
 
-instance (KnownDim (Product d), Elt e, Enum e) => Enum (Tensor e d) where
-  toEnum = Tensor . V.replicate (fromIntegral . dimVal $ (dim :: Dim (Product d))) . toEnum
+instance (KnownDim (Size d), Elt e, Enum e) => Enum (Tensor e d) where
+  toEnum = Tensor . V.replicate (fromIntegral . dimVal $ (dim :: Dim (Size d))) . toEnum
   {-# INLINE toEnum #-}
   fromEnum = undefined --TODO find a reasonable sum-based implementation or scrap the typeclass
 
-instance (KnownDim (Product d), Elt e, Integral e) => Integral (Tensor e d) where
+instance (KnownDim (Size d), Elt e, Integral e) => Integral (Tensor e d) where
   quot (Tensor a) (Tensor b) = liftT2 quot a b
   rem (Tensor a) (Tensor b) = liftT2 rem a b
   div (Tensor a) (Tensor b) = liftT2 div a b
@@ -153,11 +153,11 @@ instance (KnownDim (Product d), Elt e, Integral e) => Integral (Tensor e d) wher
 
 toTensor
   :: forall d e. Elt e
-  => KnownDim (Product d)
+  => KnownDim (Size d)
   => [e]
   -> Maybe (Tensor e d)
 toTensor v
-  | length v == fromIntegral (dimVal (dim :: Dim (Product d))) = Just $ Tensor $ V.fromListN (length v) v
+  | length v == fromIntegral (dimVal (dim :: Dim (Size d))) = Just $ Tensor $ V.fromListN (length v) v
   | otherwise = Nothing
 
 {-
@@ -220,7 +220,7 @@ minimum = liftT2 min
 -- * Utility functions
 --------------------------------------------------------------------------------
 
-replicateT :: (Elt t, KnownDim (Product ds)) => Int -> t -> Tensor t ds
+replicateT :: (Elt t, KnownDim (Size ds)) => Int -> t -> Tensor t ds
 replicateT i = Tensor . V.fromListN i . replicate i
 
 liftT :: (Elt s, Elt t) => (s -> t) -> Tensor s ds -> Tensor t ds
