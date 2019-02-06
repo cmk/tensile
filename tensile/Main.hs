@@ -4,7 +4,6 @@ module Main where
 
 
 import Data.Tensor --(T(..), fromVector, shape)
-import Data.Tensor.Types
 import Data.Bits
 
 import Numeric.Tensile.Types

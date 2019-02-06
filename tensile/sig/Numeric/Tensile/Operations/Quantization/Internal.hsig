@@ -2,7 +2,7 @@
 
 signature Numeric.Tensile.Operations.Quantization.Internal where
 
-import Data.Tensor.Types
+import Data.Tensor.Internal
 import qualified Prelude as P
 
 

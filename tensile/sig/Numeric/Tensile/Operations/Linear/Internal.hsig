@@ -1,7 +1,6 @@
 signature Numeric.Tensile.Operations.Linear.Internal where
 
-import Data.Tensor.Types
-import Numeric.Dimensions
+-- import Data.Tensor.Types
 
 {-
 matmul 

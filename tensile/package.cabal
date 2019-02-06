@@ -16,19 +16,28 @@ source-repository head
 
 library 
     hs-source-dirs: 
-        lib
+        lib/src
     exposed-modules:
         Data.Tensor
         Numeric.Tensile.Operations.Linear.Unlifted
         Numeric.Tensile.Operations.Manipulation.Unlifted
     build-depends:
-        base          >= 4 && < 5,
+        base == 4.*,
         backprop,
         tensile-signatures,
         tensile-types,
         vector
+    default-extensions: 
+        ConstraintKinds, 
+        DataKinds,
+        FlexibleContexts,
+        PolyKinds,
+        RankNTypes,
+        ScopedTypeVariables,
+        TypeApplications,
+        TypeFamilies,
+        TypeOperators 
     default-language: Haskell2010
-    default-extensions: ConstraintKinds DataKinds FlexibleContexts TypeApplications TypeFamilies TypeOperators ScopedTypeVariables
 
 library tensile-types 
     hs-source-dirs: 
@@ -38,51 +47,95 @@ library tensile-types
         Numeric.Tensile.Permutation
         Numeric.Tensile.Types
     build-depends:
-        base          >= 4 && < 5,
+        base == 4.*,
         combinat,
         dimensions,
         singletons
+    default-extensions: 
+        ConstraintKinds, 
+        DataKinds,
+        FlexibleContexts,
+        PolyKinds,
+        RankNTypes,
+        ScopedTypeVariables,
+        TypeApplications,
+        TypeFamilies,
+        TypeOperators 
     default-language: Haskell2010
-    default-extensions: ConstraintKinds DataKinds FlexibleContexts PolyKinds RankNTypes ScopedTypeVariables TypeApplications TypeFamilies TypeOperators 
 
 library tensile-signatures
     hs-source-dirs: 
         sig
     signatures:
-        Data.Tensor.Types
+        Data.Tensor.Internal
         Numeric.Tensile.Operations.Linear.Internal
         Numeric.Tensile.Operations.Quantization.Internal
     build-depends:
-        base          >= 4 && < 5,
-        dimensions,
+        base == 4.*,
         tensile-types,
         vector
+    default-extensions: 
+        ConstraintKinds, 
+        DataKinds,
+        FlexibleContexts,
+        PolyKinds,
+        RankNTypes,
+        ScopedTypeVariables,
+        TypeApplications,
+        TypeFamilies,
+        TypeOperators 
     default-language: Haskell2010
-    default-extensions: ConstraintKinds DataKinds FlexibleContexts PolyKinds RankNTypes ScopedTypeVariables TypeApplications TypeFamilies TypeOperators
 
 library local-signatures
     hs-source-dirs: 
         local
     build-depends:
-        base          >= 4 && < 5,
+        base == 4.*,
         tensile-signatures
     default-language: Haskell2010
 
 library reference
     hs-source-dirs: 
-        ref
+        ref/src
     exposed-modules:
-        Data.Tensor.Types
-        Data.Tensor.Internal.Array
+        Data.Tensor.Internal
         Numeric.Tensile.Operations.Linear.Internal     
         Numeric.Tensile.Operations.Quantization.Internal
     build-depends:
-        base          >= 4 && < 5,
+        base == 4.*,
         dimensions,
         tensile-types,
         vector
+    default-extensions: 
+        ConstraintKinds, 
+        DataKinds,
+        FlexibleContexts,
+        PolyKinds,
+        RankNTypes,
+        ScopedTypeVariables,
+        TypeApplications,
+        TypeFamilies,
+        TypeOperators 
     default-language: Haskell2010
-    default-extensions: ConstraintKinds DataKinds FlexibleContexts PolyKinds RankNTypes ScopedTypeVariables TypeApplications TypeFamilies TypeOperators 
+
+library reference-test
+    hs-source-dirs: 
+        ref/test
+    exposed-modules:
+        Test.Data.Tensor.Generators
+        -- Test.Numeric.Tensile.Operations.Linear.Properties     
+    build-depends:
+        base == 4.*,
+        hedgehog,
+        reference,
+        tensile-types,
+        vector
+    default-extensions: 
+        DataKinds,
+        ScopedTypeVariables,
+        TypeOperators,
+        OverloadedLists
+    default-language: Haskell2010
 
 library old
     hs-source-dirs: 
@@ -93,21 +146,53 @@ library old
         Numeric.Tensile.Operations.Linear.Internal     
         Numeric.Tensile.Operations.Quantization.Internal
     build-depends:
-        base          >= 4 && < 5,
+        base == 4.*,
         dimensions,
         singletons,
         vector
+    default-extensions: 
+        ConstraintKinds, 
+        DataKinds,
+        FlexibleContexts,
+        ScopedTypeVariables,
+        TypeApplications,
+        TypeFamilies,
+        TypeOperators 
     default-language: Haskell2010
-    default-extensions: ConstraintKinds DataKinds FlexibleContexts TypeApplications TypeFamilies TypeOperators ScopedTypeVariables OverloadedLists
+
+test-suite test
+    type:                
+        exitcode-stdio-1.0
+    hs-source-dirs:      
+        test
+    main-is:            
+        test.hs
+    other-modules:
+    build-depends:       
+        base == 4.*,
+        reference,
+        tensile,
+        tensile-types
+    default-extensions: 
+        DataKinds,
+        ScopedTypeVariables,
+        TypeOperators,
+        OverloadedLists
+    default-language: Haskell2010
+    ghc-options: -threaded -rtsopts -with-rtsopts=-N -Wall
 
 executable main
     main-is: 
         Main.hs
     build-depends:
-        base          >= 4 && < 5,
+        base == 4.*,
         reference,
         tensile,
         tensile-types,
         vector
     default-language: Haskell2010
-    default-extensions: DataKinds ScopedTypeVariables TypeOperators OverloadedLists
+    default-extensions: 
+        DataKinds,
+        ScopedTypeVariables,
+        TypeOperators,
+        OverloadedLists
