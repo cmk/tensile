@@ -6,6 +6,7 @@ import Data.Bits
 import Data.Int
 import Data.Word
 import Data.Vector.Storable (Vector(..), Storable(..))
+import Unsafe.Coerce (unsafeCoerce)
 
 import Numeric.Tensile.Types
 import Numeric.Tensile.Index
@@ -34,78 +35,78 @@ type I d = Tensor IVal d
 type B d = Tensor BVal d
 
 instance (KnownDim (Size d), Num t, Elt t) => Num (Tensor t d)  where
-    (+) = liftT2 (+)
+    (+) = _lift2 (+)
     {-# INLINE (+) #-}
-    (-) = liftT2 (-)
+    (-) = _lift2 (-)
     {-# INLINE (-) #-}
-    (*) = liftT2 (*)
+    (*) = _lift2 (*)
     {-# INLINE (*) #-}
-    negate = liftT negate
+    negate = _lift negate
     {-# INLINE negate #-}
-    abs = liftT abs
+    abs = _lift abs
     {-# INLINE abs #-}
-    signum = liftT signum
+    signum = _lift signum
     {-# INLINE signum #-}
-    fromInteger = replicateT (fromIntegral . dimVal $ (dim :: Dim (Size d))) . fromInteger
+    fromInteger = _replicate (fromIntegral . dimVal $ (dim :: Dim (Size d))) . fromInteger
     {-# INLINE fromInteger #-}
 
 instance (KnownDim (Size d), Fractional t, Elt t) => Fractional (Tensor t d)  where
-    (/) = liftT2 (/)
+    (/) = _lift2 (/)
     {-# INLINE (/) #-}
-    recip = liftT recip
+    recip = _lift recip
     {-# INLINE recip #-}
-    fromRational = replicateT (fromIntegral . dimVal $ (dim :: Dim (Size d))) . fromRational
+    fromRational = _replicate (fromIntegral . dimVal $ (dim :: Dim (Size d))) . fromRational
     {-# INLINE fromRational #-}
 
 instance (KnownDim (Size d), Floating t, Elt t) => Floating (Tensor t d) where
     pi = Tensor $ V.singleton pi  --TODO make this dim safe
     {-# INLINE pi #-}
-    exp = liftT exp
+    exp = _lift exp
     {-# INLINE exp #-}
-    log = liftT log
+    log = _lift log
     {-# INLINE log #-}
-    sqrt = liftT sqrt
+    sqrt = _lift sqrt
     {-# INLINE sqrt #-}
-    sin = liftT sin
+    sin = _lift sin
     {-# INLINE sin #-}
-    cos = liftT cos
+    cos = _lift cos
     {-# INLINE cos #-}
-    tan = liftT tan
+    tan = _lift tan
     {-# INLINE tan #-}
-    asin = liftT asin
+    asin = _lift asin
     {-# INLINE asin #-}
-    acos = liftT acos
+    acos = _lift acos
     {-# INLINE acos #-}
-    atan = liftT atan
+    atan = _lift atan
     {-# INLINE atan #-}
-    sinh = liftT sinh
+    sinh = _lift sinh
     {-# INLINE sinh #-}
-    cosh = liftT cosh
+    cosh = _lift cosh
     {-# INLINE cosh #-}
-    tanh = liftT tanh
+    tanh = _lift tanh
     {-# INLINE tanh #-}
-    (**) = liftT2 (**)
+    (**) = _lift2 (**)
     {-# INLINE (**) #-}
-    logBase = liftT2 logBase
+    logBase = _lift2 logBase
     {-# INLINE logBase #-}
-    asinh = liftT asinh
+    asinh = _lift asinh
     {-# INLINE asinh #-}
-    acosh = liftT acosh
+    acosh = _lift acosh
     {-# INLINE acosh #-}
-    atanh = liftT atanh
+    atanh = _lift atanh
     {-# INLINE atanh #-}
 
 instance (KnownDim (Size d), Elt t, Eq t, Bits t, Num t) => Bits (Tensor t d) where
-    (.&.) = liftT2 (.&.)
+    (.&.) = _lift2 (.&.)
     {-# INLINE (.&.) #-}
-    (.|.) = liftT2 (.|.)
+    (.|.) = _lift2 (.|.)
     {-# INLINE (.|.) #-}
-    xor = liftT2 xor
+    xor = _lift2 xor
     {-# INLINE xor #-}
-    complement = liftT complement
-    shift t i = liftT (flip shift i) t
-    rotate t i = liftT (flip rotate i) t
-    bit = replicateT (fromIntegral . dimVal $ (dim :: Dim (Size d))) . bit
+    complement = _lift complement
+    shift t i = _lift (flip shift i) t
+    rotate t i = _lift (flip rotate i) t
+    bit = _replicate (fromIntegral . dimVal $ (dim :: Dim (Size d))) . bit
     testBit = testBitDefault
     bitSizeMaybe _ = bitSizeMaybe @t undefined
     bitSize _ = bitSize @t undefined
@@ -123,10 +124,10 @@ instance (KnownDim (Size d), Elt t, Enum e) => Enum (Tensor t d) where
   fromEnum = undefined --TODO find a reasonable sum-based implementation or scrap the typeclass
 
 instance (KnownDim (Size d), Elt t, Integral e) => Integral (Tensor t d) where
-  quot (Tensor a) (Tensor b) = liftT2 quot a b
-  rem (Tensor a) (Tensor b) = liftT2 rem a b
-  div (Tensor a) (Tensor b) = liftT2 div a b
-  mod (Tensor a) (Tensor b) = liftT2 mod a b
+  quot (Tensor a) (Tensor b) = _lift2 quot a b
+  rem (Tensor a) (Tensor b) = _lift2 rem a b
+  div (Tensor a) (Tensor b) = _lift2 div a b
+  mod (Tensor a) (Tensor b) = _lift2 mod a b
   quotRem ta tb = (quot ta tb, rem ta tb)
   divMod ta tb = (div ta tb, mod ta tb)
   toInteger _ = undefined --TODO find a reasonable sum-based implementation or scrap the typeclass
@@ -144,7 +145,7 @@ equal
   => Tensor t d
   -> Tensor t d
   -> Tensor BVal d
-equal = liftT2 (==)
+equal = _lift2 (==)
 
 notEqual
   :: Elt t
@@ -152,27 +153,27 @@ notEqual
   => Tensor t d
   -> Tensor t d
   -> Tensor BVal d
-notEqual = liftT2 (/=)
+notEqual = _lift2 (/=)
 
 -}
 
 eq :: T d -> T d -> B d
-eq = liftT2 (==)
+eq = _lift2 (==)
 
 neq :: T d -> T d -> B d
-neq = liftT2 (/=)
+neq = _lift2 (/=)
 
 lt :: Ord TVal => T d -> T d -> B d
-lt = liftT2 (<)
+lt = _lift2 (<)
 
 lte :: Ord TVal => T d -> T d -> B d
-lte = liftT2 (<=)
+lte = _lift2 (<=)
 
 gt :: Ord TVal => T d -> T d -> B d
-gt = liftT2 (>)
+gt = _lift2 (>)
 
 gte :: Ord TVal => T d -> T d -> B d
-gte = liftT2 (>=)
+gte = _lift2 (>=)
 
 maximum
   :: Elt t
@@ -180,7 +181,7 @@ maximum
   => Tensor t d
   -> Tensor t d
   -> Tensor t d
-maximum = liftT2 max
+maximum = _lift2 max
 
 minimum
   :: Elt t
@@ -188,7 +189,7 @@ minimum
   => Tensor t d
   -> Tensor t d
   -> Tensor t d
-minimum = liftT2 min
+minimum = _lift2 min
 
 {-
 vector :: forall n . KnownDim n => KnownNat n => [HsReal] -> ExceptT String IO (Tensor '[n])
@@ -199,6 +200,12 @@ vector rs
 unsafeVector :: (KnownDim n, KnownNat n) => [HsReal] -> IO (Tensor '[n])
 unsafeVector = fmap (either error id) . runExceptT . vector
 -}
+
+reshape 
+  :: forall d d' t. Elt t 
+  => Reshapable d d'
+  => Tensor t d -> Tensor t d'
+reshape = unsafeCoerce
 
 toTensor
   :: forall d t. Elt t
@@ -211,15 +218,6 @@ toTensor v
 
 fromVector :: Elt t => Dims d -> Vector t -> Maybe (Tensor t d)
 fromVector d v = undefined
-
-fromVector' :: forall d t. (Elt t, KnownDims d) => Vector t -> Maybe (Tensor t d)
-fromVector' = fromVector (dims @_ @d)
-
-fromScalar :: Elt t => t -> Tensor t '[]
-fromScalar = constant (dims @_ @'[])
-
-constant :: Elt t => Dims d -> t -> Tensor t d
-constant d t = fill d $ const t
 
 fill :: forall d t. Elt t => Dims d -> (Idxs d -> t) -> Tensor t d
 fill d f = Tensor $ V.create $ do
@@ -263,14 +261,14 @@ TODO add tests:
 -- * Utility functions
 --------------------------------------------------------------------------------
 
-replicateT :: Elt t => Int -> t -> Tensor t d
-replicateT i = Tensor . V.fromListN i . replicate i
+_replicate :: Elt t => Int -> t -> Tensor t d
+_replicate i = Tensor . V.fromListN i . replicate i
 
-liftT :: (Elt s, Elt t) => (s -> t) -> Tensor s d -> Tensor t d
-liftT f (Tensor v) = Tensor $ V.map f v
-{-# INLINE liftT #-}
+_lift :: (Elt s, Elt t) => (s -> t) -> Tensor s d -> Tensor t d
+_lift f (Tensor v) = Tensor $ V.map f v
+{-# INLINE _lift #-}
 
-liftT2 :: (Elt r, Elt s, Elt t) => (r -> s -> t)
+_lift2 :: (Elt r, Elt s, Elt t) => (r -> s -> t)
        -> Tensor r d -> Tensor s d -> Tensor t d
-liftT2 f (Tensor v1) (Tensor v2) = Tensor $ V.zipWith f v1 v2
-{-# INLINE liftT2 #-}
+_lift2 f (Tensor v1) (Tensor v2) = Tensor $ V.zipWith f v1 v2
+{-# INLINE _lift2 #-}
