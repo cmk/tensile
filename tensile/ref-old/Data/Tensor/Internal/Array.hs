@@ -14,7 +14,7 @@ import Numeric.PrimBytes
 
 {-
 show' 
-  :: forall t ds. PrimBytes t 
+  :: forall d es. PrimBytes t 
   => Show t
   => Dimensions ds
   => ArrayBase t ds
@@ -81,7 +81,7 @@ gen#
              --   Avoid using this argument if possible.
   -> (s -> (# s, t #))
   -> s -> (# s, ArrayBase t ds #)
-gen# n f z0 = go (byteSize @t undefined *# n)
+gen# n f z0 = go (byteSize @e undefined *# n)
   where
     go bsize = case runRW#
      ( \s0 -> case newByteArray# bsize s0 of
@@ -132,7 +132,7 @@ update ei x df
   | I# i <- fromEnum ei
   , I# len <- fromIntegral $ totalDim' @asbs
   = case runRW#
-      ( \s0 -> case newByteArray# (len *# byteSize @t undefined) s0 of
+      ( \s0 -> case newByteArray# (len *# byteSize @e undefined) s0 of
         (# s1, mba #) -> unsafeFreezeByteArray# mba
           ( writeArray mba i x
             ( writeBytes mba 0# df s1 )
@@ -229,7 +229,7 @@ iwmap
   => (Idxs bs -> ArrayBase s as' -> ArrayBase t as)
   -> ArrayBase s asbs' -> ArrayBase t asbs
 iwmap f df
-  | elS <- byteSize @t undefined
+  | elS <- byteSize @e undefined
   , dbs <- dims @_ @bs
   , W# lenBSW <- totalDim dbs
   , W# lenASW <- totalDim' @as
@@ -279,7 +279,7 @@ ewmap
   => (ArrayBase s as' -> ArrayBase t as)
   -> ArrayBase s asbs' -> ArrayBase t asbs
 ewmap f df
-  | elS <- byteSize @t undefined
+  | elS <- byteSize @e undefined
   , W# lenBSW <- totalDim' @bs
   , W# lenASW <- totalDim' @as
   , W# lenAS'W <- totalDim' @as'
@@ -310,7 +310,7 @@ ewgen x = case elemSize0 x of
   0# -> broadcast (ix# 0# x)
   1# -> broadcast (ix# 0# x)
   lenAS
-    | elS <- byteSize @t undefined
+    | elS <- byteSize @e undefined
     , W# lenBSW <- totalDim' @bs
     , lenBS <- word2Int# lenBSW
     , lenASBS <- lenAS *# lenBS
@@ -334,7 +334,7 @@ iwgen
   => ConcatList as bs asbs
   => (Idxs bs -> ArrayBase t as) -> ArrayBase t asbs
 iwgen f
-  | elS <- byteSize @t undefined
+  | elS <- byteSize @e undefined
   , dbs <- dims @_ @bs
   , W# lenBSW <- totalDim dbs
   , W# lenASW <- totalDim' @as
@@ -365,7 +365,7 @@ ewfoldl f x0 df
   | ba <- getBytes df
   = foldDimOff (dims @_ @bs) (\(I# o) acc -> f acc (fromBytes o ba))
       (I# (byteOffset df))
-      (I# (byteSize @t undefined) * fromIntegral (totalDim' @as)) x0
+      (I# (byteSize @e undefined) * fromIntegral (totalDim' @as)) x0
 
 -- | Left-associative fold of a ArrayBase with an index
 --   The fold is strict, so accumulater is evaluated to WHNF;
@@ -382,7 +382,7 @@ iwfoldl f x0 df
   | ba <- getBytes df
   = foldDim (dims @_ @bs) (\i (I# o) acc -> f i acc (fromBytes o ba))
       (I# (byteOffset df))
-      (I# (byteSize @t undefined) * fromIntegral (totalDim' @as)) x0
+      (I# (byteSize @e undefined) * fromIntegral (totalDim' @as)) x0
 
 -- | Right-associative fold of a ArrayBase
 --   The fold is strict, so accumulater is evaluated to WHNF;
@@ -396,7 +396,7 @@ ewfoldr
   => ConcatList as bs asbs
   => (ArrayBase t as -> s -> s) -> s -> ArrayBase t asbs -> s
 ewfoldr f x0 df
-  | step <- I# (byteSize @t undefined) * fromIntegral (totalDim' @as)
+  | step <- I# (byteSize @e undefined) * fromIntegral (totalDim' @as)
   , ba <- getBytes df
   = foldDimOff (dims @_ @bs) (\(I# o) -> f (fromBytes o ba))
       (I# (byteOffset df +# byteSize df) - step)
@@ -414,7 +414,7 @@ iwfoldr
   => ConcatList as bs asbs
   => (Idxs bs -> ArrayBase t as -> s -> s) -> s -> ArrayBase t asbs -> s
 iwfoldr f x0 df
-  | step <- I# (byteSize @t undefined) * fromIntegral (totalDim' @as)
+  | step <- I# (byteSize @e undefined) * fromIntegral (totalDim' @as)
   , ba <- getBytes df
   = foldDimReverse (dims @_ @bs) (\i (I# o) -> f i (fromBytes o ba))
       (I# (byteOffset df +# byteSize df) - step)
@@ -541,7 +541,7 @@ indexWise f df = runWithState <$> iwfoldl applyF (pure initialState) df
     applyF idx s dfChunk = idx `seq` dfChunk `seq` updateChunk <$> s <*> f idx dfChunk
 
     -- Element byte size of the result ArrayBase (byte size of s)
-    rezElBSize# = byteSize @t undefined
+    rezElBSize# = byteSize @e undefined
     -- Number of primitive elements in the result ArrayBase chunk
     !(I# rezStepN#) = fromIntegral $ totalDim' @as
     -- Number of primitive elements in the result ArrayBase

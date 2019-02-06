@@ -23,7 +23,7 @@ lowerPerm'
   -> Perm (Rank d)  -- ^ Index-level permutation
 lowerPerm' d p f = foldDimIdx d (\i p' -> p' <> f d i p) (mempty :: Perm (Size d))
 -}
--- f :: (Dims d' -> Perm n -> Perm n) -> Perm n -> Tensor t d -> Tensor t d'
+-- f :: (Dims d' -> Perm n -> Perm n) -> Perm n -> Tensor d e -> Tensor d e'
 -- f dim2Idx perm t = Tensor $ reifyDims (permuteDims perm (dims @_ @d)) $ \p ->
 --   modifyIdx (reflect p) (modify (permuteIdxs (dim2Idx (reflect p) perm) _)) (reflect p)) t -- basically make user derive the Idxs d' -> Idxs d'
 
@@ -47,10 +47,10 @@ lowerPerm' d p f = foldDimIdx d (\i p' -> p' <> f d i p) (mempty :: Perm (Size d
 
 
 transpose 
-  :: forall d d' t. Elt t 
+  :: forall d d' e. Elt e 
   => KnownDims d
   => Permutable d d'
-  => Perm (Rank d) -> Tensor t d -> Tensor t d'
+  => Perm (Rank d) -> Tensor d e -> Tensor d' e
 transpose p (Tensor v) = Tensor v'
   where
     d = dims @_ @d
@@ -156,7 +156,7 @@ gen#
              --   Avoid using this argument if possible.
   -> (s -> (# s, t #))
   -> s -> (# s, ArrayBase t d #)
-gen# n f z0 = go (byteSize @t undefined *# n)
+gen# n f z0 = go (byteSize @e undefined *# n)
   where
     go bsize = case runRW#
      ( \s0 -> case newByteArray# bsize s0 of

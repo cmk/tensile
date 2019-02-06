@@ -9,7 +9,7 @@ import Data.Vector.Storable (Vector)
 import Numeric.Tensile.Types
 import Numeric.Tensile.Index
 
-class Elt (t :: *)
+class Elt (e :: *)
 -- instance Elt TVal
 -- instance Elt IVal
 -- instance Elt BVal
@@ -38,25 +38,25 @@ instance Eq BVal
 -- | Elements are assumed to be stored in major-to-minor (i.e. row-major) order.
 -- Implementations that use a different ordering must supply a conversion or risk unexpected 
 -- behavior. 
-data Tensor (t :: *) (d :: [Nat])
+data Tensor (d :: [Nat]) (e :: *)
 
 -- | A real or complex-valued tensor of shape 'd'. 
-type T d = Tensor TVal d
+type T d = Tensor d TVal
 
 -- | An integer or non-negative integer-valued tensor of shape 'd'. 
-type I d = Tensor IVal d
+type I d = Tensor d IVal
 
 -- | A boolean-valued tensor of shape 'd'. 
-type B d = Tensor BVal d
+type B d = Tensor d BVal
 
 -- | A variable tensor. Need ST-like interface w/ ghost type for variables.
 --newtype V v (d :: [Nat]) 
 
-instance (KnownDim (Size d), Elt t, Eq t) => Eq (Tensor t d)
-instance (KnownDim (Size d), Elt t, Eq t, Bits t, Num t) => Bits (Tensor t d) 
-instance (KnownDim (Size d), Elt t, Num t) => Num (Tensor t d) 
-instance (KnownDim (Size d), Elt t, Fractional t) => Fractional (Tensor t d) 
-instance (KnownDim (Size d), Elt t, Floating t) => Floating (Tensor t d)
+instance (KnownDim (Size d), Elt e, Eq e) => Eq (Tensor d e)
+instance (KnownDim (Size d), Elt e, Eq e, Bits e, Num e) => Bits (Tensor d e) 
+instance (KnownDim (Size d), Elt e, Num e) => Num (Tensor d e) 
+instance (KnownDim (Size d), Elt e, Fractional e) => Fractional (Tensor d e) 
+instance (KnownDim (Size d), Elt e, Floating e) => Floating (Tensor d e)
 
 
 
@@ -73,7 +73,7 @@ logicalOr
 https://github.com/hasktorch/hasktorch/blob/89988da2d00475e6215308351c8163629fc7d0e0/indef/src/Torch/Indef/Dynamic/Tensor/Math/Pointwise/Floating.hs#L250-L303
 
 round 
-  :: forall d t. Elt t
+  :: forall d e. Elt e
   => Elt i
   => Real t
   => Fractional t
@@ -110,61 +110,61 @@ gte :: Ord TVal => T d -> T d -> B d
 
 
 equal
-  :: Elt t
-  => Eq t
-  => Tensor t d
-  -> Tensor t d
+  :: Elt e
+  => Eq e
+  => Tensor d e
+  -> Tensor d e
   -> Tensor BVal d
 
 notEqual
-  :: Elt t
-  => Eq t
-  => Tensor t d
-  -> Tensor t d
+  :: Elt e
+  => Eq e
+  => Tensor d e
+  -> Tensor d e
   -> Tensor BVal d
 
 less
-  :: Elt t
-  => Ord t
-  => Tensor t d
-  -> Tensor t d
+  :: Elt e
+  => Ord e
+  => Tensor d e
+  -> Tensor d e
   -> Tensor BVal d
 
 lessEqual
-  :: Elt t
-  => Ord t
-  => Tensor t d
-  -> Tensor t d
+  :: Elt e
+  => Ord e
+  => Tensor d e
+  -> Tensor d e
   -> Tensor BVal d
 
 greater
-  :: Elt t
-  => Ord t
-  => Tensor t d
-  -> Tensor t d
+  :: Elt e
+  => Ord e
+  => Tensor d e
+  -> Tensor d e
   -> Tensor BVal d
 
 greaterEqual
-  :: Elt t
-  => Ord t
-  => Tensor t d
-  -> Tensor t d
+  :: Elt e
+  => Ord e
+  => Tensor d e
+  -> Tensor d e
   -> Tensor BVal d
 -}
 
 maximum
-  :: Elt t
-  => Ord t
-  => Tensor t d
-  -> Tensor t d
-  -> Tensor t d
+  :: Elt e
+  => Ord e
+  => Tensor d e
+  -> Tensor d e
+  -> Tensor d e
 
 minimum
-  :: Elt t
-  => Ord t
-  => Tensor t d
-  -> Tensor t d
-  -> Tensor t d
+  :: Elt e
+  => Ord e
+  => Tensor d e
+  -> Tensor d e
+  -> Tensor d e
 
 {-
 vector :: TensorType a => [a] -> Tensor Build a 
@@ -177,17 +177,17 @@ instance RealFrac t => RealFrac (T s e)
 -}
 
 reshape 
-  :: forall d d' t. Elt t 
+  :: forall d d' e. Elt e 
   => Reshapable d d'
-  => Tensor t d -> Tensor t d'
+  => Tensor d e -> Tensor d' e
 
 toTensor
-  :: forall d t. Elt t
+  :: forall d e. Elt e
   => KnownDim (Size d)
-  => [t]
-  -> Maybe (Tensor t d)
+  => [e]
+  -> Maybe (Tensor d e)
 
-fromVector :: Elt t => Dims d -> Vector t -> Maybe (Tensor t d)
+fromVector :: Elt e => Dims d -> Vector e -> Maybe (Tensor d e)
 
-fill :: forall d t. Elt t => Dims d -> (Idxs d -> t) -> Tensor t d
+fill :: forall d e. Elt e => Dims d -> (Idxs d -> e) -> Tensor d e
 

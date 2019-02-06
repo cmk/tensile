@@ -23,20 +23,20 @@ type TVal = Float
 type IVal = Word
 type BVal = Bool
 
---class Elt t
+--class Elt e
 --TODO update Show instance
-newtype Tensor (t :: *) (d :: [Nat]) = Tensor { unTensor :: Vector t } deriving (Eq, Show)
+newtype Tensor (d :: [Nat]) (e :: *) = Tensor { unTensor :: Vector e } deriving (Eq, Show)
 
 -- | A real or complex-valued tensor of shape 'd'. 
-type T d = Tensor TVal d
+type T d = Tensor d TVal
 
 -- | An integer or non-negative integer-valued tensor of shape 'd'. 
-type I d = Tensor IVal d
+type I d = Tensor d IVal
 
 -- | A boolean-valued tensor of shape 'd'. 
-type B d = Tensor BVal d
+type B d = Tensor d BVal
 
-instance (KnownDim (Size d), Num t, Elt t) => Num (Tensor t d)  where
+instance (KnownDim (Size d), Num e, Elt e) => Num (Tensor d e)  where
     (+) = _lift2 (+)
     {-# INLINE (+) #-}
     (-) = _lift2 (-)
@@ -52,7 +52,7 @@ instance (KnownDim (Size d), Num t, Elt t) => Num (Tensor t d)  where
     fromInteger = _replicate (fromIntegral . dimVal $ (dim :: Dim (Size d))) . fromInteger
     {-# INLINE fromInteger #-}
 
-instance (KnownDim (Size d), Fractional t, Elt t) => Fractional (Tensor t d)  where
+instance (KnownDim (Size d), Fractional e, Elt e) => Fractional (Tensor d e)  where
     (/) = _lift2 (/)
     {-# INLINE (/) #-}
     recip = _lift recip
@@ -60,7 +60,7 @@ instance (KnownDim (Size d), Fractional t, Elt t) => Fractional (Tensor t d)  wh
     fromRational = _replicate (fromIntegral . dimVal $ (dim :: Dim (Size d))) . fromRational
     {-# INLINE fromRational #-}
 
-instance (KnownDim (Size d), Floating t, Elt t) => Floating (Tensor t d) where
+instance (KnownDim (Size d), Floating e, Elt e) => Floating (Tensor d e) where
     pi = Tensor $ V.singleton pi  --TODO make this dim safe
     {-# INLINE pi #-}
     exp = _lift exp
@@ -98,7 +98,7 @@ instance (KnownDim (Size d), Floating t, Elt t) => Floating (Tensor t d) where
     atanh = _lift atanh
     {-# INLINE atanh #-}
 
-instance (KnownDim (Size d), Elt t, Eq t, Bits t, Num t) => Bits (Tensor t d) where
+instance (KnownDim (Size d), Elt e, Eq e, Bits e, Num e) => Bits (Tensor d e) where
     (.&.) = _lift2 (.&.)
     {-# INLINE (.&.) #-}
     (.|.) = _lift2 (.|.)
@@ -110,22 +110,22 @@ instance (KnownDim (Size d), Elt t, Eq t, Bits t, Num t) => Bits (Tensor t d) wh
     rotate t i = _lift (flip rotate i) t
     bit = _replicate (fromIntegral . dimVal $ (dim :: Dim (Size d))) . bit
     testBit = testBitDefault
-    bitSizeMaybe _ = bitSizeMaybe @t undefined
-    bitSize _ = bitSize @t undefined
-    isSigned _ = isSigned @t undefined
+    bitSizeMaybe _ = bitSizeMaybe @e undefined
+    bitSize _ = bitSize @e undefined
+    isSigned _ = isSigned @e undefined
     popCount = popCountDefault
 
 {-
 
-instance (KnownDim (Size d), Elt t, Real e) => Real (Tensor t d) where
+instance (KnownDim (Size d), Elt e, Real e) => Real (Tensor d e) where
   toRational = undefined --TODO find a reasonable sum-based implementation or scrap the typeclass
 
-instance (KnownDim (Size d), Elt t, Enum e) => Enum (Tensor t d) where
+instance (KnownDim (Size d), Elt e, Enum e) => Enum (Tensor d e) where
   toEnum = Tensor . V.replicate (fromIntegral . dimVal $ (dim :: Dim (Size d))) . toEnum
   {-# INLINE toEnum #-}
   fromEnum = undefined --TODO find a reasonable sum-based implementation or scrap the typeclass
 
-instance (KnownDim (Size d), Elt t, Integral e) => Integral (Tensor t d) where
+instance (KnownDim (Size d), Elt e, Integral e) => Integral (Tensor d e) where
   quot (Tensor a) (Tensor b) = _lift2 quot a b
   rem (Tensor a) (Tensor b) = _lift2 rem a b
   div (Tensor a) (Tensor b) = _lift2 div a b
@@ -142,18 +142,18 @@ instance (KnownDim (Size d), Elt t, Integral e) => Integral (Tensor t d) where
 
 
 equal
-  :: Elt t
+  :: Elt e
   => Eq t
-  => Tensor t d
-  -> Tensor t d
+  => Tensor d e
+  -> Tensor d e
   -> Tensor BVal d
 equal = _lift2 (==)
 
 notEqual
-  :: Elt t
+  :: Elt e
   => Eq t
-  => Tensor t d
-  -> Tensor t d
+  => Tensor d e
+  -> Tensor d e
   -> Tensor BVal d
 notEqual = _lift2 (/=)
 
@@ -178,19 +178,19 @@ gte :: Ord TVal => T d -> T d -> B d
 gte = _lift2 (>=)
 
 maximum
-  :: Elt t
-  => Ord t
-  => Tensor t d
-  -> Tensor t d
-  -> Tensor t d
+  :: Elt e
+  => Ord e
+  => Tensor d e
+  -> Tensor d e
+  -> Tensor d e
 maximum = _lift2 max
 
 minimum
-  :: Elt t
-  => Ord t
-  => Tensor t d
-  -> Tensor t d
-  -> Tensor t d
+  :: Elt e
+  => Ord e
+  => Tensor d e
+  -> Tensor d e
+  -> Tensor d e
 minimum = _lift2 min
 
 {-
@@ -204,41 +204,41 @@ unsafeVector = fmap (either error id) . runExceptT . vector
 -}
 
 reshape 
-  :: forall d d' t. Elt t 
+  :: forall d d' e. Elt e 
   => Reshapable d d'
-  => Tensor t d -> Tensor t d'
+  => Tensor d e -> Tensor d' e
 reshape = unsafeCoerce
 
 toTensor
-  :: forall d t. Elt t
+  :: forall d e. Elt e
   => KnownDim (Size d)
-  => [t]
-  -> Maybe (Tensor t d)
+  => [e]
+  -> Maybe (Tensor d e)
 toTensor v
   | length v == fromIntegral (dimVal (dim :: Dim (Size d))) = Just $ Tensor $ V.fromListN (length v) v
   | otherwise = Nothing
 
-fromVector :: Elt t => Dims d -> Vector t -> Maybe (Tensor t d)
+fromVector :: Elt e => Dims d -> Vector e -> Maybe (Tensor d e)
 fromVector d v = undefined
 
-fill :: forall d t. Elt t => Dims d -> (Idxs d -> t) -> Tensor t d
+fill :: forall d e. Elt e => Dims d -> (Idxs d -> e) -> Tensor d e
 fill d f = Tensor $ V.create $ do
   mv <- M.new (fromIntegral $ totalDim d)
   let act ix = M.write mv (minorToMajor d ix) $ f ix
   overDimIdx_ d act
   return mv
 
-modifyIdxs :: forall t d. Storable t => Dims d -> Vector t -> (forall s. Idxs d -> M.MVector s t -> ST s ()) -> Vector t
+modifyIdxs :: forall d e. Storable e => Dims d -> Vector e -> (forall s. Idxs d -> M.MVector s e -> ST s ()) -> Vector e
 modifyIdxs d v f = V.modify (\mv -> overDimIdx_ d (\i -> f i mv)) v
 
 {-
 
-fill :: Elt t => Dims d -> (Int -> t) -> Vector t
+fill :: Elt e => Dims d -> (Int -> e) -> Vector e
 fill dims act = 
   case dims of 
     Reverse dims' -> fill' dims act
    
-fill' :: Elt t => Dims d -> (Int -> t) -> Vector t
+fill' :: Elt e => Dims d -> (Int -> e) -> Vector e
 fill' dims act = V.create $ do
   v <- M.new (fromIntegral $ totalDim dims)
   let f i = M.write v i $ act i
@@ -263,14 +263,14 @@ TODO add tests:
 -- * Utility functions
 --------------------------------------------------------------------------------
 
-_replicate :: Elt t => Int -> t -> Tensor t d
+_replicate :: Elt e => Int -> e -> Tensor d e
 _replicate i = Tensor . V.fromListN i . replicate i
 
-_lift :: (Elt s, Elt t) => (s -> t) -> Tensor s d -> Tensor t d
+_lift :: (Elt a, Elt b) => (a -> b) -> Tensor d a -> Tensor d b
 _lift f (Tensor v) = Tensor $ V.map f v
 {-# INLINE _lift #-}
 
-_lift2 :: (Elt r, Elt s, Elt t) => (r -> s -> t)
-       -> Tensor r d -> Tensor s d -> Tensor t d
+_lift2 :: (Elt a, Elt b, Elt c) => (a -> b -> c)
+       -> Tensor d a -> Tensor d b -> Tensor d c
 _lift2 f (Tensor v1) (Tensor v2) = Tensor $ V.zipWith f v1 v2
 {-# INLINE _lift2 #-}

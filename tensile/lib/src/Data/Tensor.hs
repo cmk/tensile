@@ -14,18 +14,18 @@ import Numeric.Tensile.Types
 type T' s d = BVar s (T d)
 
 -- | return the a runtime shape representing the dimensions of a tensor.
-shape :: forall d t. KnownDims d => Tensor t d -> [Word]
+shape :: forall d e. KnownDims d => Tensor d e -> [Word]
 shape _ = listDims (dims @_ @d)
 
 -- | Product of all dimension sizes @O(Length xs)@.
-size :: KnownDims d => Tensor t d -> Word
+size :: KnownDims d => Tensor d e -> Word
 size = product . shape
 
-fromVector' :: forall d t. (Elt t, KnownDims d) => Vector t -> Maybe (Tensor t d)
+fromVector' :: forall d e. (Elt e, KnownDims d) => Vector e -> Maybe (Tensor d e)
 fromVector' = fromVector (dims @_ @d)
 
-fromScalar :: Elt t => t -> Tensor t '[]
+fromScalar :: Elt e => e -> Tensor '[] e
 fromScalar = constant (dims @_ @'[])
 
-constant :: Elt t => Dims d -> t -> Tensor t d
+constant :: Elt e => Dims d -> e -> Tensor d e
 constant d t = fill d $ const t

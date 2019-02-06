@@ -145,7 +145,7 @@ withDims f =
 
 -- TODO: is this rep better for constructing tensors?
 --newtype F' n t = F' { unF' :: Tagged n Int -> t } deriving (Functor,Applicative,Generic,Generic1)
-type F' n t = Tagged n Int -> Vector t 
+type F' n t = Tagged n Int -> Vector e 
 type F2' a b t = (KnownNat a, KnownNat b) => F' a (F' b t)
 type F3' a b c t = (KnownNat a, KnownNat b, KnownNat c) => F' a (F' b (F' c t))
 
@@ -450,10 +450,10 @@ inside l = \afb s -> sbt s <$> afb (sa s)
 
 -- TODO: push (V 1) constructor down n levels to add an extra dimension at axis (@n@) of size 1.
 --
--- expandDim :: forall n s t. (KnownLen s, KnownPeano n) => Tensor s t -> Tensor (Take n s ++ (1 ': Drop n s)) t
+-- expandDim :: forall n s e. (KnownLen s, KnownPeano n) => Tensor s t -> Tensor (Take n s ++ (1 ': Drop n s)) t
 -- expandDim (T x) = (T (funcall "tf.expand_dims" [x, named "axis" (integer (listLen @s - peanoInt @n))]))
 
---reduceSum0 :: ∀ s' n t. KnownLen s' => Tensor (n ': s') t -> Tensor s' t
+--reduceSum0 :: ∀ s' n e. KnownLen s' => Tensor (n ': s') t -> Tensor s' t
 reduceSum :: (Foldable f, Additive v, Num a) => f (v a) -> v a
 reduceSum = sumV
 
