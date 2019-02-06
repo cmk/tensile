@@ -41,23 +41,23 @@ import qualified Data.Vector.Storable.Mutable as M
 
 {-
 lowerPerm'
-  :: forall ds. KnownDim (Size ds) 
-  => (Dims ds' -> Idxs ds' -> Perm (Rank ds) -> Perm (Rank ds))
-  -> Dims ds 
-  -> Perm (Rank ds) -- ^ Rank-level permutation
-  -> Perm (Rank ds)  -- ^ Index-level permutation
-lowerPerm' d p f = foldDimIdx d (\i p' -> p' <> f d i p) (mempty :: Perm (Size ds))
+  :: forall d. KnownDim (Size d) 
+  => (Dims d' -> Idxs d' -> Perm (Rank d) -> Perm (Rank d))
+  -> Dims d 
+  -> Perm (Rank d) -- ^ Rank-level permutation
+  -> Perm (Rank d)  -- ^ Index-level permutation
+lowerPerm' d p f = foldDimIdx d (\i p' -> p' <> f d i p) (mempty :: Perm (Size d))
 -}
--- f :: (Dims ds' -> Perm n -> Perm n) -> Perm n -> Tensor t ds -> Tensor t ds'
--- f dim2Idx perm t = Tensor $ reifyDims (permuteDims perm (dims @_ @ds)) $ \p ->
---   modifyIdx (reflect p) (modify (permuteIdxs (dim2Idx (reflect p) perm) _)) (reflect p)) t -- basically make user derive the Idxs ds' -> Idxs ds'
+-- f :: (Dims d' -> Perm n -> Perm n) -> Perm n -> Tensor t d -> Tensor t d'
+-- f dim2Idx perm t = Tensor $ reifyDims (permuteDims perm (dims @_ @d)) $ \p ->
+--   modifyIdx (reflect p) (modify (permuteIdxs (dim2Idx (reflect p) perm) _)) (reflect p)) t -- basically make user derive the Idxs d' -> Idxs d'
 
--- dim2Idx :: Rank ds ~ n => Dims ds -> Perm n -> Perm n
+-- dim2Idx :: Rank d ~ n => Dims d -> Perm n -> Perm n
 -- takes a perm on dimensions and derives a perm in indices, eg
 -- dim2Idx d p = lowerPerm' ...
 -- --
--- otherwise consider using the raw index folds and lowerPerm???
--- could also create :  Perm ds ds'
+-- otherwise consider using the raw index fold and lowerPerm???
+-- could also create :  Perm d d'
 
 -- minorToMajor = transpose (lowerPerm reversal)
 -- see https://www.tensorflow.org/xla/shapes#minor-to-major_dimension_ordering
@@ -70,19 +70,19 @@ lowerPerm' d p f = foldDimIdx d (\i p' -> p' <> f d i p) (mempty :: Perm (Size d
 
 
 reshape 
-  :: forall t ds ds'. Elt t 
-  => Reshapable ds ds'
-  => Tensor t ds -> Tensor t ds'
+  :: forall t (d :: [Nat]) (d' :: [Nat]). Elt t 
+  => Reshapable d d'
+  => Tensor t d -> Tensor t d'
 reshape = unsafeCoerce
 
 transpose 
-  :: forall t ds ds'. Elt t 
-  => KnownDims ds
-  => Permutable ds ds'
-  => Perm (Rank ds) -> Tensor t ds -> Tensor t ds'
+  :: forall t (d :: [Nat]) (d' :: [Nat]). Elt t 
+  => KnownDims d
+  => Permutable d d'
+  => Perm (Rank d) -> Tensor t d -> Tensor t d'
 transpose p (Tensor v) = Tensor v'
   where
-    d = dims @_ @ds
+    d = dims @_ @d
     v' = modifyIdxs d v $ \i m -> 
            remapIdxs p d i $ \d' i' -> 
              M.modify m (const $ v V.! fromIdxs d' (_permuted p i)) (fromIdxs d' i')
@@ -97,33 +97,33 @@ unsafeVector :: (KnownDim n, KnownNat n) => [HsReal] -> IO (Tensor '[n])
 unsafeVector = fmap (either error id) . runExceptT . vector
 -}
 
-fromVector :: Elt t => Dims ds -> Vector t -> Maybe (Tensor t ds)
+fromVector :: Elt t => Dims d -> Vector t -> Maybe (Tensor t d)
 fromVector v = undefined
 
-fromVector' :: (Elt t, KnownDims ds) => Dims ds -> Vector t -> Maybe (Tensor t ds)
+fromVector' :: (Elt t, KnownDims d) => Dims d -> Vector t -> Maybe (Tensor t d)
 fromVector' v = undefined
 
 fromScalar :: Elt t => t -> Tensor t '[]
 fromScalar = constant (dims @_ @'[])
 
-constant :: Elt t => Dims ds -> t -> Tensor t ds
-constant ds t = fill ds $ const t
+constant :: Elt t => Dims d -> t -> Tensor t d
+constant d t = fill d $ const t
 
-fill :: forall t ds. Elt t => Dims ds -> (Idxs ds -> t) -> Tensor t ds
-fill ds f = Tensor $ V.create $ do
-  mv <- M.new (fromIntegral $ totalDim ds)
-  let act ix = M.write mv (minorToMajor ds ix) $ f ix
-  overDimIdx_ ds act
+fill :: forall t d. Elt t => Dims d -> (Idxs d -> t) -> Tensor t d
+fill d f = Tensor $ V.create $ do
+  mv <- M.new (fromIntegral $ totalDim d)
+  let act ix = M.write mv (minorToMajor d ix) $ f ix
+  overDimIdx_ d act
   return mv
 
 {-
 
-fill :: Elt t => Dims ds -> (Int -> t) -> Vector t
+fill :: Elt t => Dims d -> (Int -> t) -> Vector t
 fill dims act = 
   case dims of 
     Reverse dims' -> fill' dims act
    
-fill' :: Elt t => Dims ds -> (Int -> t) -> Vector t
+fill' :: Elt t => Dims d -> (Int -> t) -> Vector t
 fill' dims act = V.create $ do
   v <- M.new (fromIntegral $ totalDim dims)
   let f i = M.write v i $ act i
@@ -131,7 +131,7 @@ fill' dims act = V.create $ do
   return v
 
 TODO add tests:
-> mod ds idxs m = M.swap m 0 (fromIdxs ds idxs)
+> mod d idxs m = M.swap m 0 (fromIdxs d idxs)
 > v = V.fromList [1..12]
 > v
 [1.0,2.0,3.0,4.0,5.0,6.0,7.0,8.0,9.0,10.0,11.0,12.0]
@@ -144,7 +144,7 @@ TODO add tests:
 -}
 
 
-modifyIdxs :: forall t ds. Storable t => Dims ds -> Vector t -> (forall s. Idxs ds -> M.MVector s t -> ST s ()) -> Vector t
+modifyIdxs :: forall (d :: [Nat]) t. Storable t => Dims d -> Vector t -> (forall s. Idxs d -> M.MVector s t -> ST s ()) -> Vector t
 modifyIdxs dims v f = V.modify (\mv -> overDimIdx_ dims (\i -> f i mv)) v
 
 
@@ -215,12 +215,12 @@ res == [1,4,7,2,5,8,3,6,9,10,13,16,11,14,17,12,15,18]
 
 --test 
 a :: Maybe (Idxs '[2, 3, 3])
-a = idxsFromWords [2, 1, 1]  
+a = idxsFromWord [2, 1, 1]  
 
 b :: Maybe (Idxs '[2, 3, 3])
-b = idxsFromWords [2, 3, 3] 
+b = idxsFromWord [2, 3, 3] 
 
-check :: Dims ds -> Idxs ds -> Idxs ds -> Perm (Rank ds) -> (Perm (Rank ds) -> Idxs ds -> Idxs ds) -> [(Int, Int)]
+check :: Dims d -> Idxs d -> Idxs d -> Perm (Rank d) -> (Perm (Rank d) -> Idxs d -> Idxs d) -> [(Int, Int)]
 check d i j p f = foldDimPartIdx i j acc []
   where 
     acc i l = if (i/=f p i) then (1 + minorToMajor d i, 1 + minorToMajor d (f p i)) : l else l
@@ -238,11 +238,11 @@ res == Just [(11,13),(12,16),(15,17)]
 {-
 
 gen# 
-  :: forall s t ds. PrimBytes t 
+  :: forall s t d. PrimBytes t 
   => Int# -- ^ number of elements, not checked!
              --   Avoid using this argument if possible.
   -> (s -> (# s, t #))
-  -> s -> (# s, ArrayBase t ds #)
+  -> s -> (# s, ArrayBase t d #)
 gen# n f z0 = go (byteSize @t undefined *# n)
   where
     go bsize = case runRW#

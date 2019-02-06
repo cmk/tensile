@@ -25,6 +25,8 @@ w' = replicate 16 1.0
 
 println = putStr "\n"
 
+toTensor = undefined
+
 main :: IO ()
 main = do
   case (toTensor u :: Maybe (I '[2, 5])) of

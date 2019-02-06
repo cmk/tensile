@@ -8,19 +8,17 @@ where
 
 import Data.Int (Int64)
 import Numeric.Backprop (BVar(..))
-import Numeric.Dimensions (Nat, Reverse, Dimensions)
-import qualified Numeric.Dimensions as D
-
+import Numeric.Tensile.Types
 import Data.Tensor.Types
 
 type T' s d = BVar s (T d)
 
 -- | return the a runtime shape representing the dimensions of a tensor.
-shape :: forall t ds. Dimensions ds => Tensor t ds -> [Int64]
-shape _ = fromIntegral <$> D.listDims (D.dims @_ @ds)
+shape :: forall (d :: [Nat]) t. KnownDims d => Tensor t d -> [Word]
+shape _ = listDims (dims @_ @d)
 
 -- | Product of all dimension sizes @O(Length xs)@.
-size :: Dimensions ds => Tensor t ds -> Int64
+size :: forall (d :: [Nat]) t. KnownDims d => Tensor t d -> Word
 size = product . shape
 
 

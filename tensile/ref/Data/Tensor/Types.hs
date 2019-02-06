@@ -19,18 +19,19 @@ type BVal = Bool
 
 --class Elt t
 --TODO update Show instance
-newtype Tensor (t :: *) (d :: [Nat]) = Tensor { unTensor :: Vector t } deriving (Eq, Show)
+newtype Tensor (t :: *) (d :: [k]) = Tensor { unTensor :: Vector t } deriving (Eq, Show)
 
 -- | A real or complex-valued tensor of shape 'd'. 
-type T d = Tensor TVal d
+type T (d :: [Nat]) = Tensor TVal d
 
 -- | An integer or non-negative integer-valued tensor of shape 'd'. 
-type I d = Tensor IVal d
+type I (d :: [Nat]) = Tensor IVal d
 
 -- | A boolean-valued tensor of shape 'd'. 
-type B d = Tensor BVal d
+type B (d :: [Nat]) = Tensor BVal d
 
-instance (Num t, Elt t) => Num (Tensor t d)  where
+instance (KnownDim (Size (d :: [Nat])), Num t, Elt t) => Num (Tensor t d)  where
+{-
     {-# SPECIALIZE instance Num (Tensor Float d)  #-}
     {-# SPECIALIZE instance Num (Tensor Double d) #-}
     {-# SPECIALIZE instance Num (Tensor Int d)    #-}
@@ -43,6 +44,7 @@ instance (Num t, Elt t) => Num (Tensor t d)  where
     {-# SPECIALIZE instance Num (Tensor Word16 d) #-}
     {-# SPECIALIZE instance Num (Tensor Word32 d) #-}
     {-# SPECIALIZE instance Num (Tensor Word64 d) #-}
+-}
     (+) = liftT2 (+)
     {-# INLINE (+) #-}
     (-) = liftT2 (-)
@@ -58,9 +60,11 @@ instance (Num t, Elt t) => Num (Tensor t d)  where
     fromInteger i = Tensor $ V.singleton (fromInteger i) --TODO make this dim safe
     {-# INLINE fromInteger #-}
 
-instance (Fractional t, Elt t) => Fractional (Tensor t d)  where
+instance (KnownDim (Size (d :: [Nat])), Fractional t, Elt t) => Fractional (Tensor t d)  where
+{-
     {-# SPECIALIZE instance Fractional (Tensor Float d)  #-}
     {-# SPECIALIZE instance Fractional (Tensor Double d) #-}
+-}
     (/) = liftT2 (/)
     {-# INLINE (/) #-}
     recip = liftT recip
@@ -69,9 +73,11 @@ instance (Fractional t, Elt t) => Fractional (Tensor t d)  where
     {-# INLINE fromRational #-}
 
 
-instance (Floating t, Elt t) => Floating (Tensor t d) where
+instance (KnownDim (Size (d :: [Nat])), Floating t, Elt t) => Floating (Tensor t d) where
+{-
     {-# SPECIALIZE instance Floating (Tensor Float d)  #-}
     {-# SPECIALIZE instance Floating (Tensor Double d) #-}
+-}
     pi = Tensor $ V.singleton pi  --TODO make this dim safe
     {-# INLINE pi #-}
     exp = liftT exp
@@ -110,7 +116,7 @@ instance (Floating t, Elt t) => Floating (Tensor t d) where
     {-# INLINE atanh #-}
 
 
-instance (KnownDim (Size d), Elt t, Eq t, Bits t, Num t) => Bits (Tensor t d) where
+instance (KnownDim (Size (d :: [Nat])), Elt t, Eq t, Bits t, Num t) => Bits (Tensor t d) where
     (.&.) = liftT2 (.&.)
     {-# INLINE (.&.) #-}
     (.|.) = liftT2 (.|.)
@@ -148,6 +154,7 @@ instance (KnownDim (Size d), Elt t, Integral e) => Integral (Tensor t d) where
 
 -}
 
+{-
 toTensor
   :: forall d t. Elt t
   => KnownDim (Size d)
@@ -156,6 +163,7 @@ toTensor
 toTensor v
   | length v == fromIntegral (dimVal (dim :: Dim (Size d))) = Just $ Tensor $ V.fromListN (length v) v
   | otherwise = Nothing
+-}
 
 {-
 
@@ -179,26 +187,26 @@ notEqual = liftT2 (/=)
 
 -}
 
-eq :: T d -> T d -> B d
+eq :: forall (d :: [Nat]). T d -> T d -> B d
 eq = liftT2 (==)
 
-neq :: T d -> T d -> B d
+neq :: forall (d :: [Nat]). T d -> T d -> B d
 neq = liftT2 (/=)
 
-lt :: Ord TVal => T d -> T d -> B d
+lt :: forall (d :: [Nat]). Ord TVal => T d -> T d -> B d
 lt = liftT2 (<)
 
-lte :: Ord TVal => T d -> T d -> B d
+lte :: forall (d :: [Nat]). Ord TVal => T d -> T d -> B d
 lte = liftT2 (<=)
 
-gt :: Ord TVal => T d -> T d -> B d
+gt :: forall (d :: [Nat]). Ord TVal => T d -> T d -> B d
 gt = liftT2 (>)
 
-gte :: Ord TVal => T d -> T d -> B d
+gte :: forall (d :: [Nat]). Ord TVal => T d -> T d -> B d
 gte = liftT2 (>=)
 
 maximum
-  :: Elt t
+  :: forall (d :: [Nat]) t. Elt t
   => Ord t
   => Tensor t d
   -> Tensor t d
@@ -206,7 +214,7 @@ maximum
 maximum = liftT2 max
 
 minimum
-  :: Elt t
+  :: forall (d :: [Nat]) t. Elt t
   => Ord t
   => Tensor t d
   -> Tensor t d
@@ -217,7 +225,7 @@ minimum = liftT2 min
 -- * Utility functions
 --------------------------------------------------------------------------------
 
-replicateT :: (Elt t, KnownDim (Size d)) => Int -> t -> Tensor t d
+replicateT :: (Elt t, KnownDim (Size (d :: [Nat]))) => Int -> t -> Tensor t d
 replicateT i = Tensor . V.fromListN i . replicate i
 
 liftT :: (Elt s, Elt t) => (s -> t) -> Tensor s d -> Tensor t d

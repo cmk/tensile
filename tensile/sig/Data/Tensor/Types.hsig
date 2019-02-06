@@ -37,25 +37,25 @@ instance Eq BVal
 -- | Elements are assumed to be stored in major-to-minor (i.e. row-major) order.
 -- Implementations that use a different ordering must supply a conversion or risk unexpected 
 -- behavior. 
-data Tensor (t :: *) (d :: [Nat])
+data Tensor (t :: *) (d :: [k])
 
 -- | A real or complex-valued tensor of shape 'd'. 
-type T d = Tensor TVal d
+type T (d :: [Nat]) = Tensor TVal d
 
 -- | An integer or non-negative integer-valued tensor of shape 'd'. 
-type I d = Tensor IVal d
+type I (d :: [Nat]) = Tensor IVal d
 
 -- | A boolean-valued tensor of shape 'd'. 
-type B d = Tensor BVal d
+type B (d :: [Nat]) = Tensor BVal d
 
 -- | A variable tensor. Need ST-like interface w/ ghost type for variables.
 --newtype V v (d :: [Nat]) 
 
-instance (KnownDim (Size d), Elt t, Eq t) => Eq (Tensor t d)
-instance (KnownDim (Size d), Elt t, Eq t, Bits t, Num t) => Bits (Tensor t d) 
-instance (KnownDim (Size d), Elt t, Num t) => Num (Tensor t d) 
-instance (KnownDim (Size d), Elt t, Fractional t) => Fractional (Tensor t d) 
-instance (KnownDim (Size d), Elt t, Floating t) => Floating (Tensor t d)
+instance (KnownDim (Size (d :: [Nat])), Elt t, Eq t) => Eq (Tensor t d)
+instance (KnownDim (Size (d :: [Nat])), Elt t, Eq t, Bits t, Num t) => Bits (Tensor t d) 
+instance (KnownDim (Size (d :: [Nat])), Elt t, Num t) => Num (Tensor t d) 
+instance (KnownDim (Size (d :: [Nat])), Elt t, Fractional t) => Fractional (Tensor t d) 
+instance (KnownDim (Size (d :: [Nat])), Elt t, Floating t) => Floating (Tensor t d)
 
 
 
@@ -86,25 +86,26 @@ round :: Integral b => a -> b
 ceil :: Integral b => a -> b
 floor :: Integral b => a -> b
 
--}
-
 toTensor
   :: forall d t. Elt t
   => KnownDim (Size d)
   => [t]
   -> Maybe (Tensor t d)
 
-eq :: T d -> T d -> B d
+-}
 
-neq :: T d -> T d -> B d
 
-lt :: Ord TVal => T d -> T d -> B d
+eq :: forall (d :: [Nat]). T d -> T d -> B d
 
-lte :: Ord TVal => T d -> T d -> B d
+neq :: forall (d :: [Nat]). T d -> T d -> B d
 
-gt :: Ord TVal => T d -> T d -> B d
+lt :: forall (d :: [Nat]). Ord TVal => T d -> T d -> B d
 
-gte :: Ord TVal => T d -> T d -> B d
+lte :: forall (d :: [Nat]). Ord TVal => T d -> T d -> B d
+
+gt :: forall (d :: [Nat]). Ord TVal => T d -> T d -> B d
+
+gte :: forall (d :: [Nat]). Ord TVal => T d -> T d -> B d
 
 
 {-
@@ -157,14 +158,14 @@ greaterEqual
 -}
 
 maximum
-  :: Elt t
+  :: forall (d :: [Nat]) t. Elt t
   => Ord t
   => Tensor t d
   -> Tensor t d
   -> Tensor t d
 
 minimum
-  :: Elt t
+  :: forall (d :: [Nat]) t. Elt t
   => Ord t
   => Tensor t d
   -> Tensor t d
