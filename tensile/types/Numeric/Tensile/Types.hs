@@ -30,14 +30,14 @@ type family Rank (xs :: [k]) :: Nat where
     Rank '[] = 0
     Rank (_ ': xs) = 1 + Rank xs
 
-type family Size (xs :: [k]) :: Nat where
+type family Size (xs :: [Nat]) :: Nat where
     Size '[] = 1
     Size (x ': xs) = x * Size xs
 
 type KnownDims = Dimensions
 
-type Permutable ds ds' = (Sort ds ~ Sort ds')
-type Reshapable ds ds' = (Size ds ~ Size ds')
+type Permutable d d' = (Sort d ~ Sort d')
+type Reshapable d d' = (Size d ~ Size d')
 
 class Reifies s a | s -> a where
   -- | Recover a value inside a 'reify' context, given a proxy for its reified type.
@@ -46,15 +46,15 @@ class Reifies s a | s -> a where
 instance KnownDim (d :: Nat) => Reifies d (Dim d) where
   reflect _ = dim
 
-instance KnownDims (ds :: [Nat]) => Reifies ds (Dims ds) where
+instance KnownDims (d :: [Nat]) => Reifies d (Dims d) where
   reflect _ = dims
 
 newtype MagicDim r = MagicDim (forall (d :: Nat). KnownDim d => Proxy d -> r)
 
-newtype MagicDims r = MagicDims (forall (ds :: [Nat]). KnownDims ds => Proxy ds -> r)
+newtype MagicDims r = MagicDims (forall (d :: [Nat]). KnownDims d => Proxy d -> r)
 
-reifyDims :: forall r. [Word] -> (forall (ds :: [Nat]). KnownDims ds => Proxy ds -> r) -> r
-reifyDims ds k = unsafeCoerce (MagicDims k :: MagicDims r) ds Proxy
+reifyDims :: forall r. [Word] -> (forall (d :: [Nat]). KnownDims d => Proxy d -> r) -> r
+reifyDims d k = unsafeCoerce (MagicDims k :: MagicDims r) d Proxy
 
 reifyDim :: forall r. Word -> (forall (d :: Nat). KnownDim d => Proxy d -> r) -> r
 reifyDim d k = unsafeCoerce (MagicDim k :: MagicDim r) d Proxy

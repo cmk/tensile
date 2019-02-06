@@ -1,7 +1,7 @@
 module Numeric.Tensile.Operations.Linear.Unlifted where
 
 import Data.Tensor.Types
-import Numeric.Dimensions
+import Numeric.Tensile.Types
 import Numeric.Tensile.Operations.Linear.Internal
 
 {-
