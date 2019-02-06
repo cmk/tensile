@@ -1,0 +1,8 @@
+signature Test.Data.Tensor.Generators where
+
+import Data.Tensor
+import Numeric.Tensile.Types (Dims(..))
+
+import Hedgehog
+
+tensor :: Dims d -> Range TVal -> Gen (T d)

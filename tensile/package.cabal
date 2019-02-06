@@ -39,6 +39,25 @@ library
         TypeOperators 
     default-language: Haskell2010
 
+library tensile-test
+    hs-source-dirs: 
+        lib/test
+    signatures:
+        Test.Data.Tensor.Generators
+        -- Test.Numeric.Tensile.Operations.Linear.Properties     
+    build-depends:
+        base == 4.*,
+        hedgehog,
+        tensile,
+        tensile-types
+    default-extensions: 
+        DataKinds,
+        ScopedTypeVariables,
+        TypeApplications,
+        TypeOperators,
+        OverloadedLists
+    default-language: Haskell2010
+
 library tensile-types 
     hs-source-dirs: 
         types
@@ -133,6 +152,7 @@ library reference-test
     default-extensions: 
         DataKinds,
         ScopedTypeVariables,
+        TypeApplications,
         TypeOperators,
         OverloadedLists
     default-language: Haskell2010
@@ -170,12 +190,17 @@ test-suite test
     other-modules:
     build-depends:       
         base == 4.*,
+        hedgehog,
         reference,
         tensile,
-        tensile-types
+        tensile-types,
+        tensile-test,
+        reference,
+        reference-test
     default-extensions: 
         DataKinds,
         ScopedTypeVariables,
+        TypeApplications,
         TypeOperators,
         OverloadedLists
     default-language: Haskell2010

@@ -1,4 +1,6 @@
-{-# LANGUAGE AllowAmbiguousTypes, UndecidableInstances #-}
+{-# LANGUAGE AllowAmbiguousTypes  #-}
+{-# LANGUAGE UndecidableInstances #-}
+
 module Data.Tensor.Internal where
 
 import Control.Monad.ST (ST(..))
