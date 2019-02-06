@@ -42,14 +42,17 @@ library
 library tensile-test
     hs-source-dirs: 
         lib/test
-    signatures:
+    exposed-modules:
         Test.Data.Tensor.Generators
+    signatures:
+        Test.Data.Tensor.Generators.Internal
         -- Test.Numeric.Tensile.Operations.Linear.Properties     
     build-depends:
         base == 4.*,
         hedgehog,
         tensile,
-        tensile-types
+        tensile-types,
+        vector
     default-extensions: 
         DataKinds,
         ScopedTypeVariables,
@@ -141,7 +144,7 @@ library reference-test
     hs-source-dirs: 
         ref/test
     exposed-modules:
-        Test.Data.Tensor.Generators
+        Test.Data.Tensor.Generators.Internal
         -- Test.Numeric.Tensile.Operations.Linear.Properties     
     build-depends:
         base == 4.*,
@@ -183,8 +186,6 @@ library old
 test-suite test
     type:                
         exitcode-stdio-1.0
-    hs-source-dirs:      
-        test
     main-is:            
         test.hs
     other-modules:
@@ -208,7 +209,7 @@ test-suite test
 
 executable main
     main-is: 
-        Main.hs
+        main.hs
     build-depends:
         base == 4.*,
         reference,
