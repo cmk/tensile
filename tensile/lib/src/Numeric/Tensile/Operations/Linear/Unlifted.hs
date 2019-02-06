@@ -1,4 +1,7 @@
-module Numeric.Tensile.Operations.Linear.Unlifted where
+module Numeric.Tensile.Operations.Linear.Unlifted (
+  module Numeric.Tensile.Operations.Linear.Unlifted,
+  module Numeric.Tensile.Operations.Linear.Internal
+) where
 
 import Numeric.Tensile.Tensor
 import Numeric.Tensile.Types

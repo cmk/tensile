@@ -7,6 +7,7 @@ import qualified Hedgehog.Gen as G
 import qualified Hedgehog.Range as R
 import Numeric.Tensile.Types
 import Test.Numeric.Tensile.Tensor.Gen
+import qualified Test.Numeric.Tensile.Operations.Linear.Property as Linear
 
 rf :: Range Float
 rf = R.linearFracFrom 0 (-100) 100
@@ -18,6 +19,6 @@ main = do
 
   s <- G.sample (tensor (dims @_ @'[2,2]) G.float rf)
   print s
-  results <- sequence [] :: IO [Bool]
+  results <- sequence [Linear.tests] :: IO [Bool]
 
   unless (and results) exitFailure

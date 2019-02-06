@@ -44,9 +44,10 @@ library tensile-test
         lib/test
     exposed-modules:
         Test.Numeric.Tensile.Tensor.Gen
+        Test.Numeric.Tensile.Operations.Linear.Property
     signatures:
         Test.Numeric.Tensile.Tensor.Gen.Internal
-        -- Test.Numeric.Tensile.Operations.Linear.Properties     
+        Test.Numeric.Tensile.Operations.Linear.Property.Internal   
     build-depends:
         base == 4.*,
         hedgehog,
@@ -145,7 +146,7 @@ library reference-test
         ref/test
     exposed-modules:
         Test.Numeric.Tensile.Tensor.Gen.Internal
-        -- Test.Numeric.Tensile.Operations.Linear.Properties     
+        Test.Numeric.Tensile.Operations.Linear.Property.Internal     
     build-depends:
         base == 4.*,
         hedgehog,
@@ -198,7 +199,7 @@ test-suite test
         tensile-test,
         reference,
         reference-test
-    default-extensions: 
+    default-extensions:
         DataKinds,
         ScopedTypeVariables,
         TypeApplications,

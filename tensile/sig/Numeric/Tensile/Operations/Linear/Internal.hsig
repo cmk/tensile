@@ -1,6 +1,14 @@
 signature Numeric.Tensile.Operations.Linear.Internal where
 
--- import Numeric.Tensile.Tensor.Types
+import Numeric.Tensile.Permutation (Perm(..))
+import Numeric.Tensile.Tensor.Internal (Elt(..),Tensor(..))
+import Numeric.Tensile.Types 
+
+transpose 
+  :: forall d d' e. Elt e 
+  => KnownDims d
+  => Permutable d d'
+  => Perm (Rank d) -> Tensor d e -> Tensor d' e
 
 {-
 matmul 
