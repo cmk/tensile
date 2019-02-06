@@ -30,7 +30,7 @@ type family Rank (xs :: [k]) :: Nat where
     Rank '[] = 0
     Rank (_ ': xs) = 1 + Rank xs
 
-type family Size (xs :: [k]) :: Nat where
+type family Size (xs :: [Nat]) :: Nat where
     Size '[] = 1
     Size (x ': xs) = x * Size xs
 
