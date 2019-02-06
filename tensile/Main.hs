@@ -7,7 +7,7 @@ import Data.Tensor --(T(..), fromVector, shape)
 import Data.Tensor.Types
 import Data.Bits
 
-import Numeric.Dimensions
+import Numeric.Tensile.Types
 import Numeric.Tensile.Operations.Linear.Unlifted
 import Numeric.Tensile.Operations.Linear.Internal --TODO: remove
 
@@ -27,7 +27,7 @@ println = putStr "\n"
 
 main :: IO ()
 main = do
-  case (toTensor u :: Maybe (I '[2,5])) of
+  case (toTensor u :: Maybe (I '[2, 5])) of
     Nothing -> print "nope"
     Just t -> do
       print t

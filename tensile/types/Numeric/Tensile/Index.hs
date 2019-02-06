@@ -4,7 +4,7 @@ module Numeric.Tensile.Index (
 ) where
 
 import Numeric.Dimensions.Idxs (Idx(..), Idxs(..))
-import Numeric.Tensile.Types (Nat, TypedList(..), Dims(..), Dim(..), KnownDim(..), KnownDims(..), Size, Rank)
+import Numeric.Tensile.Types (Nat, Nat, TypedList(..), Dims(..), Dim(..), KnownDim(..), KnownDims(..), Size, Rank)
 import Numeric.Tensile.Permutation
 import Unsafe.Coerce (unsafeCoerce)
 
