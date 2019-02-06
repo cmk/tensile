@@ -1,7 +1,7 @@
 {-# LANGUAGE AllowAmbiguousTypes  #-}
 {-# LANGUAGE UndecidableInstances #-}
 
-module Data.Tensor.Internal where
+module Numeric.Tensile.Tensor.Internal where
 
 import Control.Monad.ST (ST(..))
 import Data.Bits

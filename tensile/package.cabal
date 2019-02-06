@@ -18,7 +18,7 @@ library
     hs-source-dirs: 
         lib/src
     exposed-modules:
-        Data.Tensor
+        Numeric.Tensile.Tensor
         Numeric.Tensile.Operations.Linear.Unlifted
         Numeric.Tensile.Operations.Manipulation.Unlifted
     build-depends:
@@ -43,9 +43,9 @@ library tensile-test
     hs-source-dirs: 
         lib/test
     exposed-modules:
-        Test.Data.Tensor.Generators
+        Test.Numeric.Tensile.Tensor.Gen
     signatures:
-        Test.Data.Tensor.Generators.Internal
+        Test.Numeric.Tensile.Tensor.Gen.Internal
         -- Test.Numeric.Tensile.Operations.Linear.Properties     
     build-depends:
         base == 4.*,
@@ -89,7 +89,7 @@ library tensile-signatures
     hs-source-dirs: 
         sig
     signatures:
-        Data.Tensor.Internal
+        Numeric.Tensile.Tensor.Internal
         Numeric.Tensile.Operations.Linear.Internal
         Numeric.Tensile.Operations.Quantization.Internal
     build-depends:
@@ -120,7 +120,7 @@ library reference
     hs-source-dirs: 
         ref/src
     exposed-modules:
-        Data.Tensor.Internal
+        Numeric.Tensile.Tensor.Internal
         Numeric.Tensile.Operations.Linear.Internal     
         Numeric.Tensile.Operations.Quantization.Internal
     build-depends:
@@ -144,7 +144,7 @@ library reference-test
     hs-source-dirs: 
         ref/test
     exposed-modules:
-        Test.Data.Tensor.Generators.Internal
+        Test.Numeric.Tensile.Tensor.Gen.Internal
         -- Test.Numeric.Tensile.Operations.Linear.Properties     
     build-depends:
         base == 4.*,
@@ -164,8 +164,8 @@ library old
     hs-source-dirs: 
         ref-old
     exposed-modules:
-        Data.Tensor.Types
-        Data.Tensor.Internal.Array
+        Numeric.Tensile.Tensor.Types
+        Numeric.Tensile.Tensor.Internal.Array
         Numeric.Tensile.Operations.Linear.Internal     
         Numeric.Tensile.Operations.Quantization.Internal
     build-depends:

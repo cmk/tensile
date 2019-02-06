@@ -3,7 +3,7 @@
 module Main where
 
 
-import Data.Tensor --(T(..), fromVector, shape)
+import Numeric.Tensile.Tensor --(T(..), fromVector, shape)
 import Data.Bits
 
 import Numeric.Tensile.Types

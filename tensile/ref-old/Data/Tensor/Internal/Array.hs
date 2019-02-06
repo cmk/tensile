@@ -1,6 +1,6 @@
 {-# LANGUAGE BangPatterns, FlexibleInstances, KindSignatures, MagicHash, PolyKinds, TypeOperators, UnboxedSums, UnboxedTuples, UndecidableInstances #-}
 
-module Data.Tensor.Internal.Array where
+module Numeric.Tensile.Tensor.Internal.Array where
 
 import Data.Bits
 import Data.Singletons.Prelude.List (Product)

@@ -6,7 +6,7 @@ import Hedgehog
 import qualified Hedgehog.Gen as G
 import qualified Hedgehog.Range as R
 import Numeric.Tensile.Types
-import Test.Data.Tensor.Generators
+import Test.Numeric.Tensile.Tensor.Gen
 
 rf :: Range Float
 rf = R.linearFracFrom 0 (-100) 100

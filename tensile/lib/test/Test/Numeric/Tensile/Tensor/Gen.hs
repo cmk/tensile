@@ -1,12 +1,12 @@
-module Test.Data.Tensor.Generators (
-  module Test.Data.Tensor.Generators,
-  module Test.Data.Tensor.Generators.Internal
+module Test.Numeric.Tensile.Tensor.Gen (
+  module Test.Numeric.Tensile.Tensor.Gen,
+  module Test.Numeric.Tensile.Tensor.Gen.Internal
 ) where
 
-import Data.Tensor
+import Numeric.Tensile.Tensor
 import Data.Vector.Storable (Vector(..),Storable(..))
 import Numeric.Tensile.Types (Dims(..), KnownDims(..), totalDim, dims)
-import Test.Data.Tensor.Generators.Internal
+import Test.Numeric.Tensile.Tensor.Gen.Internal
 import qualified Data.Vector.Storable as V
 
 import Hedgehog

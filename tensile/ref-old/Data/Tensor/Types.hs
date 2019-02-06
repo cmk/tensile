@@ -1,6 +1,6 @@
 {-# LANGUAGE FlexibleInstances, KindSignatures, MagicHash, TypeOperators, UnboxedSums, UnboxedTuples, UndecidableInstances #-}
 
-module Data.Tensor.Types where
+module Numeric.Tensile.Tensor.Types where
 
 import Data.Bits
 import Data.Singletons.Prelude.List (Product)

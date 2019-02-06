@@ -14,8 +14,8 @@
 
 module Numeric.Tensile.Operations.Linear.Internal where
 
-import Data.Tensor.Types
-import Data.Tensor.Internal.Array
+import Numeric.Tensile.Tensor.Types
+import Numeric.Tensile.Tensor.Internal.Array
 
 import GHC.Base
 import Numeric.Dimensions

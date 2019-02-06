@@ -1,6 +1,6 @@
-signature Test.Data.Tensor.Generators.Internal where
+signature Test.Numeric.Tensile.Tensor.Gen.Internal where
 
-import Data.Tensor (Tensor(..), Elt(..))
+import Numeric.Tensile.Tensor (Tensor(..), Elt(..))
 import Numeric.Tensile.Types (Dims(..))
 
 import Hedgehog

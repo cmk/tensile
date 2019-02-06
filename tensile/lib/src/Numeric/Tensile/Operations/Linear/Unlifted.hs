@@ -1,6 +1,6 @@
 module Numeric.Tensile.Operations.Linear.Unlifted where
 
-import Data.Tensor
+import Numeric.Tensile.Tensor
 import Numeric.Tensile.Types
 import Numeric.Tensile.Operations.Linear.Internal
 

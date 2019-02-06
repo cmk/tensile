@@ -1,6 +1,6 @@
-module Test.Data.Tensor.Generators.Internal where
+module Test.Numeric.Tensile.Tensor.Gen.Internal where
 
-import Data.Tensor.Internal
+import Numeric.Tensile.Tensor.Internal
 import Data.Vector.Storable (Vector(..),Storable(..))
 import Numeric.Tensile.Types (Dims(..), KnownDims(..), totalDim, dims)
 import qualified Data.Vector.Storable as V

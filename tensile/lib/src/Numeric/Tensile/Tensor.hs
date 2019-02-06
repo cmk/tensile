@@ -1,11 +1,11 @@
-module Data.Tensor 
-  ( module Data.Tensor,
-    module Data.Tensor.Internal
+module Numeric.Tensile.Tensor 
+  ( module Numeric.Tensile.Tensor,
+    module Numeric.Tensile.Tensor.Internal
   )
 where
 
 -- TODO: reexport Types module
-import Data.Tensor.Internal
+import Numeric.Tensile.Tensor.Internal
 import Data.Vector.Storable (Vector(..))
 import Numeric.Backprop (BVar(..))
 import Numeric.Tensile.Types

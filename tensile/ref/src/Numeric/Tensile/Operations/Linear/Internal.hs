@@ -1,6 +1,6 @@
 module Numeric.Tensile.Operations.Linear.Internal where
 
-import Data.Tensor.Internal
+import Numeric.Tensile.Tensor.Internal
 import Data.Vector.Storable (Vector(..), Storable(..))
 import Numeric.Tensile.Types
 import Numeric.Tensile.Index

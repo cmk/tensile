@@ -1,6 +1,6 @@
 {-# LANGUAGE MultiParamTypeClasses, UndecidableInstances #-}
 
-signature Data.Tensor.Internal where
+signature Numeric.Tensile.Tensor.Internal where
 
 -- this signature roughly correspond to tf.bitwise and tf.math in the TensorFlow Python API
 
