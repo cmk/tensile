@@ -38,7 +38,7 @@ import qualified Numeric.TypedList as T
 import Data.Monoid
 import Data.Word
 
----------------- Data.Dimensions
+---------------- Data.KnownDims
 
 -- import GHC.TypeNats
 import qualified Math.Combinat.Permutations as P
@@ -51,6 +51,10 @@ import Data.Singletons.Prelude.List (Sort(..))
 import Data.Proxy
 import Unsafe.Coerce (unsafeCoerce)
 
+
+impossible :: a
+impossible = error "Numeric.Tensile: impossible"
+
 type family Rank (xs :: [k]) :: Nat where
     Rank '[] = 0
     Rank (_ ': xs) = 1 + Rank xs
@@ -58,6 +62,8 @@ type family Rank (xs :: [k]) :: Nat where
 type family Size (xs :: [k]) :: Nat where
     Size '[] = 1
     Size (x ': xs) = x * Size xs
+
+type KnownDims = Dimensions
 
 type Permutable ds ds' = (Sort ds ~ Sort ds')
 type Reshapable ds ds' = (Size ds ~ Size ds')
@@ -67,12 +73,12 @@ class Reifies s a | s -> a where
   -- reified type.
   reflect :: proxy s -> a
 
-instance Dimensions (ds :: [Nat]) => Reifies ds (Dims ds) where
+instance KnownDims (ds :: [Nat]) => Reifies ds (Dims ds) where
   reflect _ = dims
 
-newtype MagicDims r = MagicDims (forall (ds :: [Nat]). Dimensions ds => Proxy ds -> r)
+newtype MagicDims r = MagicDims (forall (ds :: [Nat]). KnownDims ds => Proxy ds -> r)
 
-reifyDims :: forall r. [Word] -> (forall (ds :: [Nat]). Dimensions ds => Proxy ds -> r) -> r
+reifyDims :: forall r. [Word] -> (forall (ds :: [Nat]). KnownDims ds => Proxy ds -> r) -> r
 reifyDims ds k = unsafeCoerce (MagicDims k :: MagicDims r) ds Proxy
 
 instance KnownDim (d :: Nat) => Reifies d (Dim d) where
@@ -247,7 +253,7 @@ fromIdxs dsd = fromIntegral . go 1 dsd
     go m (T.Snoc ds d) (T.Snoc is (Idx i)) = m * (i - 1) + go (m * D.dimVal d) ds is
 -}
 
-idxsFromWords :: forall ds . Dimensions ds => [Word] -> Maybe (Idxs ds)
+idxsFromWords :: forall ds . KnownDims ds => [Word] -> Maybe (Idxs ds)
 idxsFromWords = unsafeCoerce . go (D.listDims (D.dims @_ @ds))
   where
     go [] [] = Just []
@@ -420,7 +426,7 @@ reshape = unsafeCoerce
 
 transpose 
   :: forall t ds ds'. Elt t 
-  => Dimensions ds
+  => KnownDims ds
   => Permutable ds ds'
   => Perm (Rank ds) -> Tensor t ds -> Tensor t ds'
 transpose p (Tensor v) = Tensor v'
@@ -430,18 +436,33 @@ transpose p (Tensor v) = Tensor v'
            remapIdxs p d i $ \d' i' -> 
              M.modify m (const $ v V.! fromIdxs d' (permuted p i)) (fromIdxs d' i')
 
+{-
+vector :: forall n . KnownDim n => KnownNat n => [HsReal] -> ExceptT String IO (Tensor '[n])
+vector rs
+  | genericLength rs == dimVal (dim :: Dim n) = asStatic <$> Dynamic.vectorEIO rs
+  | otherwise = ExceptT . pure $ Left "Vector dimension does not match length of list"
+
+unsafeVector :: (KnownDim n, KnownNat n) => [HsReal] -> IO (Tensor '[n])
+unsafeVector = fmap (either error id) . runExceptT . vector
+-}
+
+fromVector :: Elt t => Dims ds -> Vector t -> Maybe (Tensor t ds)
+fromVector v = undefined
+
+fromVector' :: (Elt t, KnownDims ds) => Dims ds -> Vector t -> Maybe (Tensor t ds)
+fromVector' v = undefined
 
 fromScalar :: Elt t => t -> Tensor t '[]
 fromScalar = constant (D.dims @_ @'[])
 
 constant :: Elt t => Dims ds -> t -> Tensor t ds
-constant dims t = fill dims $ const t
+constant ds t = fill ds $ const t
 
 fill :: forall t ds. Elt t => Dims ds -> (Idxs ds -> t) -> Tensor t ds
-fill dims f = Tensor $ V.create $ do
-  mv <- M.new (fromIntegral $ D.totalDim dims)
-  let act idxs = M.write mv (minorToMajor dims idxs) $ f idxs
-  overDimIdx_ dims act
+fill ds f = Tensor $ V.create $ do
+  mv <- M.new (fromIntegral $ D.totalDim ds)
+  let act ix = M.write mv (minorToMajor ds ix) $ f ix
+  overDimIdx_ ds act
   return mv
 
 {-
@@ -612,8 +633,8 @@ mul `a` `b` has shape=[2,2,2]
 {-
 product 
   :: forall m x y. KnownDim m
-  => Dimensions x
-  => Dimensions y
+  => KnownDims x
+  => KnownDims y
   => T (x +: m) -> T (m :+ y) -> T (x ++ y)
 product t u
     | I# m <- fromIntegral $ dimVal' @m
@@ -636,8 +657,8 @@ data T# = T# Int# Int#
 -- see http://citeseerx.ist.psu.edu/viewdoc/download;jsessionid=4A0663C7848627DADDBA6A243BC43E78?doi=10.1.1.130.782&rep=rep1&type=pdf
 product
   :: forall m x y. KnownDim m
-  => Dimensions x
-  => Dimensions y
+  => KnownDims x
+  => KnownDims y
   => T (x ++ [m] ++ y) 
   -> T '[m, n]
   -> T (x ++ n ++ y)
@@ -645,7 +666,7 @@ product
 -- #>
 productR
   :: All KnownDim '[a, b, c]
-  => Dimensions x
+  => KnownDims x
   => T (a :+ b :+ x)
   -> T (b :+ c :+ x)
   -> T (a :+ c :+ x)
@@ -655,7 +676,7 @@ productR = undefined
 -- same as tf.matmul
 productN
   :: All KnownDim '[a, b, c]
-  => Dimensions x
+  => KnownDims x
   => T (x +: a +: b) 
   -> T (x +: b +: c)
   -> T (x +: a +: c)

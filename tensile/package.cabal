@@ -20,6 +20,7 @@ library
     exposed-modules:
         Data.Tensor
         Numeric.Tensile.Operations.Linear.Unlifted
+        Numeric.Tensile.Operations.Manipulation.Unlifted
     build-depends:
         base          >= 4 && < 5,
         backprop,
@@ -29,6 +30,21 @@ library
         vector
     default-language: Haskell2010
     default-extensions: ConstraintKinds DataKinds FlexibleContexts TypeApplications TypeFamilies TypeOperators ScopedTypeVariables
+
+library tensile-types 
+    hs-source-dirs: 
+        types
+    exposed-modules:
+        Numeric.Tensile.Index
+        Numeric.Tensile.Permutation
+        Numeric.Tensile.Types
+    build-depends:
+        base          >= 4 && < 5,
+        combinat,
+        dimensions,
+        singletons
+    default-language: Haskell2010
+    default-extensions: ConstraintKinds DataKinds FlexibleContexts RankNTypes ScopedTypeVariables TypeApplications TypeFamilies TypeOperators 
 
 library tensile-signatures
     hs-source-dirs: 
