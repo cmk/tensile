@@ -5,4 +5,4 @@ import Numeric.Tensile.Types (Dims(..))
 
 import Hedgehog
 
-tensor :: (MonadGen m, Elt e) => Dims d -> (Range e -> m e) -> Range e -> m (Tensor d e)
+gen_tensor' :: (MonadGen m, Elt e) => Dims d -> (Range e -> m e) -> Range e -> m (Tensor d e)

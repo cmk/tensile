@@ -55,6 +55,7 @@ library tensile-test
         vector
     default-extensions: 
         DataKinds,
+        RankNTypes,
         ScopedTypeVariables,
         TypeApplications,
         TypeOperators,

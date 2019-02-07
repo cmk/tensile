@@ -12,7 +12,7 @@ import qualified Hedgehog.Range as R
 
 
 pred_transposition :: forall e. (Elt e, Eq e) => Tensor '[3,3,3] e -> Bool
-pred_transposition t = t == (f . f $ t)
+pred_transposition t = t == (f . f) t
   where --r :: Perm 3
         --r = reversal'
 
