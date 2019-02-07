@@ -13,17 +13,32 @@ import Hedgehog
 import qualified Hedgehog.Gen as G
 import qualified Hedgehog.Range as R
 
-gen_tensor :: forall d e m. (Elt e, KnownDims d, MonadGen m) => (Range e -> m e) -> Range e -> m (Tensor d e)
+gen_tensor :: forall d e m. (Elt e, KnownDims d, MonadGen m) => Range e -> (Range e -> m e) -> m (Tensor d e)
 gen_tensor = gen_tensor' $ dims @_ @d
 
-gen_tensor_dyn :: (Elt e, MonadGen m) => (Range e -> m e) -> Range e -> Range Word -> (forall d. Tensor d e -> Bool) -> m Bool
-gen_tensor_dyn g re rw k = gen_dims rw >>= \(SomeDims d) -> gen_tensor' d g re >>= return . k
+gen_dynamic :: (Elt e, MonadGen m) => Range Word -> Range e -> (Range e -> m e) -> (forall d. Tensor d e -> Bool) -> m Bool
+gen_dynamic rw re g k = gen_dims rw >>= \(SomeDims d) -> gen_tensor' d re g >>= return . k
 
 gen_dims :: MonadGen m => Range Word -> m SomeDims
 gen_dims r = someDimsVal <$> G.list (fmap fromIntegral r) (G.word r)
 
 
 {-
+
+Divisible:
+
+divide :: (Tensor d e -> (b, c)) -> f b -> f c -> f (Tensor d e)
+
+conquer :: f a
+
+
+contramap :: (a -> b) -> f b -> f a Source#
+
+(>$) :: b -> f b -> f a 
+
+newtype Predicate e = Predicate { unPredicate :: forall d. Tensor d e -> Bool }
+
+
 prop_splitDims :: [Word] -> Bool
 prop_splitDims n xsys
   | SomeDims dxsys <- someDimsVal xsys

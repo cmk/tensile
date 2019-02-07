@@ -12,9 +12,9 @@ import qualified Hedgehog.Range as R
 _vector :: (MonadGen m, Storable e) => Range Int -> m e -> m (Vector e)
 _vector r g = V.fromList <$> G.list r g
 
-gen_vector :: (MonadGen m, Storable e) => Range Int -> (r -> m e) -> r -> m (Vector e)
-gen_vector ran gen size = G.sized $ \n -> _vector ran (gen size)
+gen_vector :: (MonadGen m, Storable e) => Range Int -> r -> (r -> m e) -> m (Vector e)
+gen_vector ri r g = G.sized $ \n -> _vector ri (g r)
 
-gen_tensor' :: (MonadGen m, Elt e) => Dims d -> (Range e -> m e) -> Range e -> m (Tensor d e)
-gen_tensor' d g r = Tensor <$> gen_vector ran g r
-  where ran = R.singleton $ fromIntegral (totalDim d)
+gen_tensor' :: (MonadGen m, Elt e) => Dims d -> Range e -> (Range e -> m e) -> m (Tensor d e)
+gen_tensor' d r g = Tensor <$> gen_vector ri g r
+  where ri = R.singleton $ fromIntegral (totalDim d)

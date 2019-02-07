@@ -14,7 +14,7 @@ rf = R.linearFracFrom 0 (-100) 100
 
 prop_transposition :: Property
 prop_transposition =
-  property $ assert . pred_transposition =<< forAll (gen_tensor' (dims @_ @'[3,3,3]) G.float rf)
+  property $ assert . pred_transposition =<< forAll (gen_tensor' (dims @_ @'[3,3,3]) rf G.float)
 
 tests :: IO Bool
 tests = checkParallel $$(discover)
