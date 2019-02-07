@@ -52,15 +52,22 @@ instance KnownDim (d :: Nat) => Reifies d (Dim d) where
 instance KnownDims (d :: [Nat]) => Reifies d (Dims d) where
   reflect _ = dims
 
-newtype MagicDim r = MagicDim (forall (d :: Nat). KnownDim d => Proxy d -> r)
+newtype MagicDim' r = MagicDim' (forall (d :: Nat). KnownDim d => Proxy d -> r)
 
-newtype MagicDims r = MagicDims (forall (d :: [Nat]). KnownDims d => Proxy d -> r)
 
-reifyDims :: forall r. [Word] -> (forall (d :: [Nat]). KnownDims d => Proxy d -> r) -> r
-reifyDims d k = unsafeCoerce (MagicDims k :: MagicDims r) d Proxy
 
-reifyDim :: forall r. Word -> (forall (d :: Nat). KnownDim d => Proxy d -> r) -> r
-reifyDim d k = unsafeCoerce (MagicDim k :: MagicDim r) d Proxy
+reifyDim' :: forall r. Word -> (forall (d :: Nat). KnownDim d => Proxy d -> r) -> r
+reifyDim' d k = unsafeCoerce (MagicDim' k :: MagicDim' r) d Proxy
+
+
+newtype MagicDims d r = MagicDims (KnownDims d => r)
+newtype MagicDims' r = MagicDims' (forall (d :: [Nat]). KnownDims d => Proxy d -> r)
+
+reifyDims :: forall d r . Dims d -> (KnownDims d => r) -> r
+reifyDims d k = unsafeCoerce (MagicDims k :: MagicDims d r) d
+
+reifyDims' :: forall r. [Word] -> (forall (d :: [Nat]). KnownDims d => Proxy d -> r) -> r
+reifyDims' d k = unsafeCoerce (MagicDims' k :: MagicDims' r) d Proxy
 
 {-
 reifyDims :: forall r ds . Dims ds -> ( Dimensions ds => r) -> r

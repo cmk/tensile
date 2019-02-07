@@ -29,8 +29,19 @@ remapIdxs
   -> (forall (ds' :: [Nat]). Dims ds' -> Idxs ds' -> r) 
   -> r
 remapIdxs (Perm p) ds ix f = 
+  T.reifyDims' (P.permuteList p $ T.listDims ds) $ \ds' -> 
+    f (T.reflect ds') (toIdxs (T.reflect ds') . fromIdxs ds $ ix)
+{-
+remapIdxs'
+  :: forall r (ds :: [Nat]). Perm (Rank ds) 
+  -> Dims ds 
+  -> Idxs ds 
+  -> (forall (ds' :: [Nat]). Dims ds' -> Idxs ds' -> r) 
+  -> r
+remapIdxs' (Perm p) ds ix f = 
   T.reifyDims (P.permuteList p $ T.listDims ds) $ \ds' -> 
     f (T.reflect ds') (toIdxs (T.reflect ds') . fromIdxs ds $ ix)
+-}
 
 majorToMinor :: forall ds i. Integral i => Dims ds -> Idxs ds -> i
 majorToMinor dims = fromIntegral . go 1 dims
