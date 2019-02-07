@@ -6,9 +6,8 @@ import Numeric.Tensile.Types
 
 transpose 
   :: forall d d' e. Elt e 
-  => KnownDims d
   => Permutable d d'
-  => Perm (Rank d) -> Tensor d e -> Tensor d' e
+  => Dims d -> Perm (Rank d) -> Tensor d e -> Tensor d' e
 
 {-
 matmul 

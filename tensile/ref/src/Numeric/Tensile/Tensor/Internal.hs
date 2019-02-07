@@ -218,6 +218,9 @@ toTensor v
   | length v == fromIntegral (dimVal (dim :: Dim (Size d))) = Just $ Tensor $ V.fromListN (length v) v
   | otherwise = Nothing
 
+toVector :: Elt e => Tensor d e -> Vector e
+toVector = unTensor
+
 fromVector :: Elt e => Dims d -> Vector e -> Maybe (Tensor d e)
 fromVector d v = undefined
 

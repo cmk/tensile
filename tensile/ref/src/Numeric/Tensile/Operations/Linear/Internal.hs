@@ -48,75 +48,23 @@ lowerPerm' d p f = foldDimIdx d (\i p' -> p' <> f d i p) (mempty :: Perm (Size d
 
 transpose 
   :: forall d d' e. Elt e 
-  => KnownDims d
   => Permutable d d'
-  => Perm (Rank d) -> Tensor d e -> Tensor d' e
-transpose p (Tensor v) = Tensor v'
+  => Dims d -> Perm (Rank d) -> Tensor d e -> Tensor d' e
+transpose d p (Tensor v) = Tensor v'
   where
-    d = dims @_ @d
     v' = modifyIdxs d v $ \i m -> 
            remapIdxs p d i $ \d' i' -> 
              M.modify m (const $ v V.! fromIdxs d' (_permuted p i)) (fromIdxs d' i')
 
+transpose'
+  :: forall d d' e. Elt e 
+  => KnownDims d
+  => Permutable d d'
+  => Perm (Rank d) -> Tensor d e -> Tensor d' e
+transpose' = transpose (dims @_ @d)
 
 
-
-
-
-{- unit tests
- -
- -
-
-d233 = (dims @_ @'[2,3,3])
-d332 = (dims @_ @'[3,3,2])
-
-ttt :: Perm 3
-ttt = transposition @2 @3
-
-w = fill d233 $ majorToMinor d233 :: Vector Int -- col major
-w' = fill d233 $ minorToMajor d233 :: Vector Int -- row major
-
-
-
---test - transposing a matrix
---
-re :: Perm (Rank '[2, 4])
-re = reversal
-
-d24 = (dims @_ @'[2, 4])
-d42 = (dims @_ @'[4, 2])
-
-t :: Tensor Int '[2, 4]
-t = fill d24 $ majorToMinor d24 -- col major
-
-t' :: Tensor Int '[2, 4] 
-t' = fill d24 $ minorToMajor d24 -- row major
-
-t'' :: Tensor Int '[4, 2] 
-t'' = fill d42 $ minorToMajor d42 -- row major
-
-res = reshape t :: Tensor Int '[4, 2]
-res' = transpose re t' :: Tensor Int '[4, 2]
-
-transpose t' == reshape t && transpose t == reshape t'
-
---test - reversing a cube
-
-re :: Perm (Rank '[3, 3, 3])
-re = reversal
-
-d333 = (dims @_ @'[3,3,3])
-
-t :: Tensor Int '[3, 3, 3] 
-t = fill d333 $ majorToMinor d333 -- col major
-
-t' :: Tensor Int '[3, 3, 3] 
-t' = fill d333 $ minorToMajor d333 -- row major
-
-res :: Tensor Int '[3, 3, 3] 
-res = transpose re t'
-
-transpose re t' == reshape t && transpose re t == reshape t'
+{-
 
 
 

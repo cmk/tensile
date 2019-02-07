@@ -44,10 +44,10 @@ library tensile-test
         lib/test
     exposed-modules:
         Test.Numeric.Tensile.Tensor.Gen
-        Test.Numeric.Tensile.Operations.Linear.Property
+        -- Test.Numeric.Tensile.Operations.Linear.Property
     signatures:
         Test.Numeric.Tensile.Tensor.Gen.Internal
-        Test.Numeric.Tensile.Operations.Linear.Property.Internal   
+        -- Test.Numeric.Tensile.Operations.Linear.Property.Internal   
     build-depends:
         base == 4.*,
         hedgehog,
@@ -64,7 +64,7 @@ library tensile-test
 
 library tensile-types 
     hs-source-dirs: 
-        types
+        types/src
     exposed-modules:
         Numeric.Tensile.Index
         Numeric.Tensile.Permutation
@@ -146,7 +146,7 @@ library reference-test
         ref/test
     exposed-modules:
         Test.Numeric.Tensile.Tensor.Gen.Internal
-        Test.Numeric.Tensile.Operations.Linear.Property.Internal     
+        -- Test.Numeric.Tensile.Operations.Linear.Property.Internal     
     build-depends:
         base == 4.*,
         hedgehog,
@@ -187,9 +187,13 @@ library old
 test-suite test
     type:                
         exitcode-stdio-1.0
+    hs-source-dirs: 
+        test
     main-is:            
         test.hs
     other-modules:
+        Test.Numeric.Tensile.Operations.Linear.Property
+        Test.Numeric.Tensile.Operations.Linear.Property.Internal 
     build-depends:       
         base == 4.*,
         hedgehog,

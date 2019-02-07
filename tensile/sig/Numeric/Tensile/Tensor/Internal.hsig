@@ -189,5 +189,7 @@ toTensor
 
 fromVector :: Elt e => Dims d -> Vector e -> Maybe (Tensor d e)
 
+toVector :: Elt e => Tensor d e -> Vector e
+
 fill :: forall d e. Elt e => Dims d -> (Idxs d -> e) -> Tensor d e
 
