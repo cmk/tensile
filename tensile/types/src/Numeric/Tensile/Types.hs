@@ -10,9 +10,11 @@ module Numeric.Tensile.Types (
   Numeric.TypedList.TypedList(..),
   Numeric.TypedList.snoc,
   Dims(..),
-  Dimensions(..),
   KnownDims(..),
+  SomeDims(..),
+  someDimsVal,
   listDims,
+  dims,
   module Numeric.Dim,
   module Numeric.Type.Evidence,
   module Numeric.Tensile.Types

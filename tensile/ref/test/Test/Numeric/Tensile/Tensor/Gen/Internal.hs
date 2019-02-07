@@ -2,7 +2,7 @@ module Test.Numeric.Tensile.Tensor.Gen.Internal where
 
 import Numeric.Tensile.Tensor.Internal
 import Data.Vector.Storable (Vector(..),Storable(..))
-import Numeric.Tensile.Types (Dims(..), KnownDims(..), totalDim, dims)
+import Numeric.Tensile.Types (Dims(..), KnownDims(..), listDims, dims)
 import qualified Data.Vector.Storable as V
 
 import Hedgehog
@@ -16,5 +16,5 @@ gen_vector :: (Storable e, MonadGen m) => Range Int -> r -> (r -> m e) -> m (Vec
 gen_vector ri r g = G.sized $ \n -> gen_vector_ranged ri (g r)
 
 gen_tensor' :: (Elt e, MonadGen m) => Dims d -> Range e -> (Range e -> m e) -> m (Tensor d e)
-gen_tensor' d r g = Tensor <$> gen_vector ri g r
+gen_tensor' d r g = Tensor <$> gen_vector ri r g
   where ri = R.singleton $ fromIntegral (product $ listDims d)
