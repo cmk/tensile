@@ -14,11 +14,11 @@ instance KnownDim n => Monoid (Perm n) where
 
 cycles (Perm t) = P.permutationToDisjointCycles $ t
 
-reversal :: forall d. Dims d -> Perm (Rank d)
-reversal = Perm . P.reversePermutation . length . listDims
+reversal :: forall d. KnownDims d => Perm (Rank d)
+reversal = reversal' (dims @_ @d)
 
-reversal' :: forall d. KnownDims d => Perm (Rank d)
-reversal' = reversal (dims @_ @d)
+reversal' :: forall d. Dims d -> Perm (Rank d)
+reversal' = Perm . P.reversePermutation . length . listDims
 
 transposition' :: forall n. KnownDim n => Word -> Word -> Maybe (Perm n)
 transposition' i j = if i <= n' && j <= n' then Just p else Nothing

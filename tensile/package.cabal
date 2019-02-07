@@ -44,7 +44,7 @@ library tensile-test
         lib/test
     exposed-modules:
         Test.Numeric.Tensile.Tensor.Gen
-        Test.Numeric.Tensile.Operations.Linear
+        Test.Numeric.Tensile.Operations.Linear.Predicate
     signatures:
         Test.Numeric.Tensile.Tensor.Gen.Internal
     build-depends:

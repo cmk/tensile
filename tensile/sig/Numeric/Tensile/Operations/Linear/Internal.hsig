@@ -1,10 +1,12 @@
-signature Numeric.Tensile.Operations.Linear.Internal where
+signature Numeric.Tensile.Operations.Linear.Internal (
+  transpose'
+) where
 
 import Numeric.Tensile.Permutation (Perm(..))
 import Numeric.Tensile.Tensor.Internal (Elt(..),Tensor(..))
 import Numeric.Tensile.Types 
 
-transpose 
+transpose'
   :: forall d d' e. Elt e 
   => Permutable d d'
   => Dims d -> Perm (Rank d) -> Tensor d e -> Tensor d' e

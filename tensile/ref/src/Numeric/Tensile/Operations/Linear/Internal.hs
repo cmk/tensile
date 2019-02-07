@@ -14,15 +14,7 @@ import qualified Data.Vector.Storable.Mutable as M
 
 
 
-{-
-lowerPerm'
-  :: forall d. KnownDim (Size d) 
-  => (Dims d' -> Idxs d' -> Perm (Rank d) -> Perm (Rank d))
-  -> Dims d 
-  -> Perm (Rank d) -- ^ Rank-level permutation
-  -> Perm (Rank d)  -- ^ Index-level permutation
-lowerPerm' d p f = foldDimIdx d (\i p' -> p' <> f d i p) (mempty :: Perm (Size d))
--}
+
 -- f :: (Dims d' -> Perm n -> Perm n) -> Perm n -> Tensor d e -> Tensor d e'
 -- f dim2Idx perm t = Tensor $ reifyDims (permuteDims perm (dims @_ @d)) $ \p ->
 --   modifyIdx (reflect p) (modify (permuteIdxs (dim2Idx (reflect p) perm) _)) (reflect p)) t -- basically make user derive the Idxs d' -> Idxs d'
@@ -34,9 +26,6 @@ lowerPerm' d p f = foldDimIdx d (\i p' -> p' <> f d i p) (mempty :: Perm (Size d
 -- otherwise consider using the raw index fold and lowerPerm???
 -- could also create :  Perm d d'
 
--- minorToMajor = transpose (lowerPerm reversal)
--- see https://www.tensorflow.org/xla/shapes#minor-to-major_dimension_ordering
-
 
 --------------------------------------
 --
@@ -46,11 +35,11 @@ lowerPerm' d p f = foldDimIdx d (\i p' -> p' <> f d i p) (mempty :: Perm (Size d
 
 
 
-transpose 
+transpose' 
   :: forall d d' e. Elt e 
   => Permutable d d'
   => Dims d -> Perm (Rank d) -> Tensor d e -> Tensor d' e
-transpose d p (Tensor v) = Tensor v'
+transpose' d p (Tensor v) = Tensor v'
   where
     v' = modifyIdxs d v $ \i m -> 
            remapIdxs p d i $ \d' i' -> 
