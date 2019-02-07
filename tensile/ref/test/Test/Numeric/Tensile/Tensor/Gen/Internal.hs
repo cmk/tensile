@@ -17,4 +17,4 @@ gen_vector ri r g = G.sized $ \n -> gen_vector_ranged ri (g r)
 
 gen_tensor' :: (MonadGen m, Elt e) => Dims d -> Range e -> (Range e -> m e) -> m (Tensor d e)
 gen_tensor' d r g = Tensor <$> gen_vector ri g r
-  where ri = R.singleton $ fromIntegral (totalDim d)
+  where ri = R.singleton $ fromIntegral (product $ listDims d)

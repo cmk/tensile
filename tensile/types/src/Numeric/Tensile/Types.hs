@@ -9,8 +9,11 @@ module Numeric.Tensile.Types (
   Data.Singletons.Prelude.List.Sort,
   Numeric.TypedList.TypedList(..),
   Numeric.TypedList.snoc,
+  Dims(..),
+  Dimensions(..),
+  KnownDims(..),
+  listDims,
   module Numeric.Dim,
-  module Numeric.Dimensions.Dims,
   module Numeric.Type.Evidence,
   module Numeric.Tensile.Types
 ) where
@@ -59,6 +62,29 @@ reifyDims d k = unsafeCoerce (MagicDims k :: MagicDims r) d Proxy
 reifyDim :: forall r. Word -> (forall (d :: Nat). KnownDim d => Proxy d -> r) -> r
 reifyDim d k = unsafeCoerce (MagicDim k :: MagicDim r) d Proxy
 
+{-
+reifyDims :: forall r ds . Dims ds -> ( Dimensions ds => r) -> r
+reifyDims ds k = unsafeCoerce# (MagicDims k :: MagicDims ds r) ds
+{-# INLINE reifyDims #-}
+newtype MagicDims ds r = MagicDims (Dimensions ds => r)
+
+withDims :: Dims ds -> Evidence (Dimensions ds)
+withDims ds = reifyDims ds E
 
 
+compareDims' :: Dims as -> Dims bs -> Ordering
+compareDims' a b = compare (listDims a) (listDims b)
+{-# INLINE compareDims #-}
 
+compareDims :: forall as bs p q
+              . (Dimensions as, Dimensions bs)
+             => p as -> q bs -> Ordering
+compareDims _ _ = compareDims' (dims @_ @as) (dims @_ @bs)
+
+fromDims = listDims
+compareDims
+sameDims
+totalDim
+
+
+-}

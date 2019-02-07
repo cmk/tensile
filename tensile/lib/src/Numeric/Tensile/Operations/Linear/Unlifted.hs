@@ -3,7 +3,7 @@ module Numeric.Tensile.Operations.Linear.Unlifted (
   module Numeric.Tensile.Operations.Linear.Internal
 ) where
 
-import Numeric.Tensile.Permutation (Perm(..))
+import Numeric.Tensile.Permutation (Perm(..), reversal')
 import Numeric.Tensile.Tensor
 import Numeric.Tensile.Types
 import Numeric.Tensile.Operations.Linear.Internal
@@ -23,4 +23,19 @@ infixl 7 <#>
   => Dimensions y
   => T (x +: a) -> T (a :+ y) -> T (x ++ y)
 (<#>) = matmul
+
+
+import Numeric.Type.List (Reverse(..))
+import Unsafe.Coerce
+
+rev :: forall (d :: [Nat]). Dims d -> Dims (Reverse d)
+rev = unsafeCoerce . reverse . unsafeCoerce
+
+
+transpose''
+  :: forall d d' e. Elt e 
+  => Dims d -> Tensor d e -> Tensor (Reverse d) e
+transpose'' d  = unsafeCoerce . transpose' d (reversal' d) . unsafeCoerce
+
+
 -}

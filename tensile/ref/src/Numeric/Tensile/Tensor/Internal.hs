@@ -226,7 +226,7 @@ fromVector d v = undefined
 
 fill :: forall d e. Elt e => Dims d -> (Idxs d -> e) -> Tensor d e
 fill d f = Tensor $ V.create $ do
-  mv <- M.new (fromIntegral $ totalDim d)
+  mv <- M.new $ fromIntegral $ product $ listDims d
   let act ix = M.write mv (minorToMajor d ix) $ f ix
   overDimIdx_ d act
   return mv

@@ -6,7 +6,6 @@ import Numeric.Tensile.Permutation (Perm(..), reversal, reversal')
 import Numeric.Tensile.Operations.Linear.Unlifted (transpose, transpose')
 import Test.Numeric.Tensile.Tensor.Gen
 
-import Numeric.Type.List (Reverse(..))
 import Hedgehog
 import qualified Hedgehog.Gen as G
 import qualified Hedgehog.Range as R
@@ -29,8 +28,7 @@ pred_transposition t = t == (f . f) t
 
 TODO
 
-rev :: forall (d :: [Nat]). Dims d -> Dims (Reverse d)
-rev = unsafeCoerce . reverse . unsafeCoerce
+
 
 pred_transposition' :: forall d e. (Elt e, Eq e, V.Storable e) => Dims d -> Tensor d e -> Bool
 pred_transposition' d t = undefined -- toVector t == toVector t'

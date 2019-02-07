@@ -13,7 +13,7 @@ import Hedgehog
 import qualified Hedgehog.Gen as G
 import qualified Hedgehog.Range as R
 
-gen_tensor :: forall d e m. (Elt e, KnownDims d, MonadGen m) => Range e -> (Range e -> m e) -> m (Tensor d e)
+gen_tensor :: forall d e m. (KnownDims d, Elt e, MonadGen m) => Range e -> (Range e -> m e) -> m (Tensor d e)
 gen_tensor = gen_tensor' $ dims @_ @d
 
 gen_dynamic :: (Elt e, MonadGen m) => Range Word -> Range e -> (Range e -> m e) -> (forall d. Dims d -> Tensor d e -> Bool) -> m Bool
