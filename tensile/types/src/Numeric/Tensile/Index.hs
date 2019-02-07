@@ -4,7 +4,7 @@ module Numeric.Tensile.Index (
 ) where
 
 import Numeric.Dimensions.Idxs (Idx(..), Idxs(..))
-import Numeric.Tensile.Types (Nat, Nat, TypedList(..), Dims(..), Dim(..), KnownDim(..), KnownDims(..), Size, Rank)
+import Numeric.Tensile.Types (Nat, Nat, TypedList(..), Dims(..), Dim(..), KnownDim(..), KnownDims(..), Permutable, Size, Rank)
 import Numeric.Tensile.Permutation
 import Unsafe.Coerce (unsafeCoerce)
 
@@ -15,32 +15,35 @@ import qualified Numeric.Tensile.Types as T
 
 -- (Idx(),Idxs(),listIdxs,idxToWord,idxFromWord,unsafeIdxFromWord)
 
-_permuted :: Perm (Rank ds) -> TypedList f ds -> TypedList f ds'
+--_permuted :: Permutable d d' => Perm (Rank d) -> TypedList f d -> TypedList f d'
+_permuted :: Perm (Rank d) -> TypedList f d -> TypedList f d'
 _permuted (Perm p) = unsafeCoerce . P.permuteList p . unsafeCoerce
 
-_reversed :: TypedList f ds -> TypedList f ds'
+_reversed :: TypedList f d -> TypedList f d'
 _reversed = unsafeCoerce . reverse . unsafeCoerce 
 
 -- | Remaps the index argument to the index with the same 'Int' representation under the permuted dimensions.
 remapIdxs 
-  :: forall r (ds :: [Nat]). Perm (Rank ds) 
+  :: forall (ds :: [Nat]) r. Perm (Rank ds) 
   -> Dims ds 
   -> Idxs ds 
   -> (forall (ds' :: [Nat]). Dims ds' -> Idxs ds' -> r) 
   -> r
 remapIdxs (Perm p) ds ix f = 
-  T.reifyDims' (P.permuteList p $ T.listDims ds) $ \ds' -> 
+  T.reifyWords (P.permuteList p $ T.listDims ds) $ \ds' -> 
     f (T.reflect ds') (toIdxs (T.reflect ds') . fromIdxs ds $ ix)
+
+
 {-
-remapIdxs'
-  :: forall r (ds :: [Nat]). Perm (Rank ds) 
+remapIdxs' 
+  :: forall (ds :: [Nat]) (ds' :: [Nat]) r. Permutable ds ds'
+  => Perm (Rank ds) 
   -> Dims ds 
   -> Idxs ds 
-  -> (forall (ds' :: [Nat]). Dims ds' -> Idxs ds' -> r) 
+  -> (KnownDims ds' => r) 
   -> r
-remapIdxs' (Perm p) ds ix f = 
-  T.reifyDims (P.permuteList p $ T.listDims ds) $ \ds' -> 
-    f (T.reflect ds') (toIdxs (T.reflect ds') . fromIdxs ds $ ix)
+remapIdxs' p ds ix f = 
+  T.reifyDims (_permuted p ds) f
 -}
 
 majorToMinor :: forall ds i. Integral i => Dims ds -> Idxs ds -> i

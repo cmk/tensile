@@ -22,13 +22,18 @@ pred_transposition t = t == (f . f) t
 
 
 
+
 {- unit tests
  -
  -
 
 TODO
 
+reifyDims :: forall r. [Word] -> (forall (d :: [Nat]). KnownDims d => Proxy d -> r) -> r
+reifyDims d k = unsafeCoerce (MagicDims k :: MagicDims r) d Proxy
 
+pred_transposition' :: forall d e. (Elt e, Eq e, V.Storable e) => Dims d -> Tensor d e -> Bool
+pred_transposition' d t = undefined 
 
 pred_transposition' :: forall d e. (Elt e, Eq e, V.Storable e) => Dims d -> Tensor d e -> Bool
 pred_transposition' d t = undefined -- toVector t == toVector t'
