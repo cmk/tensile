@@ -49,12 +49,14 @@ library tensile-test
         Test.Numeric.Tensile.Tensor.Gen.Internal
     build-depends:
         base == 4.*,
+        dimensions,
         hedgehog,
         tensile,
         tensile-types,
         vector
     default-extensions: 
         DataKinds,
+        KindSignatures,
         RankNTypes,
         ScopedTypeVariables,
         TypeApplications,

@@ -2,21 +2,22 @@ module Test.Numeric.Tensile.Operations.Linear.Predicate where
 
 import Numeric.Tensile.Tensor
 import Numeric.Tensile.Types
-import Numeric.Tensile.Permutation (Perm(..), reversal)
-import Numeric.Tensile.Operations.Linear.Unlifted (transpose)
+import Numeric.Tensile.Permutation (Perm(..), reversal, reversal')
+import Numeric.Tensile.Operations.Linear.Unlifted (transpose, transpose')
 import Test.Numeric.Tensile.Tensor.Gen
 
+import Numeric.Type.List (Reverse(..))
 import Hedgehog
 import qualified Hedgehog.Gen as G
 import qualified Hedgehog.Range as R
+import qualified Data.Vector.Storable as V
+
+
 
 
 pred_transposition :: forall e. (Elt e, Eq e) => Tensor '[3,3,3] e -> Bool
 pred_transposition t = t == (f . f) t
-  where --r :: Perm 3
-        --r = reversal'
-
-        f :: Tensor '[3,3,3] e -> Tensor '[3,3,3] e
+  where f :: Tensor '[3,3,3] e -> Tensor '[3,3,3] e
         f = transpose (reversal @'[3,3,3]) 
         
 
@@ -27,20 +28,21 @@ pred_transposition t = t == (f . f) t
  -
 
 TODO
-- move sigs from lib to sig?
-- gen_dims :: Gen SomeDims
 
-- gen_tensor
+rev :: forall (d :: [Nat]). Dims d -> Dims (Reverse d)
+rev = unsafeCoerce . reverse . unsafeCoerce
 
-{-# LANGUAGE AllowAmbiguousTypes #-}
+pred_transposition' :: forall d e. (Elt e, Eq e, V.Storable e) => Dims d -> Tensor d e -> Bool
+pred_transposition' d t = undefined -- toVector t == toVector t'
+  where --r :: Perm 3
+        --r = reversal'
+        f :: Tensor d e -> Tensor (Reverse d) e
+        f = unsafeCoerce $ transpose' d (reversal' d)
 
-  property $ law_cataCancel size =<< forAll (genExpr (Gen.sized genMuExpr)
+        g :: forall d. Tensor (Reverse d) e -> Tensor d e
+        g = transpose' (rev d) (reversal' (rev d))
 
-prop_transposition :: Property
-prop_transposition =
-  property $ law_transposition <$> t1 <*> t2
-  where
-    forAll (genExpr (Gen.sized genMuExpr))
+        t' = g . f $ t
 
 -- minorToMajor = transpose (lowerPerm reversal)
 -- see https://www.tensorflow.org/xla/shapes#minor-to-major_dimension_ordering

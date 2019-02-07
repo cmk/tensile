@@ -16,9 +16,10 @@ import qualified Hedgehog.Range as R
 gen_tensor :: forall d e m. (Elt e, KnownDims d, MonadGen m) => Range e -> (Range e -> m e) -> m (Tensor d e)
 gen_tensor = gen_tensor' $ dims @_ @d
 
-gen_dynamic :: (Elt e, MonadGen m) => Range Word -> Range e -> (Range e -> m e) -> (forall d. Tensor d e -> Bool) -> m Bool
-gen_dynamic rw re g k = gen_dims rw >>= \(SomeDims d) -> gen_tensor' d re g >>= return . k
+gen_dynamic :: (Elt e, MonadGen m) => Range Word -> Range e -> (Range e -> m e) -> (forall d. Dims d -> Tensor d e -> Bool) -> m Bool
+gen_dynamic rw re g k = gen_dims rw >>= \(SomeDims d) -> gen_tensor' d re g >>= return . k d
 
+-- TODO move to types test lib
 gen_dims :: MonadGen m => Range Word -> m SomeDims
 gen_dims r = someDimsVal <$> G.list (fmap fromIntegral r) (G.word r)
 
