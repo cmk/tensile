@@ -69,16 +69,10 @@ reifyDims d k = unsafeCoerce (MagicDims k :: MagicDims d r) d
 reifyDims' :: forall r. [Word] -> (forall (d :: [Nat]). KnownDims d => Proxy d -> r) -> r
 reifyDims' d k = unsafeCoerce (MagicDims' k :: MagicDims' r) d Proxy
 
+withDims :: Dims d -> Evidence (KnownDims d)
+withDims d = reifyDims d E
+
 {-
-reifyDims :: forall r ds . Dims ds -> ( Dimensions ds => r) -> r
-reifyDims ds k = unsafeCoerce# (MagicDims k :: MagicDims ds r) ds
-{-# INLINE reifyDims #-}
-newtype MagicDims ds r = MagicDims (Dimensions ds => r)
-
-withDims :: Dims ds -> Evidence (Dimensions ds)
-withDims ds = reifyDims ds E
-
-
 compareDims' :: Dims as -> Dims bs -> Ordering
 compareDims' a b = compare (listDims a) (listDims b)
 {-# INLINE compareDims #-}
