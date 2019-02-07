@@ -56,12 +56,7 @@ transpose d p (Tensor v) = Tensor v'
            remapIdxs p d i $ \d' i' -> 
              M.modify m (const $ v V.! fromIdxs d' (_permuted p i)) (fromIdxs d' i')
 
-transpose'
-  :: forall d d' e. Elt e 
-  => KnownDims d
-  => Permutable d d'
-  => Perm (Rank d) -> Tensor d e -> Tensor d' e
-transpose' = transpose (dims @_ @d)
+
 
 
 {-
