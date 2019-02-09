@@ -1,18 +1,346 @@
-module Numeric.Tensile.Index (
-  module Numeric.Dimensions.Idxs,
-  module Numeric.Tensile.Index 
-) where
+{-# LANGUAGE CPP                        #-}
+{-# LANGUAGE ConstraintKinds            #-}
+{-# LANGUAGE DataKinds                  #-}
+{-# LANGUAGE DeriveDataTypeable         #-}
+{-# LANGUAGE DeriveGeneric              #-}
+{-# LANGUAGE ExistentialQuantification  #-}
+{-# LANGUAGE ExplicitNamespaces         #-}
+{-# LANGUAGE FlexibleContexts           #-}
+{-# LANGUAGE FlexibleInstances          #-}
+{-# LANGUAGE GADTs                      #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE KindSignatures             #-}
+{-# LANGUAGE MagicHash                  #-}
+{-# LANGUAGE PolyKinds                  #-}
+{-# LANGUAGE ScopedTypeVariables        #-}
+{-# LANGUAGE Strict                     #-}
+{-# LANGUAGE TypeApplications           #-}
+#if __GLASGOW_HASKELL__ >= 802
+#else
+{-# OPTIONS_GHC -fno-warn-incomplete-patterns #-}
+#endif
 
-import Numeric.Dimensions.Idxs (Idx(..), Idxs(..))
+module Numeric.Tensile.Index where
+
+--import Numeric.Dimensions.Idxs (Idx(..), Idxs(..))
 import Numeric.Tensile.Types (Nat, Nat, TypedList(..), Dims(..), Dim(..), KnownDim(..), KnownDims(..), Permutable, Size, Rank)
 import Numeric.Tensile.Permutation
 import Unsafe.Coerce (unsafeCoerce)
 
+import qualified Data.Finite as F
 import qualified Math.Combinat.Permutations as P
-import qualified Numeric.Dimensions.Idxs as I
-import qualified Numeric.Dimensions.Fold as D 
-import qualified Numeric.Tensile.Types as T
+--import qualified Numeric.Dimensions.Idxs as I
+--import qualified Numeric.Dimensions.Fold as D 
+--import qualified Numeric.Tensile.Types as T
+import qualified Numeric.TypedList as T
+import qualified Numeric.Type.List as T
 
+import           Control.Arrow           (first)
+import           Foreign.Storable        (Storable)
+import           GHC.Base
+import           GHC.Enum
+--import           GHC.Generics            (Generic, Generic1)
+
+import           Numeric.Dimensions.Dims
+
+
+-- | This type is used to index a single dimension;
+--   the range of indices is from @1@ to @n@.
+--
+--   Note, this type has a weird `Enum` instance:
+--
+--   >>>fromEnum (Idx 7)
+--   6
+--
+--   The logic behind this is that the `Enum` class is used to transform
+--   indices to offsets. That is, element of an array at index @k :: Idx n@
+--   is the element taken by an offset `k - 1 :: Int`.
+newtype Idx (n :: Nat) = Idx { unIdx :: Word }
+  deriving ( Integral, Real, Storable, Eq, Ord )
+
+instance Read (Idx n) where
+    readsPrec d = fmap (first Idx) . readsPrec d
+
+instance Show (Idx n) where
+    showsPrec d = showsPrec d . unIdx
+
+
+instance KnownDim n => Bounded (Idx n) where
+    minBound = 0
+    {-# INLINE minBound #-}
+    maxBound = min 0 $ unsafeCoerce (dim @_ @n) - 1
+    {-# INLINE maxBound #-}
+
+instance KnownDim n => Enum (Idx n) where
+
+#ifdef UNSAFE_INDICES
+    succ = unsafeCoerce ((+ 1) :: Word -> Word)
+#else
+    succ x@(Idx i)
+      | x /= maxBound = Idx (i + 1)
+      | otherwise = succError $ "Idx " ++ show (dim @_ @n)
+#endif
+    {-# INLINE succ #-}
+
+#ifdef UNSAFE_INDICES
+    pred = unsafeCoerce# ((+ (-1)) :: Word -> Word)
+#else
+    pred x@(Idx i)
+      | x /= minBound = Idx (i - 1)
+      | otherwise = predError $ "Idx " ++ show (dim @_ @n)
+#endif
+    {-# INLINE pred #-}
+
+#ifdef UNSAFE_INDICES
+    toEnum (I# i#) = unsafeCoerce# (W# (int2Word# i#))
+#else
+    toEnum i@(I# i#)
+        | i >= 0 && i < d' = unsafeCoerce# (W# (int2Word# i# ))
+        | otherwise        = toEnumError ("Idx " ++ show d) i (0, d)
+      where
+        d = unsafeCoerce# (dim @_ @n) :: Word
+        d' = fromIntegral d
+#endif
+    {-# INLINE toEnum #-}
+
+#ifdef UNSAFE_INDICES
+    fromEnum (Idx (W# w#)) = I# (word2Int# w#)
+#else
+    fromEnum (Idx x@(W# w#))
+        | x <= maxIntWord = I# (word2Int# w#)
+        | otherwise       = fromEnumError ("Idx " ++ show (dim @_ @n)) x
+        where
+          maxIntWord = W# (case maxInt of I# i -> int2Word# i)
+#endif
+    {-# INLINE fromEnum #-}
+
+    enumFrom (Idx n)
+      = unsafeCoerce# (enumFromTo n (unsafeCoerce# (dim @_ @n)))
+    {-# INLINE enumFrom #-}
+    enumFromThen (Idx n0) (Idx n1)
+      = case compare n0 n1 of
+          LT -> unsafeCoerce# (enumFromThenTo n0 n1 (unsafeCoerce# (dim @_ @n)))
+          EQ -> unsafeCoerce# (repeat n0)
+          GT -> unsafeCoerce# (enumFromThenTo n0 n1 1)
+    {-# INLINE enumFromThen #-}
+    enumFromTo
+      = unsafeCoerce# (enumFromTo :: Word -> Word -> [Word])
+    {-# INLINE enumFromTo #-}
+    enumFromThenTo
+      = unsafeCoerce# (enumFromThenTo :: Word -> Word -> Word -> [Word])
+    {-# INLINE enumFromThenTo #-}
+
+instance KnownDim n => Num (Idx n) where
+
+#ifdef UNSAFE_INDICES
+    (+) = unsafeCoerce# ((+) :: Word -> Word -> Word)
+#else
+    (Idx a) + (Idx b)
+        | r >= d || r < a || r < b
+          = errorWithoutStackTrace
+          $ "Num.(+){Idx " ++ show d ++ "}: sum of "
+            ++ show a ++ " and " ++ show b
+            ++ " is outside of index bounds."
+        | otherwise = Idx r
+      where
+        r = a + b
+        d = unsafeCoerce# (dim @_ @n)
+#endif
+    {-# INLINE (+) #-}
+
+#ifdef UNSAFE_INDICES
+    (-) = unsafeCoerce# ((-) :: Word -> Word -> Word)
+#else
+    (Idx a) - (Idx b)
+        | b > a
+          = errorWithoutStackTrace
+          $ "Num.(-){Idx " ++ show (dim @_ @n) ++ "}: difference of "
+            ++ show a ++ " and " ++ show b
+            ++ " is negative."
+        | otherwise = Idx (a - b)
+#endif
+    {-# INLINE (-) #-}
+
+#ifdef UNSAFE_INDICES
+    (*) = unsafeCoerce# ((*) :: Word -> Word -> Word)
+#else
+    (Idx a) * (Idx b)
+        | r >= d || r < a || r < b
+          = errorWithoutStackTrace
+          $ "Num.(*){Idx " ++ show d ++ "}: product of "
+            ++ show a ++ " and " ++ show b
+            ++ " is outside of index bounds."
+        | otherwise = Idx r
+      where
+        r = a * b
+        d = unsafeCoerce# (dim @_ @n)
+#endif
+    {-# INLINE (*) #-}
+
+    negate = errorWithoutStackTrace
+           $ "Num.(*){Idx " ++ show (dim @_ @n) ++ "}: cannot negate index."
+    {-# INLINE negate #-}
+    abs = id
+    {-# INLINE abs #-}
+    signum _ = Idx 1
+    {-# INLINE signum #-}
+
+#ifdef UNSAFE_INDICES
+    fromInteger = unsafeCoerce# (fromInteger :: Integer -> Word)
+#else
+    fromInteger i
+      | i >= 0 && i < d = Idx $ fromInteger i
+      | otherwise       = errorWithoutStackTrace
+                        $ "Num.fromInteger{Idx "
+                        ++ show d ++ "}: integer "
+                        ++ show i ++ " is outside of index bounds."
+      where
+        d = toInteger (unsafeCoerce# (dim @_ @n) :: Word)
+#endif
+    {-# INLINE fromInteger #-}
+
+
+unsafeIdxFromWord :: forall d . KnownDim d => Word -> Idx d
+#ifdef UNSAFE_INDICES
+unsafeIdxFromWord = unsafeCoerce#
+#else
+unsafeIdxFromWord w
+  | w >= 0 && w < d = Idx w
+  | otherwise       = errorWithoutStackTrace
+                    $ "idxFromWord{Idx "
+                    ++ show d ++ "}: word "
+                    ++ show w ++ " is outside of index bounds."
+  where
+    d = unsafeCoerce# (dim @_ @d)
+#endif
+{-# INLINE unsafeIdxFromWord #-}
+
+idxFromWord :: forall d . KnownDim d => Word -> Maybe (Idx d)
+idxFromWord w
+  | w >= 0 && w < unsafeCoerce# (dim @_ @d) = Just (Idx w)
+  | otherwise                               = Nothing
+{-# INLINE idxFromWord #-}
+
+
+idxToWord :: Idx d -> Word
+idxToWord = unsafeCoerce#
+{-# INLINE idxToWord #-}
+
+{-# RULES
+"fromIntegral/idxToWord"
+  fromIntegral = idxToWord
+  #-}
+
+
+-- | Type-level dimensional indexing with arbitrary Word values inside.
+--   Most of the operations on it require `Dimensions` constraint,
+--   because the @Idxs@ itself does not store info about dimension bounds.
+--
+--   Note, this type has a special `Enum` instance:
+--   `fromEnum` gives an offset of the index in a flat 1D array;
+--   this is in line with a weird `Enum` instance of `Idx` type.
+type Idxs (xs :: [Nat]) = TypedList Idx xs
+
+
+listIdxs :: Idxs xs -> [Word]
+listIdxs = unsafeCoerce#
+{-# INLINE listIdxs #-}
+
+
+
+idxsFromWords :: forall ds . Dimensions ds => [Word] -> Maybe (Idxs ds)
+idxsFromWords = unsafeCoerce . go (listDims (dims @_ @ds))
+  where
+    go [] [] = Just []
+    go (d : ds) (i : is) | i >= 0 && i < d = (i:) <$> go ds is
+    go _ _   = Nothing
+
+majorToMinor :: forall ds i. Integral i => Dims ds -> Idxs ds -> i
+majorToMinor dims = fromIntegral . go 1 dims
+  where
+    go :: forall ns . Word -> Dims ns -> Idxs ns -> Word
+    go _ U U                     = 0
+    go m (d :* ds) (Idx i :* is) = m * i + go (m * dimVal d) ds is
+
+{-
+minorToMajor :: forall ds i. Integral i => Dims ds -> Idxs ds -> i
+minorToMajor d i = majorToMinor (_reversed d) (_reversed i)
+
+fromIdxs :: forall ds i. Integral i => Dims ds -> Idxs ds -> i
+fromIdxs = minorToMajor
+-}
+toIdxs :: forall ds i. Integral i => Dims ds -> i -> Idxs ds
+toIdxs dsd i = go dsd $ fromIntegral i
+  where
+    go :: forall ns . Dims ns -> Word -> Idxs ns
+    go U 0 = U
+    go U _ = error ("Idxs " ++ show (listDims dsd))
+    go (T.Snoc ds d) off = case divMod off (dimVal d) of
+      (off', j) -> go ds off' `T.snoc` Idx j
+
+instance Eq (Idxs xs) where
+    (==) = unsafeCoerce# ((==) :: [Word] -> [Word] -> Bool)
+    {-# INLINE (==) #-}
+
+-- | Compare indices by their importance in lexicorgaphic order
+--   from the last dimension to the first dimension
+--   (the last dimension is the most significant one) @O(Length xs)@.
+--
+--   Literally,
+--
+--   > compare a b = compare (reverse $ listIdxs a) (reverse $ listIdxs b)
+--
+--   This is the same @compare@ rule, as for `Dims`.
+--   Another reason to reverse the list of indices is to have a consistent
+--   behavior when calculating index offsets:
+--
+--   > sort == sortOn fromEnum
+--
+instance Ord (Idxs xs) where
+    compare a b = compare (reverse $ listIdxs a) (reverse $ listIdxs b)
+    {-# INLINE compare #-}
+
+
+instance Show (Idxs xs) where
+    show ds = "Idxs " ++ show (listIdxs ds)
+    showsPrec p ds
+      = showParen (p >= 10)
+      $ showString "Idxs " . showsPrec p (listIdxs ds)
+
+-- | With this instance we can slightly reduce indexing expressions, e.g.
+--
+--   > x ! (1 :* 2 :* 4) == x ! (1 :* 2 :* 4 :* U)
+--
+instance KnownDim n => Num (Idxs '[n]) where
+    (a:*U) + (b:*U) = (a+b) :* U
+    {-# INLINE (+) #-}
+    (a:*U) - (b:*U) = (a-b) :* U
+    {-# INLINE (-) #-}
+    (a:*U) * (b:*U) = (a*b) :* U
+    {-# INLINE (*) #-}
+    signum (a:*U)   = signum a :* U
+    {-# INLINE signum #-}
+    abs (a:*U)      = abs a :* U
+    {-# INLINE abs #-}
+    fromInteger i   = fromInteger i :* U
+    {-# INLINE fromInteger #-}
+
+instance Dimensions ds => Bounded (Idxs ds) where
+    maxBound = f (dims @_ @ds)
+      where
+        f :: forall ns . Dims ns -> Idxs ns
+        f U         = U
+        f (d :* ds) = Idx (dimVal d) :* f ds
+    {-# INLINE maxBound #-}
+    minBound = f (dims @_ @ds)
+      where
+        f :: forall ns . Dims ns -> Idxs ns
+        f U         = U
+        f (_ :* ds) = Idx 1 :* f ds
+    {-# INLINE minBound #-}
+
+
+{-
 -- (Idx(),Idxs(),listIdxs,idxToWord,idxFromWord,unsafeIdxFromWord)
 
 --_permuted :: Permutable d d' => Perm (Rank d) -> TypedList f d -> TypedList f d'
@@ -49,27 +377,7 @@ remapIdxs' p ds ix f =
   T.reifyDims (_permuted p ds) f
 -}
 
-majorToMinor :: forall ds i. Integral i => Dims ds -> Idxs ds -> i
-majorToMinor dims = fromIntegral . go 1 dims
-  where
-    go :: forall ns . Word -> Dims ns -> Idxs ns -> Word
-    go _ U U                     = 0
-    go m (d :* ds) (Idx i :* is) = m * (i - 1) + go (m * T.dimVal d) ds is
 
-minorToMajor :: forall ds i. Integral i => Dims ds -> Idxs ds -> i
-minorToMajor d i = majorToMinor (_reversed d) (_reversed i)
-
-fromIdxs :: forall ds i. Integral i => Dims ds -> Idxs ds -> i
-fromIdxs = minorToMajor
-
-toIdxs :: forall ds i. Integral i => Dims ds -> i -> Idxs ds
-toIdxs dsd i = go dsd $ fromIntegral i
-  where
-    go :: forall ns . Dims ns -> Word -> Idxs ns
-    go U 0 = U
-    go U _ = error ("Idxs " ++ show (T.listDims dsd))
-    go (T.Snoc ds d) off = case divMod off (T.dimVal d) of
-      (off', j) -> go ds off' `T.snoc` Idx (j+1)
 
 -- | Transform a permutation of tensor modes into a permutation of array indices.
 -- transpose (lowerPerm p1) . transpose (lowerPerm p2) == transpose (lowerPerm $ p1 <> p2)
@@ -104,13 +412,7 @@ fromIdxs dsd = fromIntegral . go 1 dsd
     go m (T.Snoc ds d) (T.Snoc is (Idx i)) = m * (i - 1) + go (m * dimVal d) ds is
 -}
 
--- TODO this is broken in the upstream lib
-idxsFromWords :: forall ds . KnownDims ds => [Word] -> Maybe (Idxs ds)
-idxsFromWords = unsafeCoerce . go (T.listDims (T.dims @_ @ds))
-  where
-    go [] [] = Just []
-    go (d : ds) (i : is) | i > 0 && i <= d = (i:) <$> go ds is
-    go _ _   = Nothing
+
 
 -- TODO reimplement bounds ord check 
 foldDimPartIdx' :: Idxs ds -- ^ Initial indices
@@ -299,4 +601,4 @@ overDimIdx_ f (\i -> remapIdxs re f i (\_ j -> print j))
 
 
 -}
-
+-}
