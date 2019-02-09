@@ -331,13 +331,13 @@ instance Dimensions ds => Bounded (Idxs ds) where
       where
         f :: forall ns . Dims ns -> Idxs ns
         f U         = U
-        f (d :* ds) = Idx (dimVal d) :* f ds
+        f (d :* ds) = Idx (dimVal d - 1) :* f ds
     {-# INLINE maxBound #-}
     minBound = f (dims @_ @ds)
       where
         f :: forall ns . Dims ns -> Idxs ns
         f U         = U
-        f (_ :* ds) = Idx 1 :* f ds
+        f (_ :* ds) = Idx 0 :* f ds
     {-# INLINE minBound #-}
 
 
@@ -415,11 +415,11 @@ overDimIdx_ :: Monad m
 overDimIdx_ U k = k U
 overDimIdx_ (T.Snoc ds d) k = overDimIdx_ ds k'
   where
-    dw = T.dimVal d
-    k' is = go 1
+    dw = dimVal d
+    k' is = go 0
       where
         go i
-          | i > dw = return ()
+          | i >= dw = return ()
           | otherwise = k (is `T.snoc` Idx i) >> go (i+1)
 
 -- TODO reimplement bounds ord check 
@@ -595,5 +595,4 @@ overDimIdx_ f (\i -> remapIdxs re f i (\_ j -> print j))
 
 
 
--}
 -}
