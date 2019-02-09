@@ -1,17 +1,19 @@
 module Numeric.Tensile.Operations.Linear.Internal where
 
 import Numeric.Tensile.Tensor.Internal
-import Data.Vector.Storable (Vector(..), Storable(..))
 import Numeric.Tensile.Types
 import Numeric.Tensile.Index
 import Numeric.Tensile.Permutation
 import Unsafe.Coerce (unsafeCoerce)
 
-import qualified Data.Vector.Storable as V
-import qualified Data.Vector.Storable.Mutable as M
+import Data.Vector.Sized (Vector)
+import qualified Data.Vector as V
+import qualified Data.Vector.Sized as Sz
+import qualified Data.Vector.Storable as St
+import qualified Data.Vector.Storable.Mutable as Mu
 
 
-
+-- import qualified Numeric.LinearAlgebra.HMatrix as Ma
 
 
 
@@ -30,54 +32,53 @@ import qualified Data.Vector.Storable.Mutable as M
 --------------------------------------
 --
 
+fromSizedVector :: Elt e => Vector (Size d) e -> Tensor d e
+fromSizedVector = Tensor . St.convert . Sz.fromSized
 
-
-
-
+toSizedVector :: Elt e => Tensor d e -> Vector (Size d) e
+toSizedVector = coerce . St.convert . unTensor
+  where coerce :: V.Vector e -> Sz.Vector n e
+        coerce = unsafeCoerce
 
 transpose' 
-  :: forall d d' e. Elt e 
+  :: Elt e 
   => Permutable d d'
   => Dims d -> Perm (Rank d) -> Tensor d e -> Tensor d' e
 transpose' d p (Tensor v) = Tensor v'
-  where
-    v' = modifyIdxs d v $ \i m -> 
-           remapIdxs p d i $ \d' i' -> 
-             M.modify m (const $ v V.! fromIdxs d' (_permuted p i)) (fromIdxs d' i')
+  where v' = modifyIdxs d v $ \i m -> 
+               remapIdxs p d i $ \d' i' -> 
+                 Mu.modify m (const $ v St.! fromIdxs d' (_permuted p i)) (fromIdxs d' i')
+
+pack
+  :: Elt e 
+  => Vector n (Tensor (x ++ y) e) -> Tensor (x ++ n :+ y) e
+pack = undefined
+
+pack0
+  :: forall d e n. Elt e
+  => Dim n -> Dims d -> Vector n (Tensor d e) -> Tensor (n :+ d) e
+pack0 n d v = Tensor $ St.create $ do
+  mv <- Mu.new $ fromIntegral $ product $ (dimVal n) : listDims d
+  -- Sz.forM_ v $ \t -> -- TODO need indexed maps / folds
+  return mv
 
 {-
+Sz.forM_ :: Monad m => Vector n a -> (a -> m b) -> m ()
+
+fill :: forall d e. Elt e => Dims d -> (Idxs d -> e) -> Tensor d e
+fill d f = Tensor $ V.create $ do
+  mv <- M.new $ fromIntegral $ product $ listDims d
+  let act ix = M.write mv (minorToMajor d ix) $ f ix
+  overDimIdx_ d act
+  return mv
+
+-- 
+modifyIdxs :: forall d e. Storable e => Dims d -> Vector e -> (forall s. Idxs d -> M.MVector s e -> ST s ()) -> Vector e
+modifyIdxs d v f = V.modify (\mv -> overDimIdx_ d (\i -> f i mv)) v
 
 
-
---test 2:
-
-res = modifyIdx d233 (modify (filterIdx triangular'' ttt) d233) w'
-res == [1,4,7,2,5,8,3,6,9,10,13,16,11,14,17,12,15,18]
-
-
---test 
-a :: Maybe (Idxs '[2, 3, 3])
-a = idxsFromWord [2, 1, 1]  
-
-b :: Maybe (Idxs '[2, 3, 3])
-b = idxsFromWord [2, 3, 3] 
-
-check :: Dims d -> Idxs d -> Idxs d -> Perm (Rank d) -> (Perm (Rank d) -> Idxs d -> Idxs d) -> [(Int, Int)]
-check d i j p f = foldDimPartIdx i j acc []
-  where 
-    acc i l = if (i/=f p i) then (1 + minorToMajor d i, 1 + minorToMajor d (f p i)) : l else l
-
-res = liftM2 (\i j -> check d233 i j ttt $ filterIdx triangular'') a b
-
-res == Just [(11,13),(12,16),(15,17)]
-
-
--}
-
-
-
-
-{-
+stack ::  Dim n -> Vector n (Tensor (x ++ y) e) -> Tensor (x +: n :+ y) e
+unstack :: (KnownDims x, Elt e) => Dim n -> Tensor (x +: n :+ y) e -> Vector n (Tensor (x ++ y) e)
 
 gen# 
   :: forall s t d. PrimBytes t 
@@ -124,6 +125,20 @@ mul `a` `b` has shape=[2,2,2]
 
 
 {-
+
+-- <#
+-- same as tf.matmul
+productN
+  :: forall a b c x. All KnownDim '[a, b, c]
+  => KnownDims x
+  => T (x +: a +: b) 
+  -> T (x +: b +: c)
+  -> T (x +: a +: c)
+productN = undefined
+  where
+    d = dims @_ @x
+    --s = unsafeCoerce a
+
 product 
   :: forall m x y. KnownDim m
   => KnownDims x

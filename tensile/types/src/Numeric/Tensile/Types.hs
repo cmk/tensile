@@ -14,11 +14,11 @@ module Numeric.Tensile.Types (
   someDimsVal,
   listDims,
   dims,
-  S.Reverse(..),
   S.Sort(..),
   module Numeric.Dim,
   module Numeric.Type.Evidence,
-  module Numeric.Tensile.Types
+  module Numeric.Tensile.Types,
+  module Numeric.Type.List
 ) where
 
 import Data.Proxy
@@ -29,7 +29,7 @@ import Numeric.Type.Evidence
 import Numeric.TypedList
 import Unsafe.Coerce (unsafeCoerce)
 
-
+import Numeric.Type.List -- (type(+:),(+:))
 --import qualified  Numeric.Type.List as L
 impossible :: a
 impossible = error "Numeric.Tensile: impossible"

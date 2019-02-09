@@ -18,6 +18,12 @@ matmul
   => Dimensions y
   => T (x +: m) -> T (m :+ y) -> T (x ++ y)
 
+-- want d' < d, 
+slice :: Idxs d -> Dims d' -> Tensor d e -> Tensor d' e
+
+stack ::  Dim n -> Vector n (Tensor (x ++ y) e) -> Tensor (x +: n :+ y) e
+unstack :: (KnownDims x, Elt e) => Dim n -> Tensor (x +: n :+ y) e -> Vector n (Tensor (x ++ y) e)
+
 
 
 matmulR

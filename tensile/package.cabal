@@ -26,7 +26,8 @@ library
         backprop,
         signatures,
         tensile-types,
-        vector
+        vector,
+        vector-sized
     default-extensions: 
         ConstraintKinds, 
         DataKinds,
@@ -96,7 +97,8 @@ library signatures
     build-depends:
         base == 4.*,
         tensile-types,
-        vector
+        vector,
+        vector-sized
     default-extensions: 
         ConstraintKinds, 
         DataKinds,
@@ -127,9 +129,13 @@ library reference
     build-depends:
         base == 4.*,
         dimensions,
+        hmatrix,
+        hmatrix-backprop,
         tensile-types,
-        vector
-    default-extensions: 
+        vector,
+        vector-sized
+    default-extensions:
+        AllowAmbiguousTypes,
         ConstraintKinds, 
         DataKinds,
         FlexibleContexts,

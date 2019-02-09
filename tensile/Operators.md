@@ -165,6 +165,167 @@ Where
 Xor
 
 
+expandDims Source#
+
+:: (TensorType t, OneOf '[Int32, Int64] tdim)	 
+=> Tensor v'1 t	
+
+-> Tensor v'2 tdim	
+
+-> Tensor Build t
+
+typed-flow
+  slice, slice0, slice1,
+  litStack0,
+  stack0, unstack0,
+  stack1,
+  concatT, concat0, concat1,
+  -- ** Reshaping
+  expandDim,
+  expandDim0, squeeze0,
+  expandDim1, 
+  flatten2, flatten3, flatten12, flattenN2,
+  inflate2, inflate3, inflate12,
+  reshape, flattenAll, inflateAll,
+
+
+interesting:
+http://hackage.haskell.org/package/finite-typelits-0.1.4.2/docs/Data-Finite.html
+
+
+tf.split(
+    value,
+    num_or_size_splits,
+    axis=0,
+    num=None,
+    name='split'
+)
+
+Defined in tensorflow/python/ops/array_ops.py.
+
+Splits a tensor into sub tensors.
+
+If num_or_size_splits is an integer type, then value is split along dimension axis into num_split smaller tensors. Requires that num_split evenly divides value.shape[axis].
+
+If num_or_size_splits is not an integer type, it is presumed to be a Tensor size_splits, then splits value into len(size_splits) pieces. The shape of the i-th piece has the same size as the value except along dimension axis where the size is size_splits[i].
+
+
+slice:
+t = tf.constant([[[1, 1, 1], [2, 2, 2]],
+                 [[3, 3, 3], [4, 4, 4]],
+                 [[5, 5, 5], [6, 6, 6]]]) 3 x 2 x 3
+tf.slice(t, [1, 0, 0], [1, 1, 3])  # [[[3, 3, 3]]]
+tf.slice(t, [1, 0, 0], [1, 2, 3])  # [[[3, 3, 3],
+                                   #   [4, 4, 4]]]
+tf.slice(t, [1, 0, 0], [2, 1, 3])  # [[[3, 3, 3]],
+                                   #  [[5, 5, 5]]]
+
+-- want d' < d, 
+slice :: Idxs d -> Dims d' -> Tensor d e -> Tensor d' e
+
+slice :: (TensorType t, OneOf '[Int32, Int64] index)	=> Tensor v'1 t	-> Tensor v'2 index	-> Tensor v'3 index	-> Tensor Build t	
+-- | Take a slice at dimension n from i to j.
+slice :: forall i j s t n. KnownTyp t => KnownShape s => KnownNat j => KnownNat i => (i <= j, j <= At n s, KnownLen s) =>
+         Axis n s -> Tensor s t -> Tensor (Take n s ++ ((j-i) ': Drop ('Succ n) s)) t
+slice n = case axisSplitApp' n of
+  Refl -> UnOp (SliceOp (Proxy @(j-i)) (hlookup n s) (sShapeDropSucc n s) (natVal (Proxy @i)) (natVal (Proxy @j)))
+               (sShapeTake' n s)
+ where s = typeSShape @s
+
+
+slice1 :: forall i j m n s t. KnownShape s => KnownNat m => KnownNat n => KnownTyp t => KnownNat j => KnownNat i => (i <= j, j <= m, KnownLen s) =>
+         Tensor (n ': m ': s) t -> Tensor (n ': (j-i) ': s) t
+slice1 = slice @i @j axis1
+
+slice0 :: forall i j m s t. KnownShape s => KnownNat m => KnownTyp t => KnownNat j => KnownNat i => (i <= j, j <= m, KnownLen s) =>
+         Tensor (m ': s) t -> Tensor ((j-i) ': s) t
+slice0 = slice @i @j axis0
+
+
+
+-- pack / stack
+https://www.tensorflow.org/api_docs/python/tf/stack
+
+pack :: TensorType t	=> [Tensor v'1 t]	-> Tensor Build t	
+
+unpack :: TensorType t	=> Int64 -> Tensor v'1 t -> [Tensor Build t]	
+
+stack ::  Dim n -> Vector n (Tensor (x ++ y) e) -> Tensor (x +: n :+ y) e
+unstack :: (KnownDims x, Elt e) => Dim n -> Tensor (x +: n :+ y) e -> Vector n (Tensor (x ++ y) e)
+
+
+https://github.com/hasktorch/hasktorch/blob/c57e828e132a16aed9d87d9a7e98fe3145da459d/indef/src/Torch/Indef/Static/Tensor/Math.hs#L136
+
+cat
+  :: '(ls, r0:+rs) ~ Sing.SplitAt i d
+  => '(ls, r1:+rs) ~ Sing.SplitAt i d'
+  => Tensor d
+  -> Tensor d'
+  -> Dim (i::Nat)
+  -> Tensor (ls ++ '[r0 + r1] ++ rs)
+
+cat1d
+  :: (All KnownDim '[n1,n2,n], n ~ Sing.Sum [n1, n2])
+  => Tensor '[n1] -> Tensor '[n2] -> Tensor '[n]
+cat1d a b = cat a b (dim :: Dim 0)
+
+-- | convenience function, specifying a type-safe 'cat' operation.
+cat2d0 :: (All KnownDim '[n,m,n0,n1], n ~ Sing.Sum [n0, n1]) => Tensor '[n0, m] -> Tensor '[n1, m] -> Tensor '[n, m]
+cat2d0 a b = cat a b (dim :: Dim 0)
+
+-- | convenience function, stack two rank-1 tensors along the 0-dimension
+stack1d0 :: KnownDim m => Tensor '[m] -> Tensor '[m] -> (Tensor '[2, m])
+stack1d0 a b = cat2d0
+  (unsqueeze1d (dim :: Dim 0) a)
+  (unsqueeze1d (dim :: Dim 0) b)
+
+
+stackT :: ∀ s0 s (n::Nat) t. KnownShape s => KnownShape s0 => KnownNat n => (KnownLen s0) => V n (T (s0 ++ s) t) -> Tensor (s0 ++ (n ': s)) t
+stackT v = vecToNP @(T (s0++s) t) @(Catable s0 s t)
+             (\x -> (Catable (natSat @1) $ prodHomoS s0 s
+                                          $ prodHomoS s0 (natSat @1 :* s)
+                                          $ knownAppend @s0 @s
+                                          $ knownSShape (s0 .+. natSat @1 :* s)
+                                          $ reshape x))
+             v $ (Concat (typeSShape @s0)  (typeSShape @s)) 
+  where s = typeSShape @s; s0 = typeSShape @s0
+
+
+-- | Concatenate @n@ tensors along the first dimension
+stack0 :: ∀ s (n::Nat) t. KnownNat n => KnownShape s => (KnownLen s) => V n (T s t) -> Tensor (n ': s) t
+stack0 = stackT @'[]
+
+-- | Concatenate @n@ tensors along the second dimension
+stack1 :: ∀ s (n::Nat) m t. KnownNat n => KnownNat m => KnownShape s => (KnownLen s) => V n (T (m ': s) t) -> Tensor (m ': n ': s) t
+stack1 = stackT @'[m]
+
+-- | Concatenate @n@ tensors along the last dimension
+stackN :: ∀ s (n::Nat) t. KnownNat n => KnownShape s => V n (T s t) -> Tensor (s ++ '[n]) t
+stackN = appRUnit @s $
+         stackT @s @'[]
+
+
+-- | Split a tensors into @n@ tensors along the first dimension
+unstack0 :: ∀ s (n::Nat) t. KnownTyp t => KnownNat n => KnownShape s => (KnownLen s) => Tensor (n ': s) t -> V n (T s t)
+unstack0 x = fmap (`nth0` x) (vcount @n)
+
+
+
+-- | Static call to 'Dynamic._gather'
+_gather :: Tensor d -> Tensor d -> Word -> IndexTensor '[n] -> IO ()
+_gather r src d ix = Dynamic._gather (asDynamic r) (asDynamic src) d (longAsDynamic ix)
+
+-- | Static call to 'Dynamic._scatter'
+_scatter :: Tensor d -> Word -> IndexTensor '[n] -> Tensor d -> IO ()
+_scatter r d ix src = Dynamic._scatter (asDynamic r) d (longAsDynamic ix) (asDynamic src)
+
+-- | Static call to 'Dynamic._scatterAdd'
+_scatterAdd   :: Tensor d -> Word -> IndexTensor '[n] -> Tensor d -> IO ()
+_scatterAdd r d ix src = Dynamic._scatterAdd (asDynamic r) d (longAsDynamic ix) (asDynamic src)
+
+-- | Static call to 'Dynamic._scatterFill'
+_scatterFill  :: Tensor d -> Word -> IndexTensor '[n] -> HsReal -> IO ()
+_scatterFill r d ix = Dynamic._scatterFill (asDynamic r) d (longAsDynamic ix)
 
 
 
@@ -442,18 +603,7 @@ https://github.com/hasktorch/hasktorch/blob/master/indef/src/Torch/Indef/Static/
 
 
 
-  -- res = (v1 * M) + (v2 * mat1 * mat2)
-  -- If @mat1@ is a @n × m@ matrix, @mat2@ a @m × p@ matrix, @M@ must be a @n × p@ matrix.
-  gemm
-    :: All KnownDim '[a, b, c]
-    => HsReal                  -- ^ v1
-    -> Tensor '[a, c]          -- ^ M
-    -> HsReal                  -- ^ v2
-    -> Tensor '[a, b]          -- ^ mat1
-    -> Tensor '[b, c]          -- ^ mat2
-    -> Tensor '[a, c]          -- ^ res
 
-  gemm'
 
 matmul
   :: (Gemm t, Constant t)

@@ -231,6 +231,7 @@ fill d f = Tensor $ V.create $ do
   overDimIdx_ d act
   return mv
 
+-- TODO unsafe consider using sized vectors internally
 modifyIdxs :: forall d e. Storable e => Dims d -> Vector e -> (forall s. Idxs d -> M.MVector s e -> ST s ()) -> Vector e
 modifyIdxs d v f = V.modify (\mv -> overDimIdx_ d (\i -> f i mv)) v
 

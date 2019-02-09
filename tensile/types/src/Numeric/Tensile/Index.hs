@@ -109,18 +109,18 @@ idxsFromWords :: forall ds . KnownDims ds => [Word] -> Maybe (Idxs ds)
 idxsFromWords = unsafeCoerce . go (T.listDims (T.dims @_ @ds))
   where
     go [] [] = Just []
-    go (d : ds) (i : is)
-      | i > 0 && i <= d = (i:) <$> go ds is
+    go (d : ds) (i : is) | i > 0 && i <= d = (i:) <$> go ds is
     go _ _   = Nothing
 
-foldDimPartIdx :: Idxs ds -- ^ Initial indices
+-- TODO reimplement bounds ord check 
+foldDimPartIdx' :: Idxs ds -- ^ Initial indices
                -> Idxs ds -- ^ Final indices
                -> (Idxs ds -> a -> a)
                           -- ^ Function to call on each dimension
                -> a       -- ^ initial value
                -> a
-foldDimPartIdx U U k = k U
-foldDimPartIdx (start :* starts) (end :* ends) k
+foldDimPartIdx' U U k = k U
+foldDimPartIdx' (start :* starts) (end :* ends) k
   | iEnd >= iStart = foldDimPartIdx starts ends (loop iStart)
   | otherwise      = foldDimPartIdx starts ends (looi iStart)
   where
@@ -133,6 +133,9 @@ foldDimPartIdx (start :* starts) (end :* ends) k
       | i < iEnd = id
       | otherwise = k (Idx i :* is) . looi (i-1) is
 
+foldDimPartIdx s e k = foldDimPartIdx' (_reversed s) (_reversed e) k
+{-
+-- TODO convert to row major
 overDimPartIdx_ :: Monad m
                => Idxs ds -- ^ Initial indices
                -> Idxs ds -- ^ Final indices
@@ -156,7 +159,7 @@ overDimPartIdx_ (start :* starts) (end :* ends) k
         looi i
           | i < iEnd = return ()
           | otherwise = k (Idx i :* is) >> looi (i-1)
-
+-}
 
 overDimIdx_ :: Monad m
             => Dims ds -- ^ Shape of a space
@@ -178,6 +181,25 @@ overDimIdx_ (T.Snoc ds d) k = overDimIdx_ ds k'
  -
 -- test -
 
+
+--test 
+a :: Maybe (Idxs '[2, 3, 3])
+a = idxsFromWord [2, 1, 1]  
+
+b :: Maybe (Idxs '[2, 3, 3])
+b = idxsFromWord [2, 3, 3] 
+
+check :: Dims d -> Idxs d -> Idxs d -> Perm (Rank d) -> (Perm (Rank d) -> Idxs d -> Idxs d) -> [(Int, Int)]
+check d i j p f = foldDimPartIdx i j acc []
+  where 
+    acc i l = if (i/=f p i) then (1 + minorToMajor d i, 1 + minorToMajor d (f p i)) : l else l
+
+res = liftM2 (\i j -> check d233 i j ttt $ filterIdx triangular'') a b
+
+res == Just [(11,13),(12,16),(15,17)]
+
+
+--test
 --reify :: a -> (forall s. Reifies s a => Proxy s -> r) -> r
 
 reify d233 $ \p -> totalDim' $ reflect p
