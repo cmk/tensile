@@ -33,9 +33,14 @@ rev = unsafeCoerce . reverse . unsafeCoerce
 
 
 transpose''
-  :: forall d d' e. Elt e 
+  :: forall d e. Elt e 
   => Dims d -> Tensor d e -> Tensor (Reverse d) e
 transpose'' d  = unsafeCoerce . transpose' d (reversal' d) . unsafeCoerce
 
 
+transpose'' 
+  :: forall d e. Elt e 
+  => Dims d -> Tensor d e -> Tensor (Reverse d) e
+transpose'' d = transpose' d p 
+  where p = reversal' d
 -}

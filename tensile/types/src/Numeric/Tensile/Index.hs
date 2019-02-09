@@ -22,6 +22,9 @@ _permuted (Perm p) = unsafeCoerce . P.permuteList p . unsafeCoerce
 _reversed :: TypedList f d -> TypedList f d'
 _reversed = unsafeCoerce . reverse . unsafeCoerce 
 
+_reversed' :: TypedList f d -> TypedList f (T.Reverse d)
+_reversed' = unsafeCoerce . reverse . unsafeCoerce 
+
 -- | Remaps the index argument to the index with the same 'Int' representation under the permuted dimensions.
 remapIdxs 
   :: forall (ds :: [Nat]) r. Perm (Rank ds) 
@@ -30,7 +33,7 @@ remapIdxs
   -> (forall (ds' :: [Nat]). Dims ds' -> Idxs ds' -> r) 
   -> r
 remapIdxs (Perm p) ds ix f = 
-  T.reifyWords (P.permuteList p $ T.listDims ds) $ \ds' -> 
+  T.reifyDims' (P.permuteList p $ T.listDims ds) $ \ds' -> 
     f (T.reflect ds') (toIdxs (T.reflect ds') . fromIdxs ds $ ix)
 
 

@@ -45,9 +45,6 @@ transpose' d p (Tensor v) = Tensor v'
            remapIdxs p d i $ \d' i' -> 
              M.modify m (const $ v V.! fromIdxs d' (_permuted p i)) (fromIdxs d' i')
 
-
-
-
 {-
 
 

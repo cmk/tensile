@@ -52,7 +52,7 @@ type B d = Tensor d BVal
 -- | A variable tensor. Need ST-like interface w/ ghost type for variables.
 --newtype V v (d :: [Nat]) 
 
-instance (KnownDim (Size d), Elt e, Eq e) => Eq (Tensor d e)
+instance (Elt e, Eq e) => Eq (Tensor d e)
 instance (KnownDim (Size d), Elt e, Eq e, Bits e, Num e) => Bits (Tensor d e) 
 instance (KnownDim (Size d), Elt e, Num e) => Num (Tensor d e) 
 instance (KnownDim (Size d), Elt e, Fractional e) => Fractional (Tensor d e) 

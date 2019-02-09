@@ -2,6 +2,7 @@ module Test.Numeric.Tensile.Operations.Linear.Predicate where
 
 import Numeric.Tensile.Tensor
 import Numeric.Tensile.Types
+import Numeric.Tensile.Index (_reversed')
 import Numeric.Tensile.Permutation (Perm(..), reversal, reversal')
 import Numeric.Tensile.Operations.Linear.Unlifted (transpose, transpose')
 import Test.Numeric.Tensile.Tensor.Gen
@@ -11,14 +12,23 @@ import qualified Hedgehog.Gen as G
 import qualified Hedgehog.Range as R
 import qualified Data.Vector.Storable as V
 
+import Data.Monoid
+import Unsafe.Coerce
 
-
-
-pred_transposition :: forall e. (Elt e, Eq e) => Tensor '[3,3,3] e -> Bool
-pred_transposition t = t == (f . f) t
-  where f :: Tensor '[3,3,3] e -> Tensor '[3,3,3] e
-        f = transpose (reversal @'[3,3,3]) 
+pred_cubic_transpose :: forall e. (Elt e, Eq e) => Tensor '[3,3,3] e -> Bool
+pred_cubic_transpose t = t == (f . f) t
+  where 
+    f :: Tensor '[3,3,3] e -> Tensor '[3,3,3] e
+    f = transpose (reversal @'[3,3,3]) 
         
+pred_prism_transpose :: forall e. (Elt e, Eq e) => Tensor '[5,4,3,2] e -> Bool
+pred_prism_transpose t = t == (g . f) t
+  where 
+    f :: Tensor '[5,4,3,2] e -> Tensor '[2,3,4,5] e
+    f = transpose (reversal @'[5,4,3,2]) 
+
+    g :: Tensor '[2,3,4,5] e -> Tensor '[5,4,3,2] e
+    g = transpose (reversal @'[2,3,4,5])
 
 
 
@@ -29,11 +39,38 @@ pred_transposition t = t == (f . f) t
 
 TODO
 
-reifyDims :: forall r. [Word] -> (forall (d :: [Nat]). KnownDims d => Proxy d -> r) -> r
-reifyDims d k = unsafeCoerce (MagicDims k :: MagicDims r) d Proxy
+reifyDims' :: forall r. [Word] -> (forall (d :: [Nat]). KnownDims d => Proxy d -> r) -> r
+reifyDims' d k = unsafeCoerce (MagicDims k :: MagicDims r) d Proxy
 
-pred_transposition' :: forall d e. (Elt e, Eq e, V.Storable e) => Dims d -> Tensor d e -> Bool
-pred_transposition' d t = undefined 
+
+pred_transposition' :: (Elt e, Eq e, V.Storable e) => Dims d -> Tensor d e -> Bool
+pred_transposition' d t = b
+  where
+    w = listDims d
+    s = product w
+    b = withSomeDims (reverse w) $ \d' -> 
+          withSomeDims w $ \d'' ->
+                let t'' = transpose' d'' mempty . transpose' d' mempty $ t
+                in  t'' == unsafeCoerce t
+
+pred_transposition' :: forall d e. (Elt e, Eq e) => Dims d -> Tensor d e -> Bool
+pred_transposition' d t = t'' == t
+  where
+    w = listDims d
+    t' = reifyDims' (reverse w) $ \d -> transpose' (reflect d) (reversal' $ reflect d) t
+    t'' = reifyDims' w $ \d ->transpose' (reflect d) (reversal' $ reflect d) $ t'
+
+
+pred_transposition' :: (Elt e, Eq e, V.Storable e) => Dims d -> Tensor d e -> Bool
+pred_transposition' d t = b
+  where
+    w = listDims d
+    s = product w
+    b = withSomeDims (reverse w) $ \d' -> 
+          withSomeDims w $ \d'' ->
+                let t'' = toVector . transpose' d'' mempty . transpose' d' mempty $ t
+                in  t'' == toVector t
+
 
 pred_transposition' :: forall d e. (Elt e, Eq e, V.Storable e) => Dims d -> Tensor d e -> Bool
 pred_transposition' d t = undefined -- toVector t == toVector t'
