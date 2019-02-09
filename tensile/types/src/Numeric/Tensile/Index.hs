@@ -364,7 +364,6 @@ remapIdxs (Perm p) ds ix f =
   T.reifyDims' (P.permuteList p $ listDims ds) $ \ds' -> 
     f (T.reflect ds') (toIdxs (T.reflect ds') . fromIdxs ds $ ix)
 
-{-
 
 {-
 remapIdxs' 
@@ -376,9 +375,6 @@ remapIdxs'
   -> r
 remapIdxs' p ds ix f = 
   T.reifyDims (_permuted p ds) f
--}
-
-
 
 -- | Transform a permutation of tensor modes into a permutation of array indices.
 -- transpose (lowerPerm p1) . transpose (lowerPerm p2) == transpose (lowerPerm $ p1 <> p2)
@@ -392,8 +388,6 @@ lowerPerm d p f = D.foldDimIdx d (\i p' -> p' <> f d i p) (mempty :: Perm (Size 
 
 
 
-
-{-
 toIdxs :: forall ds i. Integral i => Dims ds -> i -> Idxs ds
 toIdxs dds i = go dds $ fromIntegral i
   where
@@ -414,6 +408,19 @@ fromIdxs dsd = fromIntegral . go 1 dsd
 -}
 
 
+overDimIdx_ :: Monad m
+            => Dims ds -- ^ Shape of a space
+            -> (Idxs ds -> m ()) -- ^ Function to call on each dimension
+            -> m ()
+overDimIdx_ U k = k U
+overDimIdx_ (T.Snoc ds d) k = overDimIdx_ ds k'
+  where
+    dw = T.dimVal d
+    k' is = go 1
+      where
+        go i
+          | i > dw = return ()
+          | otherwise = k (is `T.snoc` Idx i) >> go (i+1)
 
 -- TODO reimplement bounds ord check 
 foldDimPartIdx' :: Idxs ds -- ^ Initial indices
@@ -464,19 +471,6 @@ overDimPartIdx_ (start :* starts) (end :* ends) k
           | otherwise = k (Idx i :* is) >> looi (i-1)
 -}
 
-overDimIdx_ :: Monad m
-            => Dims ds -- ^ Shape of a space
-            -> (Idxs ds -> m ()) -- ^ Function to call on each dimension
-            -> m ()
-overDimIdx_ U k = k U
-overDimIdx_ (T.Snoc ds d) k = overDimIdx_ ds k'
-  where
-    dw = T.dimVal d
-    k' is = go 1
-      where
-        go i
-          | i > dw = return ()
-          | otherwise = k (is `T.snoc` Idx i) >> go (i+1)
 
 
 
