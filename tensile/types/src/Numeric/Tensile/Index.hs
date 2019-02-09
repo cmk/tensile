@@ -31,7 +31,7 @@ import qualified Data.Finite as F
 import qualified Math.Combinat.Permutations as P
 --import qualified Numeric.Dimensions.Idxs as I
 --import qualified Numeric.Dimensions.Fold as D 
---import qualified Numeric.Tensile.Types as T
+import qualified Numeric.Tensile.Types as T (Reifies(..), reifyDims')
 import qualified Numeric.TypedList as T
 import qualified Numeric.Type.List as T
 
@@ -262,13 +262,12 @@ majorToMinor dims = fromIntegral . go 1 dims
     go _ U U                     = 0
     go m (d :* ds) (Idx i :* is) = m * i + go (m * dimVal d) ds is
 
-{-
 minorToMajor :: forall ds i. Integral i => Dims ds -> Idxs ds -> i
 minorToMajor d i = majorToMinor (_reversed d) (_reversed i)
 
 fromIdxs :: forall ds i. Integral i => Dims ds -> Idxs ds -> i
 fromIdxs = minorToMajor
--}
+
 toIdxs :: forall ds i. Integral i => Dims ds -> i -> Idxs ds
 toIdxs dsd i = go dsd $ fromIntegral i
   where
@@ -282,6 +281,8 @@ instance Eq (Idxs xs) where
     (==) = unsafeCoerce# ((==) :: [Word] -> [Word] -> Bool)
     {-# INLINE (==) #-}
 
+-- TODO check if ok to not reverse this
+--
 -- | Compare indices by their importance in lexicorgaphic order
 --   from the last dimension to the first dimension
 --   (the last dimension is the most significant one) @O(Length xs)@.
@@ -297,7 +298,7 @@ instance Eq (Idxs xs) where
 --   > sort == sortOn fromEnum
 --
 instance Ord (Idxs xs) where
-    compare a b = compare (reverse $ listIdxs a) (reverse $ listIdxs b)
+    compare a b = compare (listIdxs a) (listIdxs b)
     {-# INLINE compare #-}
 
 
@@ -340,7 +341,6 @@ instance Dimensions ds => Bounded (Idxs ds) where
     {-# INLINE minBound #-}
 
 
-{-
 -- (Idx(),Idxs(),listIdxs,idxToWord,idxFromWord,unsafeIdxFromWord)
 
 --_permuted :: Permutable d d' => Perm (Rank d) -> TypedList f d -> TypedList f d'
@@ -361,9 +361,10 @@ remapIdxs
   -> (forall (ds' :: [Nat]). Dims ds' -> Idxs ds' -> r) 
   -> r
 remapIdxs (Perm p) ds ix f = 
-  T.reifyDims' (P.permuteList p $ T.listDims ds) $ \ds' -> 
+  T.reifyDims' (P.permuteList p $ listDims ds) $ \ds' -> 
     f (T.reflect ds') (toIdxs (T.reflect ds') . fromIdxs ds $ ix)
 
+{-
 
 {-
 remapIdxs' 
