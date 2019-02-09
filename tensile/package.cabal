@@ -74,6 +74,7 @@ library tensile-types
         base == 4.*,
         combinat,
         dimensions,
+        finite-typelits,
         singletons
     default-extensions: 
         ConstraintKinds, 
@@ -128,7 +129,6 @@ library reference
         Numeric.Tensile.Operations.Quantization.Internal
     build-depends:
         base == 4.*,
-        dimensions,
         hmatrix,
         hmatrix-backprop,
         tensile-types,

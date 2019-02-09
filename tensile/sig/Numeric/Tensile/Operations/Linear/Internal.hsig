@@ -7,7 +7,7 @@ import Numeric.Tensile.Tensor.Internal (Elt(..),Tensor(..))
 import Numeric.Tensile.Types 
 
 transpose'
-  :: forall d d' e. Elt e 
+  :: Elt e 
   => Permutable d d'
   => Dims d -> Perm (Rank d) -> Tensor d e -> Tensor d' e
 
