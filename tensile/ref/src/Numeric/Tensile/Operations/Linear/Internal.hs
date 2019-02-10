@@ -56,14 +56,52 @@ pack = undefined
 
 pack0
   :: forall d e n. Elt e
-  => Dim n -> Dims d -> Vector n (Tensor d e) -> Tensor (n :+ d) e
-pack0 n d v = Tensor $ St.create $ do
-  mv <- Mu.new $ fromIntegral $ product $ (dimVal n) : listDims d
-  -- Sz.forM_ v $ \t -> -- TODO need indexed maps / folds
-  return mv
+  => KnownDims d
+  => KnownDim n
+  => Vector n (Tensor d e) -> Tensor (n :+ d) e
+pack0 v = Tensor res
+  where d = dims @_ @d
+        n = dim @_ @n
+        size = product $ listDims d
+        res = St.create $ do
+          mv <- Mu.new $ fromIntegral $ size * dimVal n 
+          flip Sz.imapM_ v $ \i t -> 
+            let i' = idxToWord . idxFromFinite $ i
+                off = fromIntegral $ i' * size
+                v' = unTensor t
+                act ix = Mu.write mv (off + fromEnum ix) $ v' St.! (fromEnum ix) -- could use a tensor op instead here
+            in overDimIdx_ d act
+          return mv
+
+t :: Vector 4 (Tensor '[2,2] Word)
+t = Sz.generate $ \f -> 
+  let d = dims @_ @'[2,2]
+      i' = idxToWord . idxFromFinite $ f
+  in fill d (const i') 
+
+t' :: Tensor '[4,2,2] Word
+t' = pack0 t
 
 {-
-Sz.forM_ :: Monad m => Vector n a -> (a -> m b) -> m ()
+
+generate :: forall n a. KnownNat n => (Finite n -> a) -> Vector n a
+
+t :: Data.Vector.Sized.Vector 4 (Tensor '[2,2] Word)
+t = generate $ \f -> 
+  let d = dims @_ @'[2,2]
+      i' = idxToWord . idxFromFinite $ f
+  in fill d (const i') 
+
+t' :: Tensor '[4,2,2] Word
+t' = pack0 t
+Sz.imapM_ :: Monad m => (Finite n -> a -> m b) -> Vector n a -> m ()
+
+overDim_ :: Monad m
+         => Dims ds -- ^ Shape of a space
+         -> (Idxs ds -> Int -> m ()) -- ^ Function to call on each dimension
+         -> Int -- ^ Initial offset
+         -> Int -- ^ Offset step
+         -> m ()
 
 fill :: forall d e. Elt e => Dims d -> (Idxs d -> e) -> Tensor d e
 fill d f = Tensor $ V.create $ do

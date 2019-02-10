@@ -1,10 +1,8 @@
-{-# LANGUAGE DataKinds              #-}
-{-# LANGUAGE FlexibleContexts       #-}
 {-# LANGUAGE FlexibleInstances      #-}
 {-# LANGUAGE FunctionalDependencies #-}
 {-# LANGUAGE InstanceSigs           #-}
 {-# LANGUAGE MultiParamTypeClasses  #-}
-{-# LANGUAGE UndecidableInstances,TypeInType  #-} 
+{-# LANGUAGE UndecidableInstances   #-} 
 module Numeric.Tensile.Types (
   Numeric.TypedList.TypedList(..),
   Numeric.TypedList.snoc,
