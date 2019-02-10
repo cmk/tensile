@@ -44,6 +44,8 @@ type family Positive (xs :: [Nat]) :: Constraint where
     Positive '[] = ()
     Positive (x ': xs) = (Pos x, Positive xs)
 
+-- TODO this is a bit of a hack. Error message is:
+-- Couldn't match type ‘'False’ with ‘'True’
 type KnownDims (ds :: [Nat]) = (Dimensions ds, Positive ds)
 
 type family Rank (xs :: [k]) :: Nat where

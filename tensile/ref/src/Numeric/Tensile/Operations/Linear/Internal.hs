@@ -101,6 +101,7 @@ t' = pack0 t
 
 t'' :: Vector 4 (Tensor '[2,2] Word)
 t'' = unpack0 t'
+
 {-
 
 generate :: forall n a. KnownNat n => (Finite n -> a) -> Vector n a
