@@ -27,7 +27,10 @@ import Numeric.Type.Evidence
 import Numeric.TypedList
 import Unsafe.Coerce (unsafeCoerce)
 
-import GHC.TypeNats (KnownNat(..))
+import           GHC.Exts           (Constraint)
+import GHC.TypeLits
+import           Data.Type.Bool
+import           Data.Type.Equality
 
 import Numeric.Type.List -- (type(+:),(+:))
 --import qualified  Numeric.Type.List as L
@@ -35,8 +38,13 @@ impossible :: a
 impossible = error "Numeric.Tensile: impossible"
 
 
+type Pos d = (1 <= d)
 
+type family Positive (xs :: [Nat]) :: Constraint where
+    Positive '[] = ()
+    Positive (x ': xs) = (Pos x, Positive xs)
 
+type KnownDims (ds :: [Nat]) = (Dimensions ds, Positive ds)
 
 type family Rank (xs :: [k]) :: Nat where
     Rank '[] = 0
@@ -46,7 +54,6 @@ type family Size (xs :: [Nat]) :: Nat where
     Size '[] = 1
     Size (x ': xs) = x * Size xs
 
-type KnownDims = Dimensions
 
 type Permutable d d' = (S.Sort d ~ S.Sort d')
 type Reshapable d d' = (Size d ~ Size d')
