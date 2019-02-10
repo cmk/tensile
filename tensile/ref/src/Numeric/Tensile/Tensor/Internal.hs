@@ -26,7 +26,7 @@ type BVal = Bool
 
 --class Elt e
 --TODO update Show instance
-newtype Tensor (d :: [Pos]) (e :: Type) = Tensor { unTensor :: Vector e } deriving (Eq, Show)
+newtype Tensor (d :: [Nat]) (e :: Type) = Tensor { unTensor :: Vector e } deriving (Eq, Show)
 
 -- | A real or complex-valued tensor of shape 'd'. 
 type T d = Tensor d TVal

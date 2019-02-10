@@ -27,6 +27,8 @@ import Numeric.Type.Evidence
 import Numeric.TypedList
 import Unsafe.Coerce (unsafeCoerce)
 
+import GHC.TypeNats (KnownNat(..))
+
 import Numeric.Type.List -- (type(+:),(+:))
 --import qualified  Numeric.Type.List as L
 impossible :: a
@@ -34,13 +36,13 @@ impossible = error "Numeric.Tensile: impossible"
 
 
 
-type Pos = Nat
+
 
 type family Rank (xs :: [k]) :: Nat where
     Rank '[] = 0
     Rank (_ ': xs) = 1 + Rank xs
 
-type family Size (xs :: [Pos]) :: Pos where
+type family Size (xs :: [Nat]) :: Nat where
     Size '[] = 1
     Size (x ': xs) = x * Size xs
 
@@ -53,25 +55,25 @@ class Reifies s a | s -> a where
   -- | Recover a value inside a 'reify' context, given a proxy for its reified type.
   reflect :: proxy s -> a
 
-instance KnownDim (d :: Pos) => Reifies d (Dim d) where
+instance KnownDim (d :: Nat) => Reifies d (Dim d) where
   reflect _ = dim
 
-instance KnownDims (d :: [Pos]) => Reifies d (Dims d) where
+instance KnownDims (d :: [Nat]) => Reifies d (Dims d) where
   reflect _ = dims
 
 newtype MagicDim d r = MagicDim (KnownDim d => r)
 
-newtype MagicDim' r = MagicDim' (forall (d :: Pos). KnownDim d => Proxy d -> r)
+newtype MagicDim' r = MagicDim' (forall (d :: Nat). KnownDim d => Proxy d -> r)
 
 reifyDim :: forall d r . Dim d -> (KnownDim d => r) -> r
 reifyDim d k = unsafeCoerce (MagicDim k :: MagicDim d r) d
 
-reifyDim' :: forall r. Word -> (forall (d :: Pos). KnownDim d => Proxy d -> r) -> r
+reifyDim' :: forall r. Word -> (forall (d :: Nat). KnownDim d => Proxy d -> r) -> r
 reifyDim' d k = unsafeCoerce (MagicDim' k :: MagicDim' r) d Proxy
 
 newtype WithKnownDims d r = WithKnownDims (KnownDims d => r)
 
-newtype WithUnknownDims r = WithUnknownDims (forall (d :: [Pos]). KnownDims d => Proxy d -> r)
+newtype WithUnknownDims r = WithUnknownDims (forall (d :: [Nat]). KnownDims d => Proxy d -> r)
 
 reifyDims :: forall d r . Dims d -> (KnownDims d => r) -> r
 reifyDims d k = unsafeCoerce (WithKnownDims k :: WithKnownDims d r) d
@@ -82,10 +84,10 @@ withDims :: Dims d -> Evidence (KnownDims d)
 withDims d = reifyDims d E
 -}
 
-reifyDims' :: forall r. [Word] -> (forall (d :: [Pos]). KnownDims d => Proxy d -> r) -> r
+reifyDims' :: forall r. [Word] -> (forall (d :: [Nat]). KnownDims d => Proxy d -> r) -> r
 reifyDims' d k = unsafeCoerce (WithUnknownDims k :: WithUnknownDims r) d Proxy
 
-reifySomeDims :: forall r. SomeDims -> (forall (d :: [Pos]). KnownDims d => Proxy d -> r) -> r
+reifySomeDims :: forall r. SomeDims -> (forall (d :: [Nat]). KnownDims d => Proxy d -> r) -> r
 reifySomeDims (SomeDims d) k = unsafeCoerce (WithUnknownDims k :: WithUnknownDims r) d Proxy
 
 -- | A convenience function useful when we need to name a dimensional value multiple times.
@@ -93,7 +95,7 @@ withDims :: KnownDims d => (Dims d -> r) -> r
 withDims f = f dims
 
 withSomeDims :: forall r. [Word]
-             -> (forall (d :: [Pos]). Dims d -> r)
+             -> (forall (d :: [Nat]). Dims d -> r)
              -> r
 withSomeDims d f =
   case someDimsVal d of
@@ -161,7 +163,7 @@ import           GHC.TypeLits
 -- of the represented 'Word's for, say, @'Proxy' [1,2,3]@.
 --
 -- __Deprecated:__ Use 'SingI' from /singletons/ instead.
-class KnownDims (ns :: [Pos]) where
+class KnownDims (ns :: [Nat]) where
     -- | __Deprecated:__ Use 'fromSing' from /singletons/ instead.
     natsVal  :: p ns -> [Word]
     -- | __Deprecated:__ Use 'sing' from /singletons/ instead.
@@ -191,7 +193,7 @@ data SomeDims :: Type where
 -- Typically generated using 'natsList'.
 --
 -- __Deprecated:__ Use 'Sing' from /singletons/ instead.
-data Dims :: [Pos] -> Type where
+data Dims :: [Nat] -> Type where
     U   :: Dims '[]
     (:*) :: (KnownDim n, KnownDims ns)
           => !(Proxy n) -> !(Dims ns) -> Dims (n ': ns)
@@ -300,7 +302,7 @@ someDimsVal (n:ns) = do
 --
 -- Be aware that this also produces @'KnownDim' n@s where @n@ is negative,
 -- without complaining.  To be consistent, within the library, this
--- /should/ be called @reifyDimsPos@; however, the naming choice is for
+-- /should/ be called @reifyDimsNat@; however, the naming choice is for
 -- consistency with 'reifyDim' from the /reflections/ package.  Use
 -- 'reifyDims'' for a "safe" version.
 --
@@ -331,8 +333,8 @@ reifyDims' ns d f =
 -- them, but extra care must be taken when using the produced 'SomeDim's.
 --
 -- __Deprecated:__ Use 'toSing' from /singletons/ instead.
-someDimsValPos :: [Word] -> SomeDims
-someDimsValPos ns = reifyDims ns SomeDims
+someDimsValNat :: [Word] -> SomeDims
+someDimsValNat ns = reifyDims ns SomeDims
 
 -- | Get evidence that the two 'KnownDims' lists are actually the "same"
 -- list of 'Dim's (that they were instantiated with the same numbers).

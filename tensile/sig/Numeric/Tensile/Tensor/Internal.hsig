@@ -39,7 +39,7 @@ instance Eq BVal
 -- | Elements are assumed to be stored in major-to-minor (i.e. row-major) order.
 -- Implementations that use a different ordering must supply a conversion or risk unexpected 
 -- behavior. 
-data Tensor (d :: [Pos]) (e :: Type)
+data Tensor (d :: [Nat]) (e :: Type)
 
 -- | A real or complex-valued tensor of shape 'd'. 
 type T d = Tensor d TVal
