@@ -126,6 +126,7 @@ library reference
         Numeric.Tensile.Operations.Quantization.Internal
     build-depends:
         base == 4.*,
+        finite-typelits,
         hmatrix,
         hmatrix-backprop,
         tensile-types,

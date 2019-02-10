@@ -484,23 +484,7 @@ lowerPerm d p f = D.foldDimIdx d (\i p' -> p' <> f d i p) (mempty :: Perm (Size 
 
 -}
 
--- | Go over all dimensions keeping track of index and offset
-overDim_ :: Monad m
-         => Dims ds                  -- ^ Tensor dimensions
-         -> (Idxs ds -> Int -> m ()) -- ^ Function to call on each dimension
-         -> Int                      -- ^ Initial offset
-         -> Int                      -- ^ Offset step
-         -> m ()
-overDim_ U k offset _step = k U offset
-overDim_ (T.Snoc ds d) k offset step = overDim_ ds k' offset step -- (di * step)
-  where
-    dw = dimVal d
-    -- di = fromIntegral dw
-    k' is = go 0
-      where
-        go i off
-          | i >= dw = return ()
-          | otherwise = k (is `T.snoc` Idx i) off >> go (i+1) (off+step)
+
 
 overDimIdx_ :: Monad m
             => Dims ds               -- ^ Tensor dimensions
@@ -563,6 +547,26 @@ overDimPartIdx_ (start :* starts) (end :* ends) k
         looi i
           | i < iEnd = return ()
           | otherwise = k (Idx i :* is) >> looi (i-1)
+
+-- TODO probably just delete this
+-- | Go over all dimensions keeping track of index and offset
+overDim_ :: Monad m
+         => Dims ds                  -- ^ Tensor dimensions
+         -> (Idxs ds -> Int -> m ()) -- ^ Function to call on each dimension
+         -> Int                      -- ^ Initial offset
+         -> Int                      -- ^ Offset step
+         -> m ()
+overDim_ U k offset _step = k U offset
+overDim_ (T.Snoc ds d) k offset step = overDim_ ds k' offset step -- (di * step)
+  where
+    dw = dimVal d
+    -- di = fromIntegral dw
+    k' is = go 0
+      where
+        go i off
+          | i >= dw = return ()
+          | otherwise = k (is `T.snoc` Idx i) off >> go (i+1) (off+step)
+
 -}
 
 

@@ -7,12 +7,13 @@ import Numeric.Tensile.Permutation
 import Unsafe.Coerce (unsafeCoerce)
 
 import Data.Vector.Sized (Vector)
+import qualified Data.Finite as F
 import qualified Data.Vector as V
 import qualified Data.Vector.Sized as Sz
 import qualified Data.Vector.Storable as St
 import qualified Data.Vector.Storable.Mutable as Mu
 
-
+import GHC.TypeLits (KnownNat(..), natVal)
 -- import qualified Numeric.LinearAlgebra.HMatrix as Ma
 
 
@@ -73,6 +74,22 @@ pack0 v = Tensor res
             in overDimIdx_ d act
           return mv
 
+unpack0 
+  :: forall d e n. Elt e
+  => KnownDims d
+  => KnownNat n
+  => Tensor (n :+ d) e -> Vector n (Tensor d e)
+unpack0 t = Sz.generate f
+  where d = dims @_ @d
+        --n = natVal (Proxy :: n) --dim @_ @n
+        size = fromIntegral $ product $ listDims d
+        f i = fill d $ \ix -> 
+          let i' = fromIntegral $ F.getFinite i
+              off = i' * size
+              v = unTensor t 
+          in v St.! (off + fromEnum ix)
+
+
 t :: Vector 4 (Tensor '[2,2] Word)
 t = Sz.generate $ \f -> 
   let d = dims @_ @'[2,2]
@@ -82,6 +99,8 @@ t = Sz.generate $ \f ->
 t' :: Tensor '[4,2,2] Word
 t' = pack0 t
 
+t'' :: Vector 4 (Tensor '[2,2] Word)
+t'' = unpack0 t'
 {-
 
 generate :: forall n a. KnownNat n => (Finite n -> a) -> Vector n a
