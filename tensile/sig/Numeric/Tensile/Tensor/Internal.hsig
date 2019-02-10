@@ -4,19 +4,20 @@ signature Numeric.Tensile.Tensor.Internal where
 
 -- this signature roughly correspond to tf.bitwise and tf.math in the TensorFlow Python API
 
-import Data.Bits 
+import Data.Bits
+import Data.Kind
 import Data.Vector.Storable (Vector)
 import Numeric.Tensile.Types
 import Numeric.Tensile.Index
 
-class Elt (e :: *)
+class Elt (e :: Type)
 -- instance Elt TVal
 -- instance Elt IVal
 -- instance Elt BVal
 -- 
 
 -- | A tensor value.
-data TVal :: *
+data TVal :: Type
 instance Eq TVal
 instance Num TVal
 instance Floating TVal
@@ -24,7 +25,7 @@ instance Fractional TVal
 -- 
 
 -- | An index value.
-data IVal :: *
+data IVal :: Type
 instance Eq IVal
 instance Num IVal
 instance Ord IVal
@@ -32,13 +33,13 @@ instance Bits IVal
 -- 
 
 -- | A BValean value.
-data BVal :: *
+data BVal :: Type
 instance Eq BVal
 
 -- | Elements are assumed to be stored in major-to-minor (i.e. row-major) order.
 -- Implementations that use a different ordering must supply a conversion or risk unexpected 
 -- behavior. 
-data Tensor (d :: [Nat]) (e :: *)
+data Tensor (d :: [Nat]) (e :: Type)
 
 -- | A real or complex-valued tensor of shape 'd'. 
 type T d = Tensor d TVal

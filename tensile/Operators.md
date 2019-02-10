@@ -6,6 +6,9 @@ https://pytorch.org/docs/stable/tensors.html
 Kolda et al - Tensor Decompositions and Applications
 http://citeseerx.ist.psu.edu/viewdoc/download;jsessionid=4A0663C7848627DADDBA6A243BC43E78?doi=10.1.1.130.782&rep=rep1&type=pdf
 
+
+git grep -l 'Generators' | xargs sed -i '' -e 's/Generators/Gen/g'
+
 compat
 config
 data
@@ -187,10 +190,6 @@ typed-flow
   flatten2, flatten3, flatten12, flattenN2,
   inflate2, inflate3, inflate12,
   reshape, flattenAll, inflateAll,
-
-
-interesting:
-http://hackage.haskell.org/package/finite-typelits-0.1.4.2/docs/Data-Finite.html
 
 
 tf.split(

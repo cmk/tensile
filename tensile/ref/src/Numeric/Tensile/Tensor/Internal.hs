@@ -6,6 +6,7 @@ module Numeric.Tensile.Tensor.Internal where
 import Control.Monad.ST (ST(..))
 import Data.Bits
 import Data.Int
+import Data.Kind
 import Data.Word
 import Data.Vector.Storable (Vector(..), Storable(..))
 import Unsafe.Coerce (unsafeCoerce)
@@ -25,7 +26,7 @@ type BVal = Bool
 
 --class Elt e
 --TODO update Show instance
-newtype Tensor (d :: [Nat]) (e :: *) = Tensor { unTensor :: Vector e } deriving (Eq, Show)
+newtype Tensor (d :: [Nat]) (e :: Type) = Tensor { unTensor :: Vector e } deriving (Eq, Show)
 
 -- | A real or complex-valued tensor of shape 'd'. 
 type T d = Tensor d TVal

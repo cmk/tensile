@@ -35,6 +35,7 @@ import qualified Numeric.Tensile.Types as T (Reifies(..), reifyDims')
 import qualified Numeric.TypedList as T
 import qualified Numeric.Type.List as T
 
+import GHC.TypeLits (KnownNat(..))
 import           Control.Arrow           (first)
 import           Foreign.Storable        (Storable)
 import           GHC.Base
@@ -44,19 +45,45 @@ import           GHC.Enum
 import           Numeric.Dimensions.Dims
 
 
--- | This type is used to index a single dimension;
---   the range of indices is from @1@ to @n@.
---
---   Note, this type has a weird `Enum` instance:
---
---   >>>fromEnum (Idx 7)
---   6
---
---   The logic behind this is that the `Enum` class is used to transform
---   indices to offsets. That is, element of an array at index @k :: Idx n@
---   is the element taken by an offset `k - 1 :: Int`.
+
 newtype Idx (n :: Nat) = Idx { unIdx :: Word }
-  deriving ( Integral, Real, Storable, Eq, Ord )
+  deriving ( Storable, Eq, Ord )
+
+unsafeIdxFromWord :: forall d . KnownDim d => Word -> Idx d
+#ifdef UNSAFE_INDICES
+unsafeIdxFromWord = unsafeCoerce#
+#else
+unsafeIdxFromWord w
+  | w >= 0 && w < d = Idx w
+  | otherwise       = errorWithoutStackTrace
+                    $ "idxFromWord{Idx "
+                    ++ show d ++ "}: word "
+                    ++ show w ++ " is outside of index bounds."
+  where
+    d = unsafeCoerce# (dim @_ @d)
+#endif
+{-# INLINE unsafeIdxFromWord #-}
+
+idxFromWord :: forall d . KnownDim d => Word -> Maybe (Idx d)
+idxFromWord w
+  | w >= 0 && w < unsafeCoerce# (dim @_ @d) = Just (Idx w)
+  | otherwise                               = Nothing
+{-# INLINE idxFromWord #-}
+
+idxToWord :: Idx d -> Word
+idxToWord = unsafeCoerce#
+{-# INLINE idxToWord #-}
+
+{-# RULES
+"fromIntegral/idxToWord"
+  fromIntegral = idxToWord
+  #-}
+
+idxFromFinite :: forall (d :: Nat). KnownDim d => F.Finite d -> Idx d
+idxFromFinite = unsafeIdxFromWord . fromIntegral . F.getFinite
+
+finiteFromIdx :: forall (d :: Nat). KnownNat d => Idx d -> F.Finite d
+finiteFromIdx = F.finite . fromIntegral . idxToWord 
 
 instance Read (Idx n) where
     readsPrec d = fmap (first Idx) . readsPrec d
@@ -66,9 +93,9 @@ instance Show (Idx n) where
 
 
 instance KnownDim n => Bounded (Idx n) where
-    minBound = 0
+    minBound = Idx 0
     {-# INLINE minBound #-}
-    maxBound = min 0 $ unsafeCoerce (dim @_ @n) - 1
+    maxBound = Idx $ max 0 $ unsafeCoerce (dim @_ @n) - 1
     {-# INLINE maxBound #-}
 
 instance KnownDim n => Enum (Idx n) where
@@ -114,6 +141,7 @@ instance KnownDim n => Enum (Idx n) where
 #endif
     {-# INLINE fromEnum #-}
 
+{-
     enumFrom (Idx n)
       = unsafeCoerce# (enumFromTo n (unsafeCoerce# (dim @_ @n)))
     {-# INLINE enumFrom #-}
@@ -129,7 +157,9 @@ instance KnownDim n => Enum (Idx n) where
     enumFromThenTo
       = unsafeCoerce# (enumFromThenTo :: Word -> Word -> Word -> [Word])
     {-# INLINE enumFromThenTo #-}
+-}
 
+{-
 instance KnownDim n => Num (Idx n) where
 
 #ifdef UNSAFE_INDICES
@@ -198,39 +228,7 @@ instance KnownDim n => Num (Idx n) where
         d = toInteger (unsafeCoerce# (dim @_ @n) :: Word)
 #endif
     {-# INLINE fromInteger #-}
-
-
-unsafeIdxFromWord :: forall d . KnownDim d => Word -> Idx d
-#ifdef UNSAFE_INDICES
-unsafeIdxFromWord = unsafeCoerce#
-#else
-unsafeIdxFromWord w
-  | w >= 0 && w < d = Idx w
-  | otherwise       = errorWithoutStackTrace
-                    $ "idxFromWord{Idx "
-                    ++ show d ++ "}: word "
-                    ++ show w ++ " is outside of index bounds."
-  where
-    d = unsafeCoerce# (dim @_ @d)
-#endif
-{-# INLINE unsafeIdxFromWord #-}
-
-idxFromWord :: forall d . KnownDim d => Word -> Maybe (Idx d)
-idxFromWord w
-  | w >= 0 && w < unsafeCoerce# (dim @_ @d) = Just (Idx w)
-  | otherwise                               = Nothing
-{-# INLINE idxFromWord #-}
-
-
-idxToWord :: Idx d -> Word
-idxToWord = unsafeCoerce#
-{-# INLINE idxToWord #-}
-
-{-# RULES
-"fromIntegral/idxToWord"
-  fromIntegral = idxToWord
-  #-}
-
+-}
 
 -- | Type-level dimensional indexing with arbitrary Word values inside.
 --   Most of the operations on it require `Dimensions` constraint,
@@ -308,6 +306,7 @@ instance Show (Idxs xs) where
       = showParen (p >= 10)
       $ showString "Idxs " . showsPrec p (listIdxs ds)
 
+{-
 -- | With this instance we can slightly reduce indexing expressions, e.g.
 --
 --   > x ! (1 :* 2 :* 4) == x ! (1 :* 2 :* 4 :* U)
@@ -325,6 +324,7 @@ instance KnownDim n => Num (Idxs '[n]) where
     {-# INLINE abs #-}
     fromInteger i   = fromInteger i :* U
     {-# INLINE fromInteger #-}
+-}
 
 instance Dimensions ds => Bounded (Idxs ds) where
     maxBound = f (dims @_ @ds)
@@ -339,6 +339,102 @@ instance Dimensions ds => Bounded (Idxs ds) where
         f U         = U
         f (_ :* ds) = Idx 0 :* f ds
     {-# INLINE minBound #-}
+
+instance Dimensions ds => Enum (Idxs ds) where
+
+    succ = go (dims @_ @ds)
+      where
+        go :: forall ns . Dims ns -> Idxs ns -> Idxs ns
+        go U U = succError $ "Idxs " ++ show (listDims $ dims @_ @ds)
+        go (d :* ds) (Idx i :* is)
+          | i == dimVal d = Idx 0 :* go ds is
+          | otherwise     = Idx (i+1) :* is
+    {-# INLINE succ #-}
+
+    pred = go (dims @_ @ds)
+      where
+        go :: forall ns . Dims ns -> Idxs ns -> Idxs ns
+        go U U = predError $ "Idxs " ++ show (listDims $ dims @_ @ds)
+        go (d :* ds) (Idx i :* is)
+          | i == 0    = Idx (dimVal d) :* go ds is
+          | otherwise = Idx (i-1) :* is
+    {-# INLINE pred #-}
+
+    toEnum i = go dsd $ fromIntegral i
+      where
+        dsd = dims @_ @ds
+        go :: forall ns . Dims ns -> Word -> Idxs ns
+        go U 0 = U
+        go U _ = error ("Idxs " ++ show (listDims dsd))
+        go (T.Snoc ds d) off = case divMod off (dimVal d) of
+          (off', j) -> go ds off' `T.snoc` Idx j
+    {-# INLINE toEnum #-}
+
+
+    fromEnum = minorToMajor (dims @_ @ds)
+    {-# INLINE fromEnum #-}
+
+    enumFrom x = take (diffIdx (dims @_ @ds) maxBound x + 1) $ iterate succ x
+    {-# INLINE enumFrom #-}
+
+    enumFromTo x y | x >= y    = take (diffIdx ds x y + 1) $ iterate pred x
+                   | otherwise = take (diffIdx ds y x + 1) $ iterate succ x
+      where
+        ds = dims @_ @ds
+    {-# INLINE enumFromTo #-}
+
+    enumFromThen x x' = take n $ iterate (stepIdx ds dn) x
+      where
+        ds = dims @_ @ds
+        dn = diffIdx ds x' x
+        n  = 1 + if dn == 0
+                 then 0
+                 else if dn > 0
+                      then diffIdx ds maxBound x `div` dn
+                      else diffIdx ds x minBound `div` negate dn
+    {-# INLINE enumFromThen #-}
+
+    enumFromThenTo x x' y = take n $ iterate (stepIdx ds dn) x
+      where
+        ds = dims @_ @ds
+        dn = diffIdx ds x' x
+        n  = 1 + if dn == 0 then 0
+                            else diffIdx ds y x `div` dn
+    {-# INLINE enumFromThenTo #-}
+
+
+
+--------------------------------------------------------------------------------
+
+
+
+diffIdx :: Dims xs -> Idxs xs -> Idxs xs -> Int
+diffIdx d i j = _diffIdx (_reversed d) (_reversed i) (_reversed j)
+{-# INLINE diffIdx #-}
+
+-- | Offset difference of two indices @idx1 - idx2@
+_diffIdx :: Dims xs -> Idxs xs -> Idxs xs -> Int
+_diffIdx U U U = 0
+_diffIdx (d :* ds) (Idx i1 :* is1) (Idx i2 :* is2)
+  = fromIntegral i1 - fromIntegral i2
+  + fromIntegral (dimVal d) * _diffIdx ds is1 is2
+
+-- | Step dimension index by an Int offset
+stepIdx :: Dims ds -> Int -> Idxs ds -> Idxs ds
+stepIdx d di i = _stepIdx (_reversed d) di (_reversed i)
+{-# INLINE stepIdx #-}
+
+_stepIdx :: Dims ds -> Int -> Idxs ds -> Idxs ds
+_stepIdx U _ U = U
+_stepIdx (d :* ds) di (Idx i :* is)
+      = case divMod (di + fromIntegral i) (fromIntegral (dimVal d)) of
+         (0  , i') -> Idx (fromIntegral i') :* is
+         (di', i') -> Idx (fromIntegral i') :* _stepIdx ds di' is
+
+
+
+
+
 
 
 -- (Idx(),Idxs(),listIdxs,idxToWord,idxFromWord,unsafeIdxFromWord)
@@ -386,31 +482,29 @@ lowerPerm
   -> Perm (Size ds)  -- ^ Index-level permutation
 lowerPerm d p f = D.foldDimIdx d (\i p' -> p' <> f d i p) (mempty :: Perm (Size ds))
 
-
-
-toIdxs :: forall ds i. Integral i => Dims ds -> i -> Idxs ds
-toIdxs dds i = go dds $ fromIntegral i
-  where
-    go :: forall ns . Dims ns -> Word -> Idxs ns
-    go U 0 = U
-    go U _ = error ("Idxs " ++ show (listDims dds))
-    go (d :* ds) off = case divMod off (dimVal d) of
-      (off', j) -> Idx (j+1) :* go ds off'
-
-
---TODO why wont this compile
-fromIdxs :: Dims ds -> Idxs ds -> Int
-fromIdxs dsd = fromIntegral . go 1 dsd
-  where
-    go :: forall ns . Word -> Dims ns -> Idxs ns -> Word
-    go _ U U                     = 0
-    go m (T.Snoc ds d) (T.Snoc is (Idx i)) = m * (i - 1) + go (m * dimVal d) ds is
 -}
 
+-- | Go over all dimensions keeping track of index and offset
+overDim_ :: Monad m
+         => Dims ds                  -- ^ Tensor dimensions
+         -> (Idxs ds -> Int -> m ()) -- ^ Function to call on each dimension
+         -> Int                      -- ^ Initial offset
+         -> Int                      -- ^ Offset step
+         -> m ()
+overDim_ U k offset _step = k U offset
+overDim_ (T.Snoc ds d) k offset step = overDim_ ds k' offset step -- (di * step)
+  where
+    dw = dimVal d
+    -- di = fromIntegral dw
+    k' is = go 0
+      where
+        go i off
+          | i >= dw = return ()
+          | otherwise = k (is `T.snoc` Idx i) off >> go (i+1) (off+step)
 
 overDimIdx_ :: Monad m
-            => Dims ds -- ^ Shape of a space
-            -> (Idxs ds -> m ()) -- ^ Function to call on each dimension
+            => Dims ds               -- ^ Tensor dimensions
+            -> (Idxs ds -> m ())     -- ^ Function to call on each dimension
             -> m ()
 overDimIdx_ U k = k U
 overDimIdx_ (T.Snoc ds d) k = overDimIdx_ ds k'
@@ -423,16 +517,16 @@ overDimIdx_ (T.Snoc ds d) k = overDimIdx_ ds k'
           | otherwise = k (is `T.snoc` Idx i) >> go (i+1)
 
 -- TODO reimplement bounds ord check 
-foldDimPartIdx' :: Idxs ds -- ^ Initial indices
+_foldDimPartIdx :: Idxs ds -- ^ Initial indices
                -> Idxs ds -- ^ Final indices
                -> (Idxs ds -> a -> a)
                           -- ^ Function to call on each dimension
                -> a       -- ^ initial value
                -> a
-foldDimPartIdx' U U k = k U
-foldDimPartIdx' (start :* starts) (end :* ends) k
-  | iEnd >= iStart = foldDimPartIdx starts ends (loop iStart)
-  | otherwise      = foldDimPartIdx starts ends (looi iStart)
+_foldDimPartIdx U U k = k U
+_foldDimPartIdx (start :* starts) (end :* ends) k
+  | iEnd >= iStart = _foldDimPartIdx starts ends (loop iStart)
+  | otherwise      = _foldDimPartIdx starts ends (looi iStart)
   where
     Idx iStart = start
     Idx iEnd   = end
@@ -443,7 +537,7 @@ foldDimPartIdx' (start :* starts) (end :* ends) k
       | i < iEnd = id
       | otherwise = k (Idx i :* is) . looi (i-1) is
 
-foldDimPartIdx s e k = foldDimPartIdx' (_reversed s) (_reversed e) k
+foldDimPartIdx s e k = foldDimPartIdx (_reversed s) (_reversed e) k
 {-
 -- TODO convert to row major
 overDimPartIdx_ :: Monad m
@@ -477,6 +571,8 @@ overDimPartIdx_ (start :* starts) (end :* ends) k
 {-
  -
 -- test -
+
+> reifyDims' [2,2,3] $ \p -> (fromIntegral $ 1 + diffIdx (reflect p) maxBound minBound) == (product . listDims $ reflect p)
 
 
 --test 

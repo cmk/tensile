@@ -4,7 +4,7 @@
 {-# LANGUAGE FunctionalDependencies #-}
 {-# LANGUAGE InstanceSigs           #-}
 {-# LANGUAGE MultiParamTypeClasses  #-}
-{-# LANGUAGE UndecidableInstances   #-} 
+{-# LANGUAGE UndecidableInstances,TypeInType  #-} 
 module Numeric.Tensile.Types (
   Numeric.TypedList.TypedList(..),
   Numeric.TypedList.snoc,
@@ -36,12 +36,13 @@ impossible = error "Numeric.Tensile: impossible"
 
 
 
+type Pos = Nat
 
 type family Rank (xs :: [k]) :: Nat where
     Rank '[] = 0
     Rank (_ ': xs) = 1 + Rank xs
 
-type family Size (xs :: [Nat]) :: Nat where
+type family Size (xs :: [Pos]) :: Pos where
     Size '[] = 1
     Size (x ': xs) = x * Size xs
 
@@ -54,25 +55,25 @@ class Reifies s a | s -> a where
   -- | Recover a value inside a 'reify' context, given a proxy for its reified type.
   reflect :: proxy s -> a
 
-instance KnownDim (d :: Nat) => Reifies d (Dim d) where
+instance KnownDim (d :: Pos) => Reifies d (Dim d) where
   reflect _ = dim
 
-instance KnownDims (d :: [Nat]) => Reifies d (Dims d) where
+instance KnownDims (d :: [Pos]) => Reifies d (Dims d) where
   reflect _ = dims
 
 newtype MagicDim d r = MagicDim (KnownDim d => r)
 
-newtype MagicDim' r = MagicDim' (forall (d :: Nat). KnownDim d => Proxy d -> r)
+newtype MagicDim' r = MagicDim' (forall (d :: Pos). KnownDim d => Proxy d -> r)
 
 reifyDim :: forall d r . Dim d -> (KnownDim d => r) -> r
 reifyDim d k = unsafeCoerce (MagicDim k :: MagicDim d r) d
 
-reifyDim' :: forall r. Word -> (forall (d :: Nat). KnownDim d => Proxy d -> r) -> r
+reifyDim' :: forall r. Word -> (forall (d :: Pos). KnownDim d => Proxy d -> r) -> r
 reifyDim' d k = unsafeCoerce (MagicDim' k :: MagicDim' r) d Proxy
 
 newtype WithKnownDims d r = WithKnownDims (KnownDims d => r)
 
-newtype WithUnknownDims r = WithUnknownDims (forall (d :: [Nat]). KnownDims d => Proxy d -> r)
+newtype WithUnknownDims r = WithUnknownDims (forall (d :: [Pos]). KnownDims d => Proxy d -> r)
 
 reifyDims :: forall d r . Dims d -> (KnownDims d => r) -> r
 reifyDims d k = unsafeCoerce (WithKnownDims k :: WithKnownDims d r) d
@@ -83,10 +84,10 @@ withDims :: Dims d -> Evidence (KnownDims d)
 withDims d = reifyDims d E
 -}
 
-reifyDims' :: forall r. [Word] -> (forall (d :: [Nat]). KnownDims d => Proxy d -> r) -> r
+reifyDims' :: forall r. [Word] -> (forall (d :: [Pos]). KnownDims d => Proxy d -> r) -> r
 reifyDims' d k = unsafeCoerce (WithUnknownDims k :: WithUnknownDims r) d Proxy
 
-reifySomeDims :: forall r. SomeDims -> (forall (d :: [Nat]). KnownDims d => Proxy d -> r) -> r
+reifySomeDims :: forall r. SomeDims -> (forall (d :: [Pos]). KnownDims d => Proxy d -> r) -> r
 reifySomeDims (SomeDims d) k = unsafeCoerce (WithUnknownDims k :: WithUnknownDims r) d Proxy
 
 -- | A convenience function useful when we need to name a dimensional value multiple times.
@@ -94,7 +95,7 @@ withDims :: KnownDims d => (Dims d -> r) -> r
 withDims f = f dims
 
 withSomeDims :: forall r. [Word]
-             -> (forall (d :: [Nat]). Dims d -> r)
+             -> (forall (d :: [Pos]). Dims d -> r)
              -> r
 withSomeDims d f =
   case someDimsVal d of
@@ -162,7 +163,7 @@ import           GHC.TypeLits
 -- of the represented 'Word's for, say, @'Proxy' [1,2,3]@.
 --
 -- __Deprecated:__ Use 'SingI' from /singletons/ instead.
-class KnownDims (ns :: [Nat]) where
+class KnownDims (ns :: [Pos]) where
     -- | __Deprecated:__ Use 'fromSing' from /singletons/ instead.
     natsVal  :: p ns -> [Word]
     -- | __Deprecated:__ Use 'sing' from /singletons/ instead.
@@ -192,7 +193,7 @@ data SomeDims :: Type where
 -- Typically generated using 'natsList'.
 --
 -- __Deprecated:__ Use 'Sing' from /singletons/ instead.
-data Dims :: [Nat] -> Type where
+data Dims :: [Pos] -> Type where
     U   :: Dims '[]
     (:*) :: (KnownDim n, KnownDims ns)
           => !(Proxy n) -> !(Dims ns) -> Dims (n ': ns)
