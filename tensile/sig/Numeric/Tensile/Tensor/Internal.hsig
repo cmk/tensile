@@ -6,9 +6,10 @@ signature Numeric.Tensile.Tensor.Internal where
 
 import Data.Bits
 import Data.Kind
-import Data.Vector.Storable (Vector)
+import Data.Vector.Sized (Vector)
 import Numeric.Tensile.Types
 import Numeric.Tensile.Index
+
 
 class Elt (e :: Type)
 -- instance Elt TVal
@@ -182,15 +183,19 @@ reshape
   => Reshapable d d'
   => Tensor d e -> Tensor d' e
 
-toTensor
+fromList
   :: forall d e. Elt e
   => KnownDim (Size d)
   => [e]
   -> Maybe (Tensor d e)
 
-fromVector :: Elt e => Dims d -> Vector e -> Maybe (Tensor d e)
+-- fromVector :: Elt e => Dims d -> Vector e -> Maybe (Tensor d e)
 
-toVector :: Elt e => Tensor d e -> Vector e
+-- toVector :: Elt e => Tensor d e -> Vector e
+
+fromSizedVector :: Elt e => Vector (Size d) e -> Tensor d e
+
+toSizedVector :: Elt e => Tensor d e -> Vector (Size d) e
 
 fill :: forall d e. Elt e => Dims d -> (Idxs d -> e) -> Tensor d e
 

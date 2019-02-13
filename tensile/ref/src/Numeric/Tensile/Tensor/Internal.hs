@@ -8,15 +8,17 @@ import Data.Bits
 import Data.Int
 import Data.Kind
 import Data.Word
-import Data.Vector.Storable (Vector(..), Storable(..))
+import Data.Vector.Storable (Storable(..))
 import Unsafe.Coerce (unsafeCoerce)
 
 import Numeric.Tensile.Types
 import Numeric.Tensile.Index
 
-import qualified Data.Vector.Storable as V
+import Data.Vector.Sized (Vector)
+import qualified Data.Finite as F
+import qualified Data.Vector.Sized as N
+import qualified Data.Vector.Storable as S
 import qualified Data.Vector.Storable.Mutable as M
-
 
 -- TODO: move to application / test stanza
 type Elt = Storable
@@ -26,7 +28,7 @@ type BVal = Bool
 
 --class Elt e
 --TODO update Show instance
-newtype Tensor (d :: [Nat]) (e :: Type) = Tensor { unTensor :: Vector e } deriving (Eq, Show)
+newtype Tensor (d :: [Nat]) (e :: Type) = Tensor { unTensor :: S.Vector e } deriving (Eq, Show)
 
 -- | A real or complex-valued tensor of shape 'd'. 
 type T d = Tensor d TVal
@@ -62,7 +64,7 @@ instance (KnownDim (Size d), Fractional e, Elt e) => Fractional (Tensor d e)  wh
     {-# INLINE fromRational #-}
 
 instance (KnownDim (Size d), Floating e, Elt e) => Floating (Tensor d e) where
-    pi = Tensor $ V.singleton pi  --TODO make this dim safe
+    pi = Tensor $ S.singleton pi  --TODO make this dim safe
     {-# INLINE pi #-}
     exp = _lift exp
     {-# INLINE exp #-}
@@ -122,7 +124,7 @@ instance (KnownDim (Size d), Elt e, Real e) => Real (Tensor d e) where
   toRational = undefined --TODO find a reasonable sum-based implementation or scrap the typeclass
 
 instance (KnownDim (Size d), Elt e, Enum e) => Enum (Tensor d e) where
-  toEnum = Tensor . V.replicate (fromIntegral . dimVal $ (dim :: Dim (Size d))) . toEnum
+  toEnum = Tensor . S.replicate (fromIntegral . dimVal $ (dim :: Dim (Size d))) . toEnum
   {-# INLINE toEnum #-}
   fromEnum = undefined --TODO find a reasonable sum-based implementation or scrap the typeclass
 
@@ -210,31 +212,39 @@ reshape
   => Tensor d e -> Tensor d' e
 reshape = unsafeCoerce
 
-toTensor
+fromList
   :: forall d e. Elt e
   => KnownDim (Size d)
   => [e]
   -> Maybe (Tensor d e)
-toTensor v
-  | length v == fromIntegral (dimVal (dim :: Dim (Size d))) = Just $ Tensor $ V.fromListN (length v) v
+fromList v
+  | length v == fromIntegral (dimVal (dim :: Dim (Size d))) = Just $ Tensor $ S.fromListN (length v) v
   | otherwise = Nothing
 
-toVector :: Elt e => Tensor d e -> Vector e
-toVector = unTensor
+-- fromVector :: Elt e => Dims d -> Vector e -> Maybe (Tensor d e)
+-- fromVector d v = undefined
+-- 
+-- toVector :: Elt e => Tensor d e -> Vector e
+-- toVector = unTensor
+-- 
+fromSizedVector :: Elt e => Vector (Size d) e -> Tensor d e
+fromSizedVector = Tensor . S.convert . N.fromSized
 
-fromVector :: Elt e => Dims d -> Vector e -> Maybe (Tensor d e)
-fromVector d v = undefined
+toSizedVector :: Elt e => Tensor d e -> Vector (Size d) e
+toSizedVector = coerce . S.convert . unTensor
+  where coerce :: S.Vector e -> N.Vector n e
+        coerce = unsafeCoerce
 
 fill :: forall d e. Elt e => Dims d -> (Idxs d -> e) -> Tensor d e
-fill d f = Tensor $ V.create $ do
+fill d f = Tensor $ S.create $ do
   mv <- M.new $ fromIntegral $ product $ listDims d
   let act ix = M.write mv (minorToMajor d ix) $ f ix
   overDimIdx_ d act
   return mv
 
 -- TODO unsafe consider using sized vectors internally
-modifyIdxs :: forall d e. Storable e => Dims d -> Vector e -> (forall s. Idxs d -> M.MVector s e -> ST s ()) -> Vector e
-modifyIdxs d v f = V.modify (\mv -> overDimIdx_ d (\i -> f i mv)) v
+modifyIdxs :: forall d e. Storable e => Dims d -> S.Vector e -> (forall s. Idxs d -> M.MVector s e -> ST s ()) -> S.Vector e
+modifyIdxs d v f = S.modify (\mv -> overDimIdx_ d (\i -> f i mv)) v
 
 {-
 
@@ -244,7 +254,7 @@ fill dims act =
     Reverse dims' -> fill' dims act
    
 fill' :: Elt e => Dims d -> (Int -> e) -> Vector e
-fill' dims act = V.create $ do
+fill' dims act = S.create $ do
   v <- M.new (fromIntegral $ totalDim dims)
   let f i = M.write v i $ act i
   overDimOff_ dims f 0 1 -- either control the offset ourselves or fix type issues
@@ -252,7 +262,7 @@ fill' dims act = V.create $ do
 
 TODO add tests:
 > mod d idxs m = M.swap m 0 (fromIdxs d idxs)
-> v = V.fromList [1..12]
+> v = S.fromList [1..12]
 > v
 [1.0,2.0,3.0,4.0,5.0,6.0,7.0,8.0,9.0,10.0,11.0,12.0]
 > modifyIdxs (dims @_ @'[2, 2, 3]) v $ mod (dims @_ @'[2, 2, 3])
@@ -269,13 +279,13 @@ TODO add tests:
 --------------------------------------------------------------------------------
 
 _replicate :: Elt e => Int -> e -> Tensor d e
-_replicate i = Tensor . V.fromListN i . replicate i
+_replicate i = Tensor . S.fromListN i . replicate i
 
 _lift :: (Elt a, Elt b) => (a -> b) -> Tensor d a -> Tensor d b
-_lift f (Tensor v) = Tensor $ V.map f v
+_lift f (Tensor v) = Tensor $ S.map f v
 {-# INLINE _lift #-}
 
 _lift2 :: (Elt a, Elt b, Elt c) => (a -> b -> c)
        -> Tensor d a -> Tensor d b -> Tensor d c
-_lift2 f (Tensor v1) (Tensor v2) = Tensor $ V.zipWith f v1 v2
+_lift2 f (Tensor v1) (Tensor v2) = Tensor $ S.zipWith f v1 v2
 {-# INLINE _lift2 #-}

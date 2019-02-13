@@ -6,9 +6,10 @@ where
 
 -- TODO: reexport Types module
 import Numeric.Tensile.Tensor.Internal
-import Data.Vector.Storable (Vector(..))
 import Numeric.Backprop (BVar(..))
 import Numeric.Tensile.Types
+
+import Data.Vector.Sized (Vector)
 
 
 type T' s d = BVar s (T d)
@@ -21,8 +22,8 @@ shape _ = listDims (dims @_ @d)
 size :: KnownDims d => Tensor d e -> Word
 size = product . shape
 
-fromVector' :: forall d e. (Elt e, KnownDims d) => Vector e -> Maybe (Tensor d e)
-fromVector' = fromVector (dims @_ @d)
+--fromVector' :: forall d e. (Elt e, KnownDims d) => Vector e -> Maybe (Tensor d e)
+--fromVector' = fromVector (dims @_ @d)
 
 fromScalar :: Elt e => e -> Tensor '[] e
 fromScalar = constant (dims @_ @'[])

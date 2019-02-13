@@ -26,7 +26,7 @@ println = putStr "\n"
 
 main :: IO ()
 main = do
-  case (toTensor u :: Maybe (I '[2, 5])) of
+  case (fromList u :: Maybe (I '[2, 5])) of
     Nothing -> print "nope"
     Just t -> do
       print t
@@ -39,7 +39,7 @@ main = do
       println
    
 {-
-  case (toTensor v :: Maybe (T '[2,4]), toTensor v :: Maybe (T '[4,2])) of
+  case (fromList v :: Maybe (T '[2,4]), fromList v :: Maybe (T '[4,2])) of
     (Just t, Just t') -> do
       print t'
       print $ shape t'
@@ -50,7 +50,7 @@ main = do
       println
     _ -> print "nope"
 
-  case (toTensor v :: Maybe (T ('[2,2] ++ '[2])), toTensor v :: Maybe (T '[2,4])) of
+  case (fromList v :: Maybe (T ('[2,2] ++ '[2])), fromList v :: Maybe (T '[2,4])) of
     (Just t, Just t') -> do
       let tt = t `matmul` t' 
           tt' = transpose t'
@@ -61,7 +61,7 @@ main = do
       println
     _ -> print "nope"
 
-  case (toTensor w :: Maybe (T '[2,8]), toTensor w' :: Maybe (T '[8,2])) of
+  case (fromList w :: Maybe (T '[2,8]), fromList w' :: Maybe (T '[8,2])) of
     (Just t, Just t') -> do
       let tt = transpose t
           tt' = t `matmul` t' 

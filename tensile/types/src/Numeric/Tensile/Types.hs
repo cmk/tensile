@@ -46,6 +46,8 @@ type family Positive (xs :: [Nat]) :: Constraint where
 
 -- TODO this is a bit of a hack. Error message is:
 -- Couldn't match type ‘'False’ with ‘'True’
+--
+-- Rewrite KnownDim to enforce positivity.
 type KnownDims (ds :: [Nat]) = (Dimensions ds, Positive ds)
 
 type family Rank (xs :: [k]) :: Nat where
@@ -134,6 +136,7 @@ compareDims
 sameDims
 totalDim
 
+http://hackage.haskell.org/package/typelits-witnesses-0.3.0.3/docs/src/GHC.TypeLits.List.html#KnownNats
 
 {-# LANGUAGE ConstraintKinds      #-}
 {-# LANGUAGE FlexibleContexts     #-}

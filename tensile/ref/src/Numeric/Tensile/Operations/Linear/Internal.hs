@@ -8,10 +8,9 @@ import Unsafe.Coerce (unsafeCoerce)
 
 import Data.Vector.Sized (Vector)
 import qualified Data.Finite as F
-import qualified Data.Vector as V
-import qualified Data.Vector.Sized as Sz
-import qualified Data.Vector.Storable as St
-import qualified Data.Vector.Storable.Mutable as Mu
+import qualified Data.Vector.Sized as N
+import qualified Data.Vector.Storable as S
+import qualified Data.Vector.Storable.Mutable as M
 
 import GHC.TypeLits (KnownNat(..), natVal)
 -- import qualified Numeric.LinearAlgebra.HMatrix as Ma
@@ -33,13 +32,7 @@ import GHC.TypeLits (KnownNat(..), natVal)
 --------------------------------------
 --
 
-fromSizedVector :: Elt e => Vector (Size d) e -> Tensor d e
-fromSizedVector = Tensor . St.convert . Sz.fromSized
 
-toSizedVector :: Elt e => Tensor d e -> Vector (Size d) e
-toSizedVector = coerce . St.convert . unTensor
-  where coerce :: V.Vector e -> Sz.Vector n e
-        coerce = unsafeCoerce
 
 transpose' 
   :: Elt e 
@@ -48,7 +41,7 @@ transpose'
 transpose' d p (Tensor v) = Tensor v'
   where v' = modifyIdxs d v $ \i m -> 
                remapIdxs p d i $ \d' i' -> 
-                 Mu.modify m (const $ v St.! fromIdxs d' (_permuted p i)) (fromIdxs d' i')
+                 M.modify m (const $ v S.! fromIdxs d' (_permuted p i)) (fromIdxs d' i')
 
 pack
   :: Elt e 
@@ -64,13 +57,13 @@ pack0 v = Tensor res
   where d = dims @_ @d
         n = dim @_ @n
         size = product $ listDims d
-        res = St.create $ do
-          mv <- Mu.new $ fromIntegral $ size * dimVal n 
-          flip Sz.imapM_ v $ \i t -> 
+        res = S.create $ do
+          mv <- M.new $ fromIntegral $ size * dimVal n 
+          flip N.imapM_ v $ \i t -> 
             let i' = idxToWord . idxFromFinite $ i
                 off = fromIntegral $ i' * size
                 v' = unTensor t
-                act ix = Mu.write mv (off + fromEnum ix) $ v' St.! (fromEnum ix) -- could use a tensor op instead here
+                act ix = M.write mv (off + fromEnum ix) $ v' S.! (fromEnum ix) -- could use a tensor op instead here
             in overDimIdx_ d act
           return mv
 
@@ -79,7 +72,7 @@ unpack0
   => KnownDims d
   => KnownNat n
   => Tensor (n :+ d) e -> Vector n (Tensor d e)
-unpack0 t = Sz.generate f
+unpack0 t = N.generate f
   where d = dims @_ @d
         --n = natVal (Proxy :: n) --dim @_ @n
         size = fromIntegral $ product $ listDims d
@@ -87,11 +80,11 @@ unpack0 t = Sz.generate f
           let i' = fromIntegral $ F.getFinite i
               off = i' * size
               v = unTensor t 
-          in v St.! (off + fromEnum ix)
+          in v S.! (off + fromEnum ix)
 
 
 t :: Vector 4 (Tensor '[2,2] Word)
-t = Sz.generate $ \f -> 
+t = N.generate $ \f -> 
   let d = dims @_ @'[2,2]
       i' = idxToWord . idxFromFinite $ f
   in fill d (const i') 
@@ -104,6 +97,9 @@ t'' = unpack0 t'
 
 {-
 
+see example http://jeankossaifi.com/blog/unfolding.html
+
+
 generate :: forall n a. KnownNat n => (Finite n -> a) -> Vector n a
 
 t :: Data.Vector.Sized.Vector 4 (Tensor '[2,2] Word)
@@ -114,7 +110,7 @@ t = generate $ \f ->
 
 t' :: Tensor '[4,2,2] Word
 t' = pack0 t
-Sz.imapM_ :: Monad m => (Finite n -> a -> m b) -> Vector n a -> m ()
+N.imapM_ :: Monad m => (Finite n -> a -> m b) -> Vector n a -> m ()
 
 overDim_ :: Monad m
          => Dims ds -- ^ Shape of a space
