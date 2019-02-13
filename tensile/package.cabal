@@ -42,6 +42,7 @@ library tensile-test
     hs-source-dirs: 
         lib/test
     exposed-modules:
+        Test.Numeric.Tensile.Dimensions.Gen
         Test.Numeric.Tensile.Tensor.Gen
         Test.Numeric.Tensile.Operations.Linear.Predicate
     signatures:
@@ -51,7 +52,6 @@ library tensile-test
         hedgehog,
         tensile,
         tensile-types,
-        tensile-types-test,
         vector
     default-extensions: 
         RankNTypes,
@@ -74,28 +74,7 @@ library tensile-types
         combinat,
         dimensions,
         finite-typelits,
-        reflection,
         singletons
-    default-extensions: 
-        ConstraintKinds, 
-        FlexibleContexts,
-        RankNTypes,
-        ScopedTypeVariables,
-        TypeInType,
-        TypeApplications,
-        TypeFamilies,
-        TypeOperators 
-    default-language: Haskell2010
-
-library tensile-types-test 
-    hs-source-dirs: 
-        types/test
-    exposed-modules:
-        Test.Numeric.Tensile.Dimensions.Gen
-    build-depends:
-        base == 4.*,
-        hedgehog,
-        tensile-types
     default-extensions: 
         ConstraintKinds, 
         FlexibleContexts,
@@ -150,7 +129,6 @@ library reference
         finite-typelits,
         hmatrix,
         hmatrix-backprop,
-        reflection,
         tensile-types,
         vector,
         vector-sized
