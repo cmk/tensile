@@ -7,6 +7,7 @@ import Control.Monad.ST (ST(..))
 import Data.Bits
 import Data.Int
 import Data.Kind
+import Data.Proxy
 import Data.Word
 import Data.Vector.Storable (Storable(..))
 import Unsafe.Coerce (unsafeCoerce)
@@ -19,6 +20,8 @@ import qualified Data.Finite as F
 import qualified Data.Vector.Sized as N
 import qualified Data.Vector.Storable as S
 import qualified Data.Vector.Storable.Mutable as M
+
+
 
 -- TODO: move to application / test stanza
 type Elt = Storable
@@ -271,6 +274,85 @@ TODO add tests:
 > modifyIdxs (dims @_ @'[2, 2, 3]) v (\_ m -> M.set m 0)
 [0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]
 
+-}
+
+pack
+  :: Elt e 
+  => Vector n (Tensor (x ++ y) e) -> Tensor (x ++ n :+ y) e
+pack = undefined
+
+pack0
+  :: forall d e n. Elt e
+  => KnownDims d
+  => KnownDim n
+  => Vector n (Tensor d e) -> Tensor (n :+ d) e
+pack0 v = Tensor res
+  where d = dims @_ @d
+        n = fromIntegral $ dimVal $ dim @_ @n
+        size = product $ listDims d
+        res = S.create $ do
+          mv <- M.new $ fromIntegral $ size * n
+          flip N.imapM_ v $ \i t -> 
+            let i' = idxToWord . idxFromFinite $ i
+                off = fromIntegral $ i' * size
+                v' = unTensor t
+                act ix = M.write mv (off + fromEnum ix) $ v' S.! (fromEnum ix) -- could use a tensor op instead here
+            in overDimIdx_ d act
+          return mv
+
+
+unpack0 
+  :: forall d e n. Elt e
+  => KnownDims d
+  => KnownNat n
+  => Tensor (n :+ d) e -> Vector n (Tensor d e)
+unpack0 t = N.generate f
+  where d = dims @_ @d
+        size = fromIntegral $ product $ listDims d
+        f i = fill d $ \ix -> 
+          let i' = fromIntegral $ F.getFinite i
+              off = i' * size
+              v = unTensor t 
+          in v S.! (off + fromEnum ix)
+
+
+{-
+
+see example http://jeankossaifi.com/blog/unfolding.html
+
+t :: Vector 4 (Tensor '[2,2] Word)
+t = N.generate $ \f -> 
+  let d = dims @_ @'[2,2]
+      i' = idxToWord . idxFromFinite $ f
+  in fill d (const i') 
+
+t' :: Tensor '[4,2,2] Word
+t' = pack0 t
+
+t'' :: Vector 4 (Tensor '[2,2] Word)
+t'' = unpack0 t'
+
+generate :: forall n a. KnownNat n => (Finite n -> a) -> Vector n a
+
+t :: Data.Vector.Sized.Vector 4 (Tensor '[2,2] Word)
+t = generate $ \f -> 
+  let d = dims @_ @'[2,2]
+      i' = idxToWord . idxFromFinite $ f
+  in fill d (const i') 
+
+t' :: Tensor '[4,2,2] Word
+t' = pack0 t
+N.imapM_ :: Monad m => (Finite n -> a -> m b) -> Vector n a -> m ()
+
+overDim_ :: Monad m
+         => Dims ds -- ^ Shape of a space
+         -> (Idxs ds -> Int -> m ()) -- ^ Function to call on each dimension
+         -> Int -- ^ Initial offset
+         -> Int -- ^ Offset step
+         -> m ()
+
+stack ::  Dim n -> Vector n (Tensor (x ++ y) e) -> Tensor (x +: n :+ y) e
+unstack :: (KnownDims x, Elt e) => Dim n -> Tensor (x +: n :+ y) e -> Vector n (Tensor (x ++ y) e)
 -}
 
 

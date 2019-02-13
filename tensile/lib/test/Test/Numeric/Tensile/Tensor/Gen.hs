@@ -6,6 +6,7 @@ module Test.Numeric.Tensile.Tensor.Gen (
 import Numeric.Tensile.Tensor
 import Data.Vector.Storable (Vector(..),Storable(..))
 import Numeric.Tensile.Types (Dims(..), KnownDims(..), SomeDims(..), dims, someDimsVal, withSomeDims)
+import Test.Numeric.Tensile.Dimensions.Gen
 import Test.Numeric.Tensile.Tensor.Gen.Internal
 import qualified Data.Vector.Storable as V
 
@@ -23,12 +24,7 @@ gen_dynamic' :: (Elt e, MonadGen m) => Range Word -> Range e -> (Range e -> m e)
 gen_dynamic' rw re g k = gen_dims' rw >>= \d -> withSomeDims d f
   where f d = gen_tensor' d re g >>= return . k d
 
--- TODO move to types test lib
-gen_dims :: MonadGen m => Range Word -> m SomeDims
-gen_dims r = someDimsVal <$> G.list (fmap fromIntegral r) (G.word r)
 
-gen_dims' :: MonadGen m => Range Word -> m [Word]
-gen_dims' r = G.list (fmap fromIntegral r) (G.word r)
 
 {-
 

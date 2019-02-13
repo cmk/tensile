@@ -199,3 +199,151 @@ toSizedVector :: Elt e => Tensor d e -> Vector (Size d) e
 
 fill :: forall d e. Elt e => Dims d -> (Idxs d -> e) -> Tensor d e
 
+pack0
+  :: forall d e n. Elt e
+  => KnownDims d
+  => KnownDim n
+  => Vector n (Tensor d e) -> Tensor (n :+ d) e
+
+unpack0 
+  :: forall d e n. Elt e
+  => KnownDims d
+  => KnownNat n
+  => Tensor (n :+ d) e -> Vector n (Tensor d e)
+
+{--
+
+Fibers are the higher order analogue of matrix rows and columns. A fiber is
+defined by fixing every index but one. A matrix column is a mode-1 fiber and a
+matrix row is a mode-2 fiber. Third-order tensors have column, row, and tube fibers,
+denoted by x:jk, xi:k, and xij:
+, respectively; see Figure 2. Fibers are always assumed
+to be column vectors
+
+fiber = slice
+-- | Select a dimension of a tensor. If a vector is passed in, return a singleton tensor
+-- with the index value of the vector.
+--
+
+Slices are two-dimensional sections of a tensor, defined by fixing all but two indices.
+Figure 3 shows the horizontal, lateral, and frontal slides of a third-order tensor X,
+denoted by Xi::, X:j:
+, and X::k, respectively.
+
+slice
+  :: forall d ls r rs i
+  .  '(ls, r:+rs) ~ SplitAt i d
+  => KnownDim i
+  => Dimensions d
+  => Tensor d
+  -> Dim i
+  -> Tensor (ls ++ rs)
+slice t i = unsafePerformIO $
+
+(!!) = slice -- hasktorch
+
+Matricization, also known as unfolding or flattening, is the process of reordering the
+elements of an N-way array into a matrix. For instance, a 2 × 3 × 4 tensor can
+be arranged as a 6 × 4 matrix or a 2 × 12 matrix, etc. In this review, we consider
+only the special case of mode-n matricization because it is the only form relevant to
+our discussion. A more general treatment of matricization can be found in Kolda
+[112]. The mode-n matricization of a tensor X ∈ R
+I1×I2×···×IN is denoted by X(n) and
+arranges the mode-n fibers to be the columns of the matrix. Though conceptually
+simple, the formal notation is clunky. Tensor element (i1, i2, . . . , iN ) maps to matrix
+element (in, j) where
+
+flatten :: (Dimensions d, KnownDim (Product d)) => Tensor d -> Tensor '[Product d]
+flatten = resizeAs
+
+unsqueeze1d
+  :: Dimensions d
+  => '(rs, ls) ~ (SplitAt n d)
+  => Dim n
+  -> Tensor d
+  -> Tensor (rs ++ '[1] ++ ls)
+
+
+-- | Static call to 'Dynamic.cat'
+cat
+  :: '(ls, r0:+rs) ~ Sing.SplitAt i d
+  => '(ls, r1:+rs) ~ Sing.SplitAt i d'
+  => Tensor d
+  -> Tensor d'
+  -> Dim (i::Nat)
+  -> Tensor (ls ++ '[r0 + r1] ++ rs)
+cat a b d = fromRight (error "impossible: cat type should not allow this branch") $
+  asStatic <$> Dynamic.cat (asDynamic a) (asDynamic b) (fromIntegral $ dimVal d)
+
+-- | convenience function, specifying a type-safe 'cat' operation.
+cat1d
+  :: (All KnownDim '[n1,n2,n], n ~ Sing.Sum [n1, n2])
+  => Tensor '[n1] -> Tensor '[n2] -> Tensor '[n]
+cat1d a b = cat a b (dim :: Dim 0)
+
+-- | convenience function, specifying a type-safe 'cat' operation.
+cat2d0 :: (All KnownDim '[n,m,n0,n1], n ~ Sing.Sum [n0, n1]) => Tensor '[n0, m] -> Tensor '[n1, m] -> Tensor '[n, m]
+cat2d0 a b = cat a b (dim :: Dim 0)
+
+-- | convenience function, stack two rank-1 tensors along the 0-dimension
+stack1d0 :: KnownDim m => Tensor '[m] -> Tensor '[m] -> (Tensor '[2, m])
+stack1d0 a b = cat2d0
+  (unsqueeze1d (dim :: Dim 0) a)
+  (unsqueeze1d (dim :: Dim 0) b)
+
+-- | convenience function, specifying a type-safe 'cat' operation.
+cat2d1 :: (All KnownDim '[n,m,m0,m1], m ~ Sing.Sum [m0, m1]) => Tensor '[n, m0] -> Tensor '[n, m1] -> (Tensor '[n, m])
+cat2d1 a b = cat a b (dim :: Dim 1)
+
+-- | convenience function, stack two rank-1 tensors along the 1-dimension
+stack1d1 :: KnownDim n => Tensor '[n] -> Tensor '[n] -> (Tensor '[n, 2])
+stack1d1 a b = cat2d1
+  (unsqueeze1d (dim :: Dim 1) a)
+  (unsqueeze1d (dim :: Dim 1) b)
+
+
+reshape :: forall d d' . (All Dimensions [d,d'], Product d ~ Product d') => Tensor d -> Tensor d'
+
+https://github.com/achirkin/easytensor/blob/c2c22024156ce069d1bbaf9c6c5cbfffff217e29/easytensor/src/Numeric/DataFrame/Shape.hs#L96
+(<+:>) :: forall (ds :: [Nat]) (n :: Nat) (m :: Nat) (t :: Type)
+        . m ~ (n + 1)
+        => DataFrame t (ds +: n)
+        -> DataFrame t ds
+        -> DataFrame t (ds +: m)
+
+http://hackage.haskell.org/package/permutation-0.5.0.5/docs/Data-Permute.html
+http://hackage.haskell.org/package/combinat-0.2.9.0/docs/Math-Combinat-Permutations.html
+https://www.tensorflow.org/api_docs/python/tf/manip
+reflect and use P.backpermute
+
+-- like tf.transpose
+permute
+  :: forall x y. Dimensions x
+  => Permutation n
+  -> T x
+  -> T y
+
+slice :: (In s s') => t s e -> t s' e
+
+shape :: (Integral i, Nat n, n ~ Size s) t s e -> t n i
+
+-- https://github.com/onnx/onnx/blob/master/docs/Operators.md#Reshape
+-- https://github.com/GU-CLASP/TypedFlow/blob/9f053e9cb8ee54aed411fb6c7d93eb29d28a6862/TypedFlow/Abstract.hs#L266
+reshape :: (Size s ~ Size s') => t s e -> t s' e
+
+-- https://github.com/onnx/onnx/blob/master/docs/Operators.md#Tile
+tile ::
+
+-- like TF.pack (python tf.stack) 
+-- https://github.com/onnx/onnx/blob/master/docs/Operators.md#concat
+concat :: V n (t s a) -> t (n:s) a
+
+
+-- https://www.tensorflow.org/xla/broadcasting
+-- https://github.com/onnx/onnx/blob/master/docs/Broadcasting.md
+-- Need a recursive typelevel function for Comp
+-- https://github.com/onnx/onnx/blob/master/docs/Operators.md#Expand
+bcast (Comp s s') :: t s e -> t s' e
+
+-}
+

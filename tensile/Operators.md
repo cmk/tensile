@@ -9,44 +9,85 @@ http://citeseerx.ist.psu.edu/viewdoc/download;jsessionid=4A0663C7848627DADDBA6A2
 
 git grep -l 'Generators' | xargs sed -i '' -e 's/Generators/Gen/g'
 
-compat
-config
-data
-debugging
-distribute
-distributions
-dtypes
-errors
-estimator
-feature_column
-graph_util
-image
-initializers
-io
-keras
-layers
-logging
-losses
-manip
-matrix (tf.linalg)
-metrics
-nn
-quantization
-queue
-ragged
-random
-reduce (ai.onnx reduce*)
-resource_loader
-rnn
-saved_model
-sets
-signal
-sparse
-strings
-summary
-sysconfig
-test --
-train -- put code here
+audio module: Public API for tf.audio namespace.
+
+autograph module: Conversion of plain Python into TensorFlow graph code.
+
+bitwise module: Operations for manipulating the binary representations of integers.
+
+compat module: Functions for Python 2 vs. 3 compatibility.
+
+config module: Public API for tf.config namespace.
+
+data module: tf.data.Dataset API for input pipelines.
+
+debugging module: Public API for tf.debugging namespace.
+
+distribute module: Library for running a computation across multiple devices.
+
+dtypes module: Public API for tf.dtypes namespace.
+
+errors module: Exception types for TensorFlow errors.
+
+estimator module: Estimator: High level tools for working with models.
+
+experimental module: Public API for tf.experimental namespace.
+
+feature_column module: Public API for tf.feature_column namespace.
+
+graph_util module: Helpers to manipulate a tensor graph in python.
+
+image module: Image processing and decoding ops.
+
+io module: Public API for tf.io namespace.
+
+keras module: Implementation of the Keras API meant to be a high-level API for TensorFlow.
+
+linalg module: Operations for linear algebra.
+
+lite module: Public API for tf.lite namespace.
+
+losses module: Loss operations for use in neural networks.
+
+math module: Math Operations.
+
+nest module: Public API for tf.nest namespace.
+
+nn module: Wrappers for primitive Neural Net (NN) Operations.
+
+quantization module: Public API for tf.quantization namespace.
+
+queue module: Public API for tf.queue namespace.
+
+ragged module: Ragged Tensors.
+
+random module: Public API for tf.random namespace.
+
+raw_ops module: Public API for tf.raw_ops namespace.
+
+rnn module: Public API for tf.rnn namespace.
+
+saved_model module: Public API for tf.saved_model namespace.
+
+sets module: Tensorflow set operations.
+
+signal module: Signal processing operations.
+
+sparse module: Sparse Tensor Representation.
+
+strings module: Operations for working with string Tensors.
+
+summary module: Operations for writing summary data, for use in analysis and visualization.
+
+sysconfig module: System configuration library.
+
+test module: Testing.
+
+tools module
+
+train module: Support for training models.
+
+version module: Public API for tf.version namespace.
 
 scalar (tf.math)
 vector (tf.linalg)
