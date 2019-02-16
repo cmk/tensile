@@ -372,7 +372,7 @@ check_all_boolean_vars () {
   check_boolean_var CABAL_USE_STACK_SDIST
   # check_boolean_var CABAL_REINIT_CONFIG
   # check_boolean_var CABAL_CHECK_RELAX
-  check_boolean_var CABAL_NO_SANDBOX
+  # check_boolean_var CABAL_NO_SANDBOX
   if test -n "$TEST_INSTALL"
   then
     echo "WARNING! TEST_INSTALL is deprecated. Please use ENABLE_INSTALL instead"
