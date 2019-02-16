@@ -62,7 +62,7 @@ type family Positive (xs :: [Nat]) :: Constraint where
 -- Couldn't match type ‘'False’ with ‘'True’
 --
 -- Rewrite KnownDim to enforce positivity.
-type KnownDims (ds :: [Nat]) = (Dimensions ds, Positive ds)
+type KnownDims (ds :: [Nat]) = Dimensions ds -- (Dimensions ds, Positive ds)
 
 type family Rank (xs :: [k]) :: Nat where
     Rank '[] = 0
