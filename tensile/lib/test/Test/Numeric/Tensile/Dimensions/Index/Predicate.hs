@@ -1,16 +1,26 @@
 module Test.Numeric.Tensile.Dimensions.Index.Predicate where
 
-import Numeric.Tensile.Types (Dims,reifyDims')
-import Numeric.Tensile.Index (diffIdx)
+import Numeric.Tensile.Types
+import Numeric.Tensile.Index -- (diffIdx)
 import Numeric.Tensile.Permutation (Perm(..), reversal, reversal')
 import Test.Numeric.Tensile.Dimensions.Gen
 
-pred_diffIdx :: Dims xs -> Bool
-pred_diffIdx = undefined
+pred_max_diffIdx :: forall (d :: [Nat]). Dims d -> Bool
+pred_max_diffIdx d = (fromIntegral $ 1 + diffIdx d (maxBound' d) (minBound' d)) == (product . listDims $ d)
+
+pred_max_diffIdx' :: SomeDims -> Bool
+pred_max_diffIdx' (SomeDims d) = (fromIntegral $ 1 + diffIdx d (maxBound' d) (minBound' d)) == (product . listDims $ d)
+
+
 
 {-
  -
 -- test -
+
+
+pred_diffIdx d = reifyDims d f
+  where f = (fromIntegral $ 1 + diffIdx d (maxBound' d) (minBound' d)) == (product . listDims $ d)
+
 
 > reifyDims' [2,2,3] $ \p -> (fromIntegral $ 1 + diffIdx (reflect p) maxBound minBound) == (product . listDims $ reflect p)
 
