@@ -1,7 +1,7 @@
 {-# LANGUAGE AllowAmbiguousTypes #-}
-module Numeric.Tensile.Permutation where
+module Numeric.Tensile.Dimensions.Permutation where
 
-import Numeric.Tensile.Types
+import Numeric.Tensile.Dimensions.Types
 import qualified Math.Combinat.Permutations as P
 
 newtype Perm (n :: Nat) = Perm { unPerm :: P.Permutation } deriving (Eq, Ord, Show)

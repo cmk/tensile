@@ -67,9 +67,9 @@ library tensile-types
     hs-source-dirs: 
         types/src
     exposed-modules:
-        Numeric.Tensile.Index
-        Numeric.Tensile.Permutation
-        Numeric.Tensile.Types
+        Numeric.Tensile.Dimensions.Index
+        Numeric.Tensile.Dimensions.Permutation
+        Numeric.Tensile.Dimensions.Types
     build-depends:
         base == 4.*,
         combinat,

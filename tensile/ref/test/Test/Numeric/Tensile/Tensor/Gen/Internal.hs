@@ -2,7 +2,7 @@ module Test.Numeric.Tensile.Tensor.Gen.Internal (gen_tensor') where
 
 import Numeric.Tensile.Tensor.Internal
 import Data.Vector.Storable (Vector(..),Storable(..))
-import Numeric.Tensile.Types (Dims(..), KnownDims(..), listDims, dims)
+import Numeric.Tensile.Dimensions.Types (Dims(..), KnownDims(..), listDims, dims)
 import qualified Data.Vector.Storable as V
 
 import Hedgehog

@@ -1,1 +1,3 @@
 packages: tensile
+          tensile-dimensions
+          tensile-signatures

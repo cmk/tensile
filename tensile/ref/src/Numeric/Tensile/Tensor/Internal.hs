@@ -12,8 +12,8 @@ import Data.Word
 import Data.Vector.Storable (Storable(..))
 import Unsafe.Coerce (unsafeCoerce)
 
-import Numeric.Tensile.Types
-import Numeric.Tensile.Index
+import Numeric.Tensile.Dimensions.Types
+import Numeric.Tensile.Dimensions.Index
 
 import Data.Vector.Sized (Vector)
 import qualified Data.Finite as F

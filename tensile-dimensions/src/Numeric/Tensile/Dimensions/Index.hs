@@ -20,18 +20,18 @@
 {-# OPTIONS_GHC -fno-warn-incomplete-patterns #-}
 #endif
 
-module Numeric.Tensile.Index where
+module Numeric.Tensile.Dimensions.Index where
 
 --import Numeric.KnownDims.Idxs (Idx(..), Idxs(..))
-import Numeric.Tensile.Types --(Nat, TypedList(..), Dims(..), Dim(..), KnownDim(..), KnownDims(..), Permutable, Size, Rank)
-import Numeric.Tensile.Permutation
+import Numeric.Tensile.Dimensions.Types --(Nat, TypedList(..), Dims(..), Dim(..), KnownDim(..), KnownDims(..), Permutable, Size, Rank)
+import Numeric.Tensile.Dimensions.Permutation
 import Unsafe.Coerce (unsafeCoerce)
 
 import qualified Data.Finite as F
 import qualified Math.Combinat.Permutations as P
 --import qualified Numeric.KnownDims.Idxs as I
 --import qualified Numeric.KnownDims.Fold as D 
-import qualified Numeric.Tensile.Types as T (Reifies(..), reifyDims')
+import qualified Numeric.Tensile.Dimensions.Types as T (Reifies(..), reifyDims')
 import qualified Numeric.TypedList as T
 import qualified Numeric.Type.List as T
 

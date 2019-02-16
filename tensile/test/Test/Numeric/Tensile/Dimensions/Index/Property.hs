@@ -1,7 +1,7 @@
 {-# LANGUAGE TemplateHaskell #-}
 module Test.Numeric.Tensile.Dimensions.Index.Property where
 
-import Numeric.Tensile.Types
+import Numeric.Tensile.Dimensions.Types
 import Test.Numeric.Tensile.Dimensions.Gen
 import Test.Numeric.Tensile.Dimensions.Index.Predicate
 

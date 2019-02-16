@@ -7,7 +7,7 @@ where
 -- TODO: reexport Types module
 import Numeric.Tensile.Tensor.Internal
 import Numeric.Backprop (BVar(..))
-import Numeric.Tensile.Types
+import Numeric.Tensile.Dimensions.Types
 
 import Data.Vector.Sized (Vector)
 

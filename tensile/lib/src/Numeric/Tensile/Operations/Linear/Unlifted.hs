@@ -3,9 +3,9 @@ module Numeric.Tensile.Operations.Linear.Unlifted (
   module Numeric.Tensile.Operations.Linear.Internal
 ) where
 
-import Numeric.Tensile.Permutation (Perm(..), reversal')
+import Numeric.Tensile.Dimensions.Permutation (Perm(..), reversal')
 import Numeric.Tensile.Tensor
-import Numeric.Tensile.Types
+import Numeric.Tensile.Dimensions.Types
 import Numeric.Tensile.Operations.Linear.Internal
 
 transpose

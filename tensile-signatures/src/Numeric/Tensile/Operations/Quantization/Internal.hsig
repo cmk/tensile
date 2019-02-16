@@ -1,0 +1,41 @@
+-- {-# LANGUAGE DataKinds, KindSignatures #-}
+
+signature Numeric.Tensile.Operations.Quantization.Internal where
+
+import Numeric.Tensile.Tensor.Internal
+import qualified Prelude as P
+
+
+
+
+
+{-
+round :: T d -> I d
+truncate :: T d -> I d 
+ceiling :: T d -> I d
+floor :: T d -> I d
+
+truncate
+  :: forall d e i. Elt e
+  => Elt i
+  => P.RealFrac e
+  => P.Integral i 
+  => T d e
+  -> T d i
+
+ceiling
+  :: forall d e i. Elt e
+  => Elt i
+  => P.RealFrac e
+  => P.Integral i 
+  => T d e
+  -> T d i
+
+floor
+  :: forall d e i. Elt e
+  => Elt i
+  => P.RealFrac e
+  => P.Integral i 
+  => T d e
+  -> T d i
+-}

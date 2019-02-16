@@ -1,7 +1,7 @@
 {-# LANGUAGE TemplateHaskell #-}
 module Test.Numeric.Tensile.Operations.Linear.Property where
 
-import Numeric.Tensile.Types
+import Numeric.Tensile.Dimensions.Types
 import Test.Numeric.Tensile.Operations.Linear.Predicate
 import Test.Numeric.Tensile.Tensor.Gen
 

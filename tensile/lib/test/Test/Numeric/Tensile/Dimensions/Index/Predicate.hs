@@ -1,8 +1,8 @@
 module Test.Numeric.Tensile.Dimensions.Index.Predicate where
 
-import Numeric.Tensile.Types
-import Numeric.Tensile.Index -- (diffIdx)
-import Numeric.Tensile.Permutation (Perm(..), reversal, reversal')
+import Numeric.Tensile.Dimensions.Types
+import Numeric.Tensile.Dimensions.Index -- (diffIdx)
+import Numeric.Tensile.Dimensions.Permutation (Perm(..), reversal, reversal')
 import Test.Numeric.Tensile.Dimensions.Gen
 
 pred_max_diffIdx :: forall (d :: [Nat]). Dims d -> Bool
