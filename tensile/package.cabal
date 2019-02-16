@@ -129,7 +129,6 @@ library reference
         base == 4.*,
         finite-typelits,
         hmatrix,
-        hmatrix-backprop,
         tensile-types,
         vector,
         vector-sized
