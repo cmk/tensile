@@ -4,7 +4,7 @@
 {-# LANGUAGE InstanceSigs           #-}
 {-# LANGUAGE MultiParamTypeClasses  #-}
 {-# LANGUAGE UndecidableInstances   #-} 
-module Numeric.Tensile.Types (
+module Numeric.Tensile.Dimensions.Types (
   Numeric.TypedList.TypedList(..),
   Numeric.TypedList.snoc,
   Dims(..),
@@ -25,7 +25,7 @@ module Numeric.Tensile.Types (
   S.Sort(..),
   --module Numeric.Dim,
   module Numeric.Type.Evidence,
-  module Numeric.Tensile.Types,
+  module Numeric.Tensile.Dimensions.Types,
   module Numeric.Type.List
 ) where
 

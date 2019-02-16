@@ -1,1 +1,4 @@
 packages: tensile
+          tensile-dimensions
+          tensile-signatures
+          tensile-tensorflow

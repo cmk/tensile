@@ -1,9 +1,9 @@
 module Test.Numeric.Tensile.Operations.Linear.Predicate where
 
 import Numeric.Tensile.Tensor
-import Numeric.Tensile.Types
-import Numeric.Tensile.Index (_reversed')
-import Numeric.Tensile.Permutation (Perm(..), reversal, reversal')
+import Numeric.Tensile.Dimensions.Types
+import Numeric.Tensile.Dimensions.Index (_reversed')
+import Numeric.Tensile.Dimensions.Permutation (Perm(..), reversal, reversal')
 import Numeric.Tensile.Operations.Linear.Unlifted (transpose, transpose')
 import Test.Numeric.Tensile.Tensor.Gen
 

@@ -5,7 +5,7 @@ module Test.Numeric.Tensile.Tensor.Gen (
 
 import Numeric.Tensile.Tensor
 import Data.Vector.Storable (Vector(..),Storable(..))
-import Numeric.Tensile.Types (Dims(..), KnownDims(..), SomeDims(..), dims, someDimsVal, withSomeDims)
+import Numeric.Tensile.Dimensions.Types (Dims(..), KnownDims(..), SomeDims(..), dims, someDimsVal, withSomeDims)
 import Test.Numeric.Tensile.Dimensions.Gen
 import Test.Numeric.Tensile.Tensor.Gen.Internal (gen_tensor')
 import qualified Data.Vector.Storable as V

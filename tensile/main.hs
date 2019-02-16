@@ -6,7 +6,7 @@ module Main where
 import Numeric.Tensile.Tensor --(T(..), fromVector, shape)
 import Data.Bits
 
-import Numeric.Tensile.Types
+import Numeric.Tensile.Dimensions.Types
 import Numeric.Tensile.Operations.Linear.Unlifted
 import Numeric.Tensile.Operations.Linear.Internal --TODO: remove
 

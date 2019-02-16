@@ -1,4 +1,4 @@
-name:           tensile
+name:           tensile-tensorflow
 version:        0.0.1
 synopsis:       A cross-platform library for deep learning.
 description:    Tensile is a lightweight neural network API that uses backpack for ML framework integration.
@@ -14,38 +14,6 @@ source-repository head
   type: git
   location: https://github.com/cmk/tensile
 
-library 
-    hs-source-dirs: 
-        lib/src
-        lib/test
-    exposed-modules:
-        Numeric.Tensile.Tensor
-        Numeric.Tensile.Operations.Linear.Unlifted
-        Test.Numeric.Tensile.Dimensions.Gen
-        Test.Numeric.Tensile.Dimensions.Index.Predicate
-        Test.Numeric.Tensile.Operations.Linear.Predicate
-        Test.Numeric.Tensile.Tensor.Gen
-    signatures:
-        Test.Numeric.Tensile.Tensor.Gen.Internal
-    build-depends:
-        base == 4.*,
-        backprop,
-        hedgehog,
-        tensile-signatures == 0.0.*,
-        tensile-dimensions == 0.0.*,
-        vector,
-        vector-sized
-    default-extensions: 
-        ConstraintKinds, 
-        FlexibleContexts,
-        RankNTypes,
-        ScopedTypeVariables,
-        TypeInType,
-        TypeApplications,
-        TypeFamilies,
-        TypeOperators 
-    default-language: Haskell2010
-
 library local-signatures
     hs-source-dirs: 
         local
@@ -54,9 +22,9 @@ library local-signatures
         tensile-signatures == 0.0.*
     default-language: Haskell2010
 
-library reference
+library 
     hs-source-dirs: 
-        ref/src
+        lib/src
     exposed-modules:
         Numeric.Tensile.Tensor.Internal
         Numeric.Tensile.Operations.Linear.Internal     
@@ -79,16 +47,16 @@ library reference
         TypeOperators 
     default-language: Haskell2010
 
-library reference-test
+library tensile-tensorflow-test
     hs-source-dirs: 
-        ref/test
+        lib/test
     exposed-modules:
         Test.Numeric.Tensile.Tensor.Gen.Internal    
     build-depends:
         base == 4.*,
         hedgehog,
-        reference,
         tensile-dimensions == 0.0.*,
+        tensile-tensorflow,
         vector
     default-extensions: 
         ScopedTypeVariables,
@@ -113,8 +81,8 @@ test-suite test
         hedgehog,
         tensile,
         tensile-dimensions == 0.0.*,
-        reference,
-        reference-test
+        tensile-tensorflow,
+        tensile-tensorflow-test
     default-extensions:
         ScopedTypeVariables,
         TypeApplications,
@@ -123,20 +91,3 @@ test-suite test
         OverloadedLists
     default-language: Haskell2010
     ghc-options: -threaded -rtsopts -with-rtsopts=-N -Wall
-
-executable main
-    main-is: 
-        main.hs
-    build-depends:
-        base == 4.*,
-        reference,
-        reference-test,
-        tensile,
-        tensile-dimensions == 0.0.*,
-        vector
-    default-language: Haskell2010
-    default-extensions: 
-        ScopedTypeVariables,
-        TypeOperators,
-        TypeInType,
-        OverloadedLists

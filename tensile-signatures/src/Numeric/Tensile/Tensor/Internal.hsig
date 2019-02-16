@@ -7,8 +7,8 @@ signature Numeric.Tensile.Tensor.Internal where
 import Data.Bits
 import Data.Kind
 import Data.Vector.Sized (Vector)
-import Numeric.Tensile.Types
-import Numeric.Tensile.Index
+import Numeric.Tensile.Dimensions.Types
+import Numeric.Tensile.Dimensions.Index
 
 
 class Elt (e :: Type)
