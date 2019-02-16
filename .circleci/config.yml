@@ -204,8 +204,8 @@ workflows:
   version: 2
   build:
     jobs:
-      - cabal-ghc-8.6.3
-      # - cabal-ghc-8.4.4
+      # - cabal-ghc-8.6.3
+      - cabal-ghc-8.4.4
       #- cabal-ghc-8.2.2
       #- cabal-ghc-8.0.2
       #- cabal-ghc-7.10.3

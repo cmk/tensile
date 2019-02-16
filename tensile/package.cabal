@@ -128,7 +128,6 @@ library reference
     build-depends:
         base == 4.*,
         finite-typelits,
-        hmatrix,
         tensile-types,
         vector,
         vector-sized
