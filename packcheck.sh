@@ -379,12 +379,12 @@ check_all_boolean_vars () {
     ENABLE_INSTALL="$TEST_INSTALL"
     unset TEST_INSTALL
   fi
-  check_boolean_var ENABLE_GHCJS
-  check_boolean_var ENABLE_INSTALL
-  check_boolean_var DISABLE_BENCH
-  check_boolean_var DISABLE_TEST
-  check_boolean_var DISABLE_DOCS
-  check_boolean_var COVERAGE
+  # check_boolean_var ENABLE_GHCJS
+  # check_boolean_var ENABLE_INSTALL
+  # check_boolean_var DISABLE_BENCH
+  # check_boolean_var DISABLE_TEST
+  # check_boolean_var DISABLE_DOCS
+  # check_boolean_var COVERAGE
 }
 
 show_build_command() {
