@@ -23,8 +23,8 @@ library
     build-depends:
         base == 4.*,
         backprop,
-        signatures,
-        tensile-types,
+        tensile-signatures == 0.0.*,
+        tensile-dimensions == 0.0.*,
         vector,
         vector-sized
     default-extensions: 
@@ -52,7 +52,7 @@ library tensile-test
         base == 4.*,
         hedgehog,
         tensile,
-        tensile-types,
+        tensile-dimensions == 0.0.*,
         vector
     default-extensions: 
         RankNTypes,
@@ -63,59 +63,12 @@ library tensile-test
         OverloadedLists
     default-language: Haskell2010
 
-library tensile-types 
-    hs-source-dirs: 
-        types/src
-    exposed-modules:
-        Numeric.Tensile.Dimensions.Index
-        Numeric.Tensile.Dimensions.Permutation
-        Numeric.Tensile.Dimensions.Types
-    build-depends:
-        base == 4.*,
-        combinat,
-        dimensions,
-        finite-typelits,
-        singletons
-    default-extensions: 
-        ConstraintKinds, 
-        FlexibleContexts,
-        RankNTypes,
-        ScopedTypeVariables,
-        TypeInType,
-        TypeApplications,
-        TypeFamilies,
-        TypeOperators 
-    default-language: Haskell2010
-
-library signatures
-    hs-source-dirs: 
-        sig
-    signatures:
-        Numeric.Tensile.Tensor.Internal
-        Numeric.Tensile.Operations.Linear.Internal
-        Numeric.Tensile.Operations.Quantization.Internal
-    build-depends:
-        base == 4.*,
-        tensile-types,
-        vector,
-        vector-sized
-    default-extensions: 
-        ConstraintKinds, 
-        FlexibleContexts,
-        RankNTypes,
-        ScopedTypeVariables,
-        TypeInType,
-        TypeApplications,
-        TypeFamilies,
-        TypeOperators 
-    default-language: Haskell2010
-
 library local-signatures
     hs-source-dirs: 
         local
     build-depends:
         base == 4.*,
-        signatures
+        tensile-signatures == 0.0.*
     default-language: Haskell2010
 
 library reference
@@ -128,7 +81,7 @@ library reference
     build-depends:
         base == 4.*,
         finite-typelits,
-        tensile-types,
+        tensile-dimensions == 0.0.*,
         vector,
         vector-sized
     default-extensions:
@@ -152,7 +105,7 @@ library reference-test
         base == 4.*,
         hedgehog,
         reference,
-        tensile-types,
+        tensile-dimensions == 0.0.*,
         vector
     default-extensions: 
         ScopedTypeVariables,
@@ -176,7 +129,7 @@ test-suite test
         base == 4.*,
         hedgehog,
         tensile,
-        tensile-types,
+        tensile-dimensions == 0.0.*,
         tensile-test,
         reference,
         reference-test
@@ -196,7 +149,7 @@ executable main
         base == 4.*,
         reference,
         tensile,
-        tensile-types,
+        tensile-dimensions == 0.0.*,
         vector
     default-language: Haskell2010
     default-extensions: 
