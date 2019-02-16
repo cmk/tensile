@@ -10,11 +10,11 @@ import qualified Hedgehog.Gen as G
 import qualified Hedgehog.Range as R
 
 rw :: Range Word
-rw = R.singleton 5 --R.constantBounded
+rw = R.constant 0 100
 
 prop_max_diffIdx :: Property
 prop_max_diffIdx =
-  property $ assert . (\d -> withSomeDims d pred_max_diffIdx) =<< forAll (gen_dims' rw)
+  property $ assert . (\d -> withSomeDims d pred_max_diffIdx) =<< forAll (gen_dims rw)
 
 tests :: IO Bool
 tests = checkParallel $$(discover)
