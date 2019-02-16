@@ -22,15 +22,15 @@
 
 module Numeric.Tensile.Index where
 
---import Numeric.Dimensions.Idxs (Idx(..), Idxs(..))
-import Numeric.Tensile.Types (Nat, Nat, TypedList(..), Dims(..), Dim(..), KnownDim(..), KnownDims(..), Permutable, Size, Rank)
+--import Numeric.KnownDims.Idxs (Idx(..), Idxs(..))
+import Numeric.Tensile.Types --(Nat, TypedList(..), Dims(..), Dim(..), KnownDim(..), KnownDims(..), Permutable, Size, Rank)
 import Numeric.Tensile.Permutation
 import Unsafe.Coerce (unsafeCoerce)
 
 import qualified Data.Finite as F
 import qualified Math.Combinat.Permutations as P
---import qualified Numeric.Dimensions.Idxs as I
---import qualified Numeric.Dimensions.Fold as D 
+--import qualified Numeric.KnownDims.Idxs as I
+--import qualified Numeric.KnownDims.Fold as D 
 import qualified Numeric.Tensile.Types as T (Reifies(..), reifyDims')
 import qualified Numeric.TypedList as T
 import qualified Numeric.Type.List as T
@@ -42,7 +42,7 @@ import           GHC.Base
 import           GHC.Enum
 --import           GHC.Generics            (Generic, Generic1)
 
-import           Numeric.Dimensions.Dims
+--import           Numeric.KnownDims.Dims
 
 
 
@@ -231,7 +231,7 @@ instance KnownDim n => Num (Idx n) where
 -}
 
 -- | Type-level dimensional indexing with arbitrary Word values inside.
---   Most of the operations on it require `Dimensions` constraint,
+--   Most of the operations on it require `KnownDims` constraint,
 --   because the @Idxs@ itself does not store info about dimension bounds.
 --
 --   Note, this type has a special `Enum` instance:
@@ -246,7 +246,7 @@ listIdxs = unsafeCoerce#
 
 
 
-idxsFromWords :: forall ds . Dimensions ds => [Word] -> Maybe (Idxs ds)
+idxsFromWords :: forall ds . KnownDims ds => [Word] -> Maybe (Idxs ds)
 idxsFromWords = unsafeCoerce . go (listDims (dims @_ @ds))
   where
     go [] [] = Just []
@@ -326,21 +326,21 @@ instance KnownDim n => Num (Idxs '[n]) where
     {-# INLINE fromInteger #-}
 -}
 
-instance Dimensions ds => Bounded (Idxs ds) where
-    maxBound = f (dims @_ @ds)
-      where
-        f :: forall ns . Dims ns -> Idxs ns
-        f U         = U
-        f (d :* ds) = Idx (dimVal d - 1) :* f ds
+maxBound' :: forall ns . Dims ns -> Idxs ns
+maxBound' U         = U
+maxBound' (d :* ds) = Idx (dimVal d - 1) :* maxBound' ds
+
+minBound' :: forall ns . Dims ns -> Idxs ns
+minBound' U         = U
+minBound' (_ :* ds) = Idx 0 :* minBound' ds
+
+instance KnownDims ds => Bounded (Idxs ds) where
+    maxBound = maxBound' (dims @_ @ds)
     {-# INLINE maxBound #-}
-    minBound = f (dims @_ @ds)
-      where
-        f :: forall ns . Dims ns -> Idxs ns
-        f U         = U
-        f (_ :* ds) = Idx 0 :* f ds
+    minBound = minBound' (dims @_ @ds)
     {-# INLINE minBound #-}
 
-instance Dimensions ds => Enum (Idxs ds) where
+instance KnownDims ds => Enum (Idxs ds) where
 
     succ = go (dims @_ @ds)
       where

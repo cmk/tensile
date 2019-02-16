@@ -7,24 +7,26 @@ module Numeric.Tensile.Types (
   Numeric.TypedList.TypedList(..),
   Numeric.TypedList.snoc,
   Dims(..),
+  Dim(..),
+  Nat(..),
   KnownDims(..),
+  KnownDim(..),
   KnownNat(..),
   SomeDims(..),
-  someDimsVal,
-  listDims,
-  dims,
+  DS.someDimsVal,
+  DS.listDims,
+  DS.dims,
+  D.dimVal,
+  D.dimVal',
   natVal,
   S.Sort(..),
-  module Numeric.Dim,
+  --module Numeric.Dim,
   module Numeric.Type.Evidence,
   module Numeric.Tensile.Types,
   module Numeric.Type.List
 ) where
 
 import Data.Proxy
-import qualified Data.Singletons.Prelude.List as S (Reverse(..),Sort(..))
-import Numeric.Dim
-import Numeric.Dimensions.Dims
 import Numeric.Type.Evidence
 import Numeric.TypedList
 import Unsafe.Coerce (unsafeCoerce)
@@ -34,11 +36,21 @@ import GHC.TypeLits
 import           Data.Type.Bool
 import           Data.Type.Equality
 
+import Numeric.Dim (KnownDim(..))
+import Numeric.Dimensions.Dims (Dimensions(..),SomeDims(..))
 import Numeric.Type.List -- (type(+:),(+:))
+
+import qualified Data.Singletons.Prelude.List as S (Reverse(..),Sort(..))
+import qualified Numeric.Dim as D
+import qualified Numeric.Dimensions.Dims as DS
+
+
 --import qualified  Numeric.Type.List as L
 impossible :: a
 impossible = error "Numeric.Tensile: impossible"
 
+type Dim (d :: Nat) = D.Dim d
+type Dims (d :: [Nat]) = DS.Dims d
 
 type Pos d = (1 <= d)
 
@@ -111,7 +123,7 @@ withSomeDims :: forall r. [Word]
              -> (forall (d :: [Nat]). Dims d -> r)
              -> r
 withSomeDims d f =
-  case someDimsVal d of
+  case DS.someDimsVal d of
     SomeDims d' -> f d'
  
 --
@@ -198,6 +210,11 @@ instance (KnownDim n, KnownDims ns) => KnownDims (n ': ns) where
 -- __Deprecated:__ Use 'SomeSing' from /singletons/ instead.
 data SomeDims :: Type where
     SomeDims :: KnownDims ns => !(Dims ns) -> SomeDims
+
+-- | Same as SomeNat, but for Dimensions:
+--   Hide all information about Dimensions inside
+data SomeDims = forall (ns :: [Nat]) . SomeDims (Dims ns)
+
 
 -- | Singleton-esque type for "traversing" over type-level lists of 'Dim's.
 -- Essentially contains a (value-level) list of @'Proxy' n@s, but each 'n'
