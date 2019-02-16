@@ -14,8 +14,10 @@ import Hedgehog
 import qualified Hedgehog.Gen as G
 import qualified Hedgehog.Range as R
 
-gen_tensor :: forall d e m. (KnownDims d, Elt e, MonadGen m) => Range e -> (Range e -> m e) -> m (Tensor d e)
+gen_tensor :: forall d e m. (KnownDims d, Elt e, MonadGen m) => m e -> m (Tensor d e)
 gen_tensor = gen_tensor' $ dims @_ @d
+
+{-
 
 gen_tensor_dynamic :: (Elt e, MonadGen m) => Range Word -> Range e -> (Range e -> m e) -> (forall d. Dims d -> Tensor d e -> Bool) -> m Bool
 gen_tensor_dynamic rw re g k = gen_dims rw >>= \(SomeDims d) -> gen_tensor' d re g >>= return . k d
@@ -23,10 +25,6 @@ gen_tensor_dynamic rw re g k = gen_dims rw >>= \(SomeDims d) -> gen_tensor' d re
 gen_tensor_dynamic' :: (Elt e, MonadGen m) => Range Word -> Range e -> (Range e -> m e) -> (forall d. Dims d -> Tensor d e -> Bool) -> m Bool
 gen_tensor_dynamic' rw re g k = gen_dims' rw >>= \d -> withSomeDims d f
   where f d = gen_tensor' d re g >>= return . k d
-
-
-
-{-
 
 Divisible:
 

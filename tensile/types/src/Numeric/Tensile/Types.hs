@@ -1,3 +1,4 @@
+{-# LANGUAGE ExistentialQuantification #-}
 {-# LANGUAGE FlexibleInstances      #-}
 {-# LANGUAGE FunctionalDependencies #-}
 {-# LANGUAGE InstanceSigs           #-}
@@ -12,8 +13,10 @@ module Numeric.Tensile.Types (
   KnownDims(..),
   KnownDim(..),
   KnownNat(..),
+  SomeDim(..),
   SomeDims(..),
-  DS.someDimsVal,
+  someDimVal,
+  someDimsVal,
   DS.listDims,
   DS.dims,
   D.dimVal,
@@ -50,8 +53,22 @@ impossible :: a
 impossible = error "Numeric.Tensile: impossible"
 
 type Dim (d :: Nat) = D.Dim d
-type Dims (d :: [Nat]) = DS.Dims d
 
+-- data SomeDims = forall (ns :: [Nat]) . SomeDims (Dims ns)
+-- should be > 1
+data SomeDim = forall (n :: Nat). SomeDim (Dim n) 
+instance Show SomeDim where show (SomeDim d) = show d
+
+-- unsafe should be > 1
+someDimVal :: Word -> SomeDim
+someDimVal = SomeDim . unsafeCoerce
+
+someDimsVal :: [SomeDim] -> SomeDims
+someDimsVal = SomeDims . unsafeCoerce . fmap unsafeCoerce
+
+type Dims (d :: [Nat]) = DS.Dims d
+-- type Dims (ds :: [Nat]) = TypedList Dim ds
+--
 type Pos d = (1 <= d)
 
 type family Positive (xs :: [Nat]) :: Constraint where
@@ -98,7 +115,7 @@ reifyDim' d k = unsafeCoerce (MagicDim' k :: MagicDim' r) d Proxy
 
 newtype WithKnownDims d r = WithKnownDims (KnownDims d => r)
 
-newtype WithUnknownDims r = WithUnknownDims (forall (d :: [Nat]). KnownDims d => Proxy d -> r)
+newtype WithSomeDims r = WithSomeDims (forall (d :: [Nat]). KnownDims d => Proxy d -> r)
 
 reifyDims :: forall d r . Dims d -> (KnownDims d => r) -> r
 reifyDims d k = unsafeCoerce (WithKnownDims k :: WithKnownDims d r) d
@@ -110,22 +127,18 @@ withDims d = reifyDims d E
 -}
 
 reifyDims' :: forall r. [Word] -> (forall (d :: [Nat]). KnownDims d => Proxy d -> r) -> r
-reifyDims' d k = unsafeCoerce (WithUnknownDims k :: WithUnknownDims r) d Proxy
+reifyDims' d k = unsafeCoerce (WithSomeDims k :: WithSomeDims r) d Proxy
 
 reifySomeDims :: forall r. SomeDims -> (forall (d :: [Nat]). KnownDims d => Proxy d -> r) -> r
-reifySomeDims (SomeDims d) k = unsafeCoerce (WithUnknownDims k :: WithUnknownDims r) d Proxy
+reifySomeDims (SomeDims d) k = unsafeCoerce (WithSomeDims k :: WithSomeDims r) d Proxy
 
 -- | A convenience function useful when we need to name a dimensional value multiple times.
 withDims :: KnownDims d => (Dims d -> r) -> r
 withDims f = f dims
 
-withSomeDims :: forall r. [Word]
-             -> (forall (d :: [Nat]). Dims d -> r)
-             -> r
-withSomeDims d f =
-  case DS.someDimsVal d of
-    SomeDims d' -> f d'
- 
+withSomeDims :: forall r. [SomeDim] -> (forall d. Dims d -> r) -> r
+withSomeDims d f = case someDimsVal d of SomeDims d' -> f d'
+
 --
 -- | A convenience function that names a dimensional value satisfying a certain
 -- property.  If the value does not satisfy the property, then the function
