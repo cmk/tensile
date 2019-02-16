@@ -177,7 +177,6 @@ test-suite test
     build-depends:       
         base == 4.*,
         hedgehog,
-        reference,
         tensile,
         tensile-types,
         tensile-test,
