@@ -285,6 +285,7 @@ pack0
   :: forall d e n. Elt e
   => KnownDims d
   => KnownDim n
+  => KnownNat n
   => Vector n (Tensor d e) -> Tensor (n :+ d) e
 pack0 v = Tensor res
   where d = dims @_ @d
@@ -293,7 +294,7 @@ pack0 v = Tensor res
         res = S.create $ do
           mv <- M.new $ fromIntegral $ size * n
           flip N.imapM_ v $ \i t -> 
-            let i' = idxToWord . idxFromFinite $ i
+            let i' = fromIntegral i
                 off = fromIntegral $ i' * size
                 v' = unTensor t
                 act ix = M.write mv (off + fromEnum ix) $ v' S.! (fromEnum ix) -- could use a tensor op instead here
@@ -310,7 +311,7 @@ unpack0 t = N.generate f
   where d = dims @_ @d
         size = fromIntegral $ product $ listDims d
         f i = fill d $ \ix -> 
-          let i' = fromIntegral $ F.getFinite i
+          let i' = fromIntegral i
               off = i' * size
               v = unTensor t 
           in v S.! (off + fromEnum ix)

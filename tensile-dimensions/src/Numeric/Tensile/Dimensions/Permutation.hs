@@ -1,6 +1,7 @@
 {-# LANGUAGE AllowAmbiguousTypes #-}
 module Numeric.Tensile.Dimensions.Permutation where
 
+import Data.Semigroup
 import Numeric.Tensile.Dimensions.Types
 import qualified Math.Combinat.Permutations as P
 

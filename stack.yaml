@@ -1,33 +1,23 @@
-resolver: lts-12.25
+resolver: lts-11.22
 
 packages:
   - 'tensile'
   - 'tensile-dimensions'
   - 'tensile-signatures'
   - 'tensile-tensorflow'
-  - location:
-      git: https://github.com/cmk/haskell.git
-      commit: a62c1d0d07592a90154e5558b3d818789017a3ab
-    subdirs:
-      - tensorflow
-      - tensorflow-core-ops
-      - tensorflow-logging
-      - tensorflow-mnist
-      - tensorflow-mnist-input-data
-      - tensorflow-opgen
-      - tensorflow-ops
-      - tensorflow-proto
-      - tensorflow-records
-      - tensorflow-records-conduit
-      - tensorflow-test
-    extra-dep: true
 extra-deps:
-  - proto-lens-protobuf-types-0.3.0.1
-  - proto-lens-0.3.1.0
-  - proto-lens-protoc-0.3.1.2
   - snappy-0.2.0.2
-  - snappy-framing-0.1.2
-
+  - snappy-framing-0.1.1
+  - tensorflow-0.2
+  - tensorflow-core-ops-0.2.0.0
+  - tensorflow-logging-0.2.0.0
+  - tensorflow-mnist-0.1.0.0
+  - tensorflow-opgen-0.2.0.0
+  - tensorflow-ops-0.2.0.0
+  - tensorflow-proto-0.2
+  - tensorflow-records-0.1.0.0
+  - tensorflow-records-conduit-0.1.0.0
+  - tensorflow-test-0.1.0.0
 # Override default flag values for local packages and extra-deps
 flags: {}
 

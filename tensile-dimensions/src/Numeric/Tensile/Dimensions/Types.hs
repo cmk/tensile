@@ -22,7 +22,7 @@ module Numeric.Tensile.Dimensions.Types (
   D.dimVal,
   D.dimVal',
   natVal,
-  S.Sort(..),
+  --S.Sort(..),
   --module Numeric.Dim,
   module Numeric.Type.Evidence,
   module Numeric.Tensile.Dimensions.Types,
@@ -43,7 +43,8 @@ import Numeric.Dim (KnownDim(..))
 import Numeric.Dimensions.Dims (Dimensions(..),SomeDims(..))
 import Numeric.Type.List -- (type(+:),(+:))
 
-import qualified Data.Singletons.Prelude.List as S (Reverse(..),Sort(..))
+-- TODO: use CPP or reimplement
+-- import qualified Data.Singletons.Prelude.List as S (Reverse(..),Sort(..))
 import qualified Numeric.Dim as D
 import qualified Numeric.Dimensions.Dims as DS
 
@@ -90,7 +91,7 @@ type family Size (xs :: [Nat]) :: Nat where
     Size (x ': xs) = x * Size xs
 
 
-type Permutable d d' = (S.Sort d ~ S.Sort d')
+type Permutable d d' = (Size d ~ Size d') -- (S.Sort d ~ S.Sort d') --TODO: pull out of singletons?
 type Reshapable d d' = (Size d ~ Size d')
 
 class Reifies s a | s -> a where
