@@ -14,6 +14,7 @@ source-repository head
   type: git
   location: https://github.com/cmk/tensile
 
+
 library 
     hs-source-dirs: 
         lib/src
@@ -24,7 +25,6 @@ library
     build-depends:
         base == 4.*,
         tensile-dimensions == 0.0.*,
-        tensorflow,
         vector,
         vector-sized
     default-extensions:
