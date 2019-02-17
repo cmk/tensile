@@ -7,21 +7,10 @@
 module Numeric.Tensile.Dimensions.Types (
   Numeric.TypedList.TypedList(..),
   Numeric.TypedList.snoc,
-  Dims(..),
-  Dim(..),
   Nat(..),
-  KnownDims(..),
-  KnownDim(..),
   KnownNat(..),
-  SomeDim(..),
-  SomeDims(..),
-  someDimVal,
-  someDimsVal,
-  DS.listDims,
-  DS.dims,
-  D.dimVal,
-  D.dimVal',
   natVal,
+  SomeNat(..),
   S.Sort(..),
   --module Numeric.Dim,
   module Numeric.Type.Evidence,
@@ -52,6 +41,24 @@ import qualified Numeric.Dimensions.Dims as DS
 impossible :: a
 impossible = error "Numeric.Tensile: impossible"
 
+type x < y = (CmpNat x y) ~ 'LT
+
+type family Rank (xs :: [k]) :: Nat where
+    Rank '[] = 0
+    Rank (_ ': xs) = 1 + Rank xs
+
+type family Size (xs :: [Nat]) :: Nat where
+    Size '[] = 1
+    Size (x ': xs) = x * Size xs
+
+type Permutable d d' = (S.Sort d ~ S.Sort d')
+type Reshapable d d' = (Size d ~ Size d')
+
+class Reifies s a | s -> a where
+  -- | Recover a value inside a 'reify' context, given a proxy for its reified type.
+  reflect :: proxy s -> a
+
+{-
 type Dim (d :: Nat) = D.Dim d
 
 -- data SomeDims = forall (ns :: [Nat]) . SomeDims (Dims ns)
@@ -81,21 +88,6 @@ type family Positive (xs :: [Nat]) :: Constraint where
 -- Rewrite KnownDim to enforce positivity.
 type KnownDims (ds :: [Nat]) = Dimensions ds -- (Dimensions ds, Positive ds)
 
-type family Rank (xs :: [k]) :: Nat where
-    Rank '[] = 0
-    Rank (_ ': xs) = 1 + Rank xs
-
-type family Size (xs :: [Nat]) :: Nat where
-    Size '[] = 1
-    Size (x ': xs) = x * Size xs
-
-
-type Permutable d d' = (S.Sort d ~ S.Sort d')
-type Reshapable d d' = (Size d ~ Size d')
-
-class Reifies s a | s -> a where
-  -- | Recover a value inside a 'reify' context, given a proxy for its reified type.
-  reflect :: proxy s -> a
 
 instance KnownDim (d :: Nat) => Reifies d (Dim d) where
   reflect _ = dim
@@ -411,4 +403,5 @@ sameDims = \case
 
 
 
+-}
 -}

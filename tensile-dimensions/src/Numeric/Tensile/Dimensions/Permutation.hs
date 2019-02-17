@@ -1,6 +1,7 @@
 {-# LANGUAGE AllowAmbiguousTypes #-}
 module Numeric.Tensile.Dimensions.Permutation where
 
+import Numeric.Tensile.Dimensions.Dim
 import Numeric.Tensile.Dimensions.Types
 import qualified Math.Combinat.Permutations as P
 
@@ -13,10 +14,11 @@ instance Semigroup (Perm n) where
   (Perm p) <> (Perm q) = Perm $ P.multiply p q
 
 instance KnownDim n => Monoid (Perm n) where
-  mempty = Perm $ P.identity (fromIntegral $ dimVal' @n)
+  mempty = Perm $ P.identity (fromIntegral $ dimVal @n)
 
 cycles (Perm t) = P.permutationToDisjointCycles $ t
 
+{-
 reversal :: forall d. KnownDims d => Perm (Rank d)
 reversal = reversal' (dims @_ @d)
 
@@ -29,6 +31,7 @@ transposition' i j = if i <= n' && j <= n' then Just p else Nothing
     p = Perm $ P.transposition n (fromIntegral i, fromIntegral j)
     n = fromIntegral $ dimVal' @n 
     n' = fromIntegral n
+-}
 
 {-
 transposition'' :: Word -> Word -> Word -> Maybe (Perm n)

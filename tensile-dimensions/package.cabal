@@ -18,6 +18,11 @@ library
     hs-source-dirs: 
         src
     exposed-modules:
+        Numeric.Tensile.Dimensions
+        Numeric.Tensile.Dimensions.Dim
+        Numeric.Tensile.Dimensions.Dim.Class
+        Numeric.Tensile.Dimensions.Dims
+        Numeric.Tensile.Dimensions.Dims.Class
         Numeric.Tensile.Dimensions.Index
         Numeric.Tensile.Dimensions.Permutation
         Numeric.Tensile.Dimensions.Types
