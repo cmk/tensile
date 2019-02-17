@@ -14,13 +14,9 @@ import GHC.TypeLits
 import           Data.Type.Bool
 import           Data.Type.Equality
 
-import Numeric.Type.Evidence
-import Numeric.Type.List -- (type(+:),(+:))
-import Numeric.TypedList
-
-
 import Numeric.Tensile.Dimensions.Dim
 import Numeric.Tensile.Dimensions.Types
+import Numeric.Tensile.Dimensions.Types.List
 
 -- | Type-level dimensionality O(1).
 type Dims (ds :: [Nat]) = TypedList Dim ds

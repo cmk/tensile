@@ -26,6 +26,7 @@ library
         Numeric.Tensile.Dimensions.Index
         Numeric.Tensile.Dimensions.Permutation
         Numeric.Tensile.Dimensions.Types
+        Numeric.Tensile.Dimensions.Types.List
     build-depends:
         base == 4.*,
         combinat,

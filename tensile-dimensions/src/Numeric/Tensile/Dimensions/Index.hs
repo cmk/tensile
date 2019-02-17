@@ -32,20 +32,16 @@ import Unsafe.Coerce (unsafeCoerce)
 
 import qualified Data.Finite as F
 import qualified Math.Combinat.Permutations as P
---import qualified Numeric.KnownDims.Idxs as I
---import qualified Numeric.KnownDims.Fold as D 
-import qualified Numeric.TypedList as T
-import qualified Numeric.Type.List as T
+
 import  Numeric.Tensile.Dimensions.Types as T
+import  Numeric.Tensile.Dimensions.Types.List as T
 
 import GHC.TypeLits (KnownNat(..))
 import           Control.Arrow           (first)
 import           Foreign.Storable        (Storable)
 import           GHC.Base
 import           GHC.Enum
---import           GHC.Generics            (Generic, Generic1)
 
---import           Numeric.KnownDims.Dims
 listDims = undefined
 
 newtype Idx (n :: Nat) = Idx { unIdx :: Word }
@@ -445,11 +441,10 @@ _stepIdx (d :* ds) di (Idx i :* is)
 _permuted :: Perm (Rank d) -> TypedList f d -> TypedList f d'
 _permuted (Perm p) = unsafeCoerce . P.permuteList p . unsafeCoerce
 
+-- TODO unsafe, remove
 _reversed :: TypedList f d -> TypedList f d'
-_reversed = unsafeCoerce . reverse . unsafeCoerce 
+_reversed = unsafeCoerce . Prelude.reverse . unsafeCoerce 
 
-_reversed' :: TypedList f d -> TypedList f (T.Reverse d)
-_reversed' = unsafeCoerce . reverse . unsafeCoerce 
 
 -- | Remaps the index argument to the index with the same 'Int' representation under the permuted dimensions.
 remapIdxs 
