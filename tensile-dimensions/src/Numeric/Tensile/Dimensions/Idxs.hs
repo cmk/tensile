@@ -52,7 +52,7 @@ remapIdxs
   -> (forall (ds' :: [Nat]). Dims ds' -> Idxs ds' -> r) 
   -> r
 remapIdxs (Perm p) ds ix f = 
-  unsafeReifyDims' (P.permuteList p $ dimsVal' ds) $ \ds' -> 
+  unsafeReifyDims' (P.permuteList p $ fromDims' ds) $ \ds' -> 
     f (reflect ds') (toIdxs (reflect ds') . fromIdxs ds $ ix)
 
 {-
@@ -64,7 +64,7 @@ remapIdxs'
   -> (KnownDims ds' => r) 
   -> r
 remapIdxs' p ds ix f = 
-  reifyDims (_permuted p ds) f
+  reifyDims (unsafePermute p ds) f
 
 -- | Transform a permutation of tensor modes into a permutation of array indices.
 -- transpose (lowerPerm p1) . transpose (lowerPerm p2) == transpose (lowerPerm $ p1 <> p2)
@@ -86,7 +86,7 @@ overDimIdx_ :: Monad m
 overDimIdx_ U k = k U
 overDimIdx_ (Snoc ds d) k = overDimIdx_ ds k'
   where
-    dw = dimVal' d
+    dw = fromDim' d
     k' is = go 0
       where
         go i
@@ -114,7 +114,7 @@ _foldDimPartIdx (start :* starts) (end :* ends) k
       | i < iEnd = id
       | otherwise = k (Idx i :* is) . looi (i-1) is
 
-foldDimPartIdx s e k = foldDimPartIdx (_reversed s) (_reversed e) k
+foldDimPartIdx s e k = foldDimPartIdx (unsafeReverse s) (unsafeReverse e) k
 {-
 -- TODO convert to row major
 overDimPartIdx_ :: Monad m
@@ -152,7 +152,7 @@ overDim_ :: Monad m
 overDim_ U k offset _step = k U offset
 overDim_ (Snoc ds d) k offset step = overDim_ ds k' offset step -- (di * step)
   where
-    dw = dimVal' d
+    dw = fromDim' d
     -- di = fromIntegral dw
     k' is = go 0
       where

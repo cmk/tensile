@@ -7,7 +7,7 @@ import Data.Singletons.Prelude.List (Product)
 import Data.Word (Word)
 import GHC.Base hiding (foldr)
 import GHC.TypeLits
-import Numeric.Dimensions --(Dimensions(..), KnownDim(..), dimVal)
+import Numeric.Dimensions --(Dimensions(..), KnownDim(..), fromDim)
 import Numeric.DataFrame
 import Numeric.DataFrame.Internal.Array
 import Numeric.DataFrame.Internal.Array.Family.ArrayBase
@@ -45,7 +45,7 @@ instance (KnownDim (Product d), Elt e, Eq e, Bits e, Num e) => Bits (ArrayBase e
   complement = liftF complement
   shift t i = liftF (flip shift i) t
   rotate t i = liftF (flip rotate i) t
-  bit = replicateF (fromIntegral . dimVal $ (dim :: Dim (Product d))) . bit
+  bit = replicateF (fromIntegral . fromDim $ (dim :: Dim (Product d))) . bit
   testBit = testBitDefault
   bitSizeMaybe _ = bitSizeMaybe @e undefined
   bitSize _ = bitSize @e undefined
@@ -58,7 +58,7 @@ instance (KnownDim (Product d), Elt e, Real e) => Real (Tensor e d) where
   toRational = undefined --TODO find a reasonable sum-based implementation or scrap the typeclass
 
 instance (KnownDim (Product d), Elt e, Enum e) => Enum (Tensor e d) where
-  toEnum = Tensor . V.replicate (fromIntegral . dimVal $ (dim :: Dim (Product d))) . toEnum
+  toEnum = Tensor . V.replicate (fromIntegral . fromDim $ (dim :: Dim (Product d))) . toEnum
   {-# INLINE toEnum #-}
   fromEnum = undefined --TODO find a reasonable sum-based implementation or scrap the typeclass
 
@@ -79,7 +79,7 @@ constant
   => [e]
   -> Maybe (Tensor e d)
 constant v
-  | length v == fromIntegral (dimVal (dim :: Dim (Product d))) = Just $ unsafeFromFlatList (length v) v
+  | length v == fromIntegral (fromDim (dim :: Dim (Product d))) = Just $ unsafeFromFlatList (length v) v
   | otherwise = Nothing
 
 {-

@@ -13,5 +13,5 @@ import Data.Vector.Storable (Storable(..))
 import Unsafe.Coerce (unsafeCoerce)
 
 import Numeric.Tensile.Dimensions.Types
-import Numeric.Tensile.Dimensions.Index
+import Numeric.Tensile.Dimensions.Idxs
 

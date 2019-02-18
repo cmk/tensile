@@ -12,8 +12,7 @@ import Data.Word
 import Data.Vector.Storable (Storable(..))
 import Unsafe.Coerce (unsafeCoerce)
 
-import Numeric.Tensile.Dimensions.Types
-import Numeric.Tensile.Dimensions.Index
+import Numeric.Tensile.Dimensions
 
 import Data.Vector.Sized (Vector)
 import qualified Data.Finite as F
@@ -55,7 +54,7 @@ instance (KnownDim (Size d), Num e, Elt e) => Num (Tensor d e)  where
     {-# INLINE abs #-}
     signum = _lift signum
     {-# INLINE signum #-}
-    fromInteger = _replicate (fromIntegral . dimVal $ (dim :: Dim (Size d))) . fromInteger
+    fromInteger = _replicate (fromIntegral . fromDim' $ (dim :: Dim (Size d))) . fromInteger
     {-# INLINE fromInteger #-}
 
 instance (KnownDim (Size d), Fractional e, Elt e) => Fractional (Tensor d e)  where
@@ -63,7 +62,7 @@ instance (KnownDim (Size d), Fractional e, Elt e) => Fractional (Tensor d e)  wh
     {-# INLINE (/) #-}
     recip = _lift recip
     {-# INLINE recip #-}
-    fromRational = _replicate (fromIntegral . dimVal $ (dim :: Dim (Size d))) . fromRational
+    fromRational = _replicate (fromIntegral . fromDim' $ (dim :: Dim (Size d))) . fromRational
     {-# INLINE fromRational #-}
 
 instance (KnownDim (Size d), Floating e, Elt e) => Floating (Tensor d e) where
@@ -114,7 +113,7 @@ instance (KnownDim (Size d), Elt e, Eq e, Bits e, Num e) => Bits (Tensor d e) wh
     complement = _lift complement
     shift t i = _lift (flip shift i) t
     rotate t i = _lift (flip rotate i) t
-    bit = _replicate (fromIntegral . dimVal $ (dim :: Dim (Size d))) . bit
+    bit = _replicate (fromIntegral . fromDim' $ (dim :: Dim (Size d))) . bit
     testBit = testBitDefault
     bitSizeMaybe _ = bitSizeMaybe @e undefined
     bitSize _ = bitSize @e undefined
@@ -127,7 +126,7 @@ instance (KnownDim (Size d), Elt e, Real e) => Real (Tensor d e) where
   toRational = undefined --TODO find a reasonable sum-based implementation or scrap the typeclass
 
 instance (KnownDim (Size d), Elt e, Enum e) => Enum (Tensor d e) where
-  toEnum = Tensor . S.replicate (fromIntegral . dimVal $ (dim :: Dim (Size d))) . toEnum
+  toEnum = Tensor . S.replicate (fromIntegral . fromDim' $ (dim :: Dim (Size d))) . toEnum
   {-# INLINE toEnum #-}
   fromEnum = undefined --TODO find a reasonable sum-based implementation or scrap the typeclass
 
@@ -202,7 +201,7 @@ minimum = _lift2 min
 {-
 vector :: forall n . KnownDim n => KnownNat n => [HsReal] -> ExceptT String IO (Tensor '[n])
 vector rs
-  | genericLength rs == dimVal (dim :: Dim n) = asStatic <$> Dynamic.vectorEIO rs
+  | genericLength rs == fromDim' (dim :: Dim n) = asStatic <$> Dynamic.vectorEIO rs
   | otherwise = ExceptT . pure $ Left "Vector dimension does not match length of list"
 
 unsafeVector :: (KnownDim n, KnownNat n) => [HsReal] -> IO (Tensor '[n])
@@ -221,7 +220,7 @@ fromList
   => [e]
   -> Maybe (Tensor d e)
 fromList v
-  | length v == fromIntegral (dimVal (dim :: Dim (Size d))) = Just $ Tensor $ S.fromListN (length v) v
+  | length v == fromIntegral (fromDim' (dim :: Dim (Size d))) = Just $ Tensor $ S.fromListN (length v) v
   | otherwise = Nothing
 
 -- fromVector :: Elt e => Dims d -> Vector e -> Maybe (Tensor d e)
@@ -240,7 +239,7 @@ toSizedVector = coerce . S.convert . unTensor
 
 fill :: forall d e. Elt e => Dims d -> (Idxs d -> e) -> Tensor d e
 fill d f = Tensor $ S.create $ do
-  mv <- M.new $ fromIntegral $ product $ listDims d
+  mv <- M.new $ fromIntegral $ product $ fromDims' d
   let act ix = M.write mv (minorToMajor d ix) $ f ix
   overDimIdx_ d act
   return mv
@@ -268,10 +267,10 @@ TODO add tests:
 > v = S.fromList [1..12]
 > v
 [1.0,2.0,3.0,4.0,5.0,6.0,7.0,8.0,9.0,10.0,11.0,12.0]
-> modifyIdxs (dims @_ @'[2, 2, 3]) v $ mod (dims @_ @'[2, 2, 3])
+> modifyIdxs (dims @'[2, 2, 3]) v $ mod (dims @'[2, 2, 3])
 [12.0,1.0,2.0,3.0,4.0,5.0,6.0,7.0,8.0,9.0,10.0,11.0]
 
-> modifyIdxs (dims @_ @'[2, 2, 3]) v (\_ m -> M.set m 0)
+> modifyIdxs (dims @'[2, 2, 3]) v (\_ m -> M.set m 0)
 [0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]
 
 -}
@@ -287,9 +286,9 @@ pack0
   => KnownDim n
   => Vector n (Tensor d e) -> Tensor (n :+ d) e
 pack0 v = Tensor res
-  where d = dims @_ @d
-        n = fromIntegral $ dimVal $ dim @_ @n
-        size = product $ listDims d
+  where d = dims @d
+        n = fromIntegral $ fromDim' $ dim @n
+        size = product $ fromDims' d
         res = S.create $ do
           mv <- M.new $ fromIntegral $ size * n
           flip N.imapM_ v $ \i t -> 
@@ -307,8 +306,8 @@ unpack0
   => KnownNat n
   => Tensor (n :+ d) e -> Vector n (Tensor d e)
 unpack0 t = N.generate f
-  where d = dims @_ @d
-        size = fromIntegral $ product $ listDims d
+  where d = dims @d
+        size = fromIntegral $ product $ fromDims' d
         f i = fill d $ \ix -> 
           let i' = fromIntegral $ F.getFinite i
               off = i' * size
@@ -322,7 +321,7 @@ see example http://jeankossaifi.com/blog/unfolding.html
 
 t :: Vector 4 (Tensor '[2,2] Word)
 t = N.generate $ \f -> 
-  let d = dims @_ @'[2,2]
+  let d = dims @'[2,2]
       i' = idxToWord . idxFromFinite $ f
   in fill d (const i') 
 
@@ -336,7 +335,7 @@ generate :: forall n a. KnownNat n => (Finite n -> a) -> Vector n a
 
 t :: Data.Vector.Sized.Vector 4 (Tensor '[2,2] Word)
 t = generate $ \f -> 
-  let d = dims @_ @'[2,2]
+  let d = dims @'[2,2]
       i' = idxToWord . idxFromFinite $ f
   in fill d (const i') 
 

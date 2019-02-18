@@ -7,7 +7,7 @@ import Data.Singletons.Prelude.List (Product)
 import Data.Word (Word8)
 import GHC.Base hiding (foldr)
 import GHC.TypeLits
-import Numeric.Dimensions --(Dimensions(..), KnownDim(..), dimVal)
+import Numeric.Dimensions --(Dimensions(..), KnownDim(..), fromDim)
 import Numeric.DataFrame.Internal.Array.Family.ArrayBase
 
 import Numeric.PrimBytes
@@ -19,7 +19,7 @@ show'
   => Dimensions ds
   => ArrayBase t ds
   -> String
-show' x = case dims @_ @ds of
+show' x = case dims @ds of
   U -> "{ " ++ show (ix# 0# x) ++ " }"
   Dim :* U -> ('{' :) . drop 1 $
                   foldr (\i s -> ", " ++ show (ix i x) ++ s) " }"
@@ -167,7 +167,7 @@ fromElems off n ba = ArrayBase (# | (# off , n , ba #) #)
 --
 --   Normal indexing can be expressed in terms of `indexOffset#`:
 --
---   > i !. x = case (# dimVal (dim @as), fromEnum i #) of (# I# n, I# j #) -> indexOffset# (n *# j) n x
+--   > i !. x = case (# fromDim (dim @as), fromEnum i #) of (# I# n, I# j #) -> indexOffset# (n *# j) n x
 --
 indexOffset# 
   :: forall t as bs asbs. PrimBytes t
@@ -191,7 +191,7 @@ indexOffset# i l d = case elemSize0 d of
   => Dimensions asbs
   => ConcatList as bs asbs
   => Idxs bs -> ArrayBase t asbs -> ArrayBase t as
-(!.) i = case (# totalDim (dims @_ @as), fromEnum i #) of
+(!.) i = case (# totalDim (dims @as), fromEnum i #) of
    (# W# n, I# j #) -> indexOffset# (word2Int# n *# j) (word2Int# n)
 {-# INLINE [1] (!.) #-}
 infixr 4 !.
@@ -230,7 +230,7 @@ iwmap
   -> ArrayBase s asbs' -> ArrayBase t asbs
 iwmap f df
   | elS <- byteSize @e undefined
-  , dbs <- dims @_ @bs
+  , dbs <- dims @bs
   , W# lenBSW <- totalDim dbs
   , W# lenASW <- totalDim' @as
   , W# lenAS'W <- totalDim' @as'
@@ -335,7 +335,7 @@ iwgen
   => (Idxs bs -> ArrayBase t as) -> ArrayBase t asbs
 iwgen f
   | elS <- byteSize @e undefined
-  , dbs <- dims @_ @bs
+  , dbs <- dims @bs
   , W# lenBSW <- totalDim dbs
   , W# lenASW <- totalDim' @as
   , lenBS <- word2Int# lenBSW
@@ -363,7 +363,7 @@ ewfoldl
   => (s -> ArrayBase t as -> s) -> s -> ArrayBase t asbs -> s
 ewfoldl f x0 df
   | ba <- getBytes df
-  = foldDimOff (dims @_ @bs) (\(I# o) acc -> f acc (fromBytes o ba))
+  = foldDimOff (dims @bs) (\(I# o) acc -> f acc (fromBytes o ba))
       (I# (byteOffset df))
       (I# (byteSize @e undefined) * fromIntegral (totalDim' @as)) x0
 
@@ -380,7 +380,7 @@ iwfoldl
   => (Idxs bs -> s -> ArrayBase t as -> s) -> s -> ArrayBase t asbs -> s
 iwfoldl f x0 df
   | ba <- getBytes df
-  = foldDim (dims @_ @bs) (\i (I# o) acc -> f i acc (fromBytes o ba))
+  = foldDim (dims @bs) (\i (I# o) acc -> f i acc (fromBytes o ba))
       (I# (byteOffset df))
       (I# (byteSize @e undefined) * fromIntegral (totalDim' @as)) x0
 
@@ -398,7 +398,7 @@ ewfoldr
 ewfoldr f x0 df
   | step <- I# (byteSize @e undefined) * fromIntegral (totalDim' @as)
   , ba <- getBytes df
-  = foldDimOff (dims @_ @bs) (\(I# o) -> f (fromBytes o ba))
+  = foldDimOff (dims @bs) (\(I# o) -> f (fromBytes o ba))
       (I# (byteOffset df +# byteSize df) - step)
       (negate step) x0
 
@@ -416,7 +416,7 @@ iwfoldr
 iwfoldr f x0 df
   | step <- I# (byteSize @e undefined) * fromIntegral (totalDim' @as)
   , ba <- getBytes df
-  = foldDimReverse (dims @_ @bs) (\i (I# o) -> f i (fromBytes o ba))
+  = foldDimReverse (dims @bs) (\i (I# o) -> f i (fromBytes o ba))
       (I# (byteOffset df +# byteSize df) - step)
       step x0
 
@@ -629,7 +629,7 @@ overDim_'# :: Dims (ds :: [k])
 overDim_'# U f = f U
 overDim_'# (d :* ds) f = overDim_'# ds (loop 1)
   where
-    n = dimVal d
+    n = fromDim d
     loop i js off# s | i > n = (# s , off#  #)
                      | otherwise = case f (Idx i :* js) off# s of
                          (# s', off1# #) -> loop (i+1) js off1# s'

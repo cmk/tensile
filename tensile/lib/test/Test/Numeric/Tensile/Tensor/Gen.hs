@@ -3,9 +3,9 @@ module Test.Numeric.Tensile.Tensor.Gen (
   module Test.Numeric.Tensile.Tensor.Gen.Internal
 ) where
 
-import Numeric.Tensile.Tensor
 import Data.Vector.Storable (Vector(..),Storable(..))
-import Numeric.Tensile.Dimensions.Types (Dims(..), KnownDims(..), SomeDims(..), dims, someDimsVal, withSomeDims)
+import Numeric.Tensile.Dimensions
+import Numeric.Tensile.Tensor
 import Test.Numeric.Tensile.Dimensions.Gen
 import Test.Numeric.Tensile.Tensor.Gen.Internal (gen_tensor')
 import qualified Data.Vector.Storable as V
@@ -15,7 +15,7 @@ import qualified Hedgehog.Gen as G
 import qualified Hedgehog.Range as R
 
 gen_tensor :: forall d e m. (KnownDims d, Elt e, MonadGen m) => m e -> m (Tensor d e)
-gen_tensor = gen_tensor' $ dims @_ @d
+gen_tensor = gen_tensor' $ dims @d
 
 {-
 
@@ -47,8 +47,8 @@ prop_splitDims n xsys
   , (xs, ys) <- splitAt (fromIntegral n) xsys
   = case TL.splitAt dn dxsys of
       (dxs, dys) -> and
-        [ listDims dxs == xs
-        , listDims dys == ys
+        [ fromDims dxs == xs
+        , fromDims dys == ys
         -- , dxsys == TL.concat dxs dys
         ]
 
@@ -61,5 +61,5 @@ gen_tensor' d g r = Tensor <$> gen_vector ran g r
   where ran = R.singleton $ fromIntegral (totalDim d)
 
 gen_tensor_dyn :: forall d e m. (MonadGen m, Elt e, KnownDims d) => (Range e -> m e) -> Range e -> m (Tensor d e)
-gen_tensor_dyn = gen_tensor' $ dims @_ @d
+gen_tensor_dyn = gen_tensor' $ dims @d
 -}

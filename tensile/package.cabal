@@ -22,7 +22,7 @@ library
         Numeric.Tensile.Tensor
         Numeric.Tensile.Operations.Linear.Unlifted
         Test.Numeric.Tensile.Dimensions.Gen
-        Test.Numeric.Tensile.Dimensions.Index.Predicate
+        Test.Numeric.Tensile.Dimensions.Idxs.Predicate
         Test.Numeric.Tensile.Operations.Linear.Predicate
         Test.Numeric.Tensile.Tensor.Gen
     signatures:
@@ -106,7 +106,7 @@ test-suite test
     main-is:            
         test.hs
     other-modules:
-        Test.Numeric.Tensile.Dimensions.Index.Property 
+        Test.Numeric.Tensile.Dimensions.Idxs.Property 
         Test.Numeric.Tensile.Operations.Linear.Property
     build-depends:       
         base == 4.*,

@@ -441,8 +441,8 @@ diag :: forall k d d' . (All KnownDim '[d, k], d' ~ Sing.Sum [d, k])
 diag t offset diagDir = asStatic $ Dynamic.diag (asDynamic t) offset'
   where
     offset' = case diagDir of
-      DiagAbove -> fromIntegral $ dimVal offset
-      DiagBelow -> -(fromIntegral $ dimVal offset)
+      DiagAbove -> fromIntegral $ fromDim offset
+      DiagBelow -> -(fromIntegral $ fromDim offset)
 
 -- | Create a diagonal matrix from a 1D vector
 diag1d :: (KnownDim n) => Tensor '[n] -> Tensor '[n, n]
@@ -529,7 +529,7 @@ getRow
   :: forall t n m . (All KnownDim '[n, m], KnownNat m)
   => Tensor '[n, m] -> Word -> Maybe (Tensor '[1, m])
 getRow t r
-  | r > dimVal (dim :: Dim n) = Nothing
+  | r > fromDim (dim :: Dim n) = Nothing
   | otherwise = unsafeDupablePerformIO $ do
 
 -- | Retrieve a single column from a matrix
@@ -539,7 +539,7 @@ getColumn
   :: forall t n m . (All KnownDim '[n, m], KnownNat n)
   => Tensor '[n, m] -> Word -> Maybe (Tensor '[n, 1])
 getColumn t r
-  | r > dimVal (dim :: Dim m) = Nothing
+  | r > fromDim (dim :: Dim m) = Nothing
   | otherwise = unsafeDupablePerformIO $ do
 
 

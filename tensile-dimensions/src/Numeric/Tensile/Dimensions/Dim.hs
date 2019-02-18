@@ -44,9 +44,9 @@ refineDim :: forall d. KnownDim d => (Dim d -> Bool) -> Maybe (Dim d)
 refineDim p = reflectDim $ \x -> if p x then Just x else Nothing
 
 -- | Similar to `natVal` from `GHC.TypeLits`, but returns `Word`.
-dimVal :: forall d. KnownDim d => Word
-dimVal = reflectDim @d dimVal'
-{-# INLINE dimVal #-}
+fromDim :: forall d. KnownDim d => Word
+fromDim = reflectDim @d fromDim'
+{-# INLINE fromDim #-}
 
 -- | We either get evidence that this function
 --   was instantiated with the same type-level numbers, or Nothing.
@@ -81,34 +81,37 @@ expDim = reflectDim2 @a @b expDim'
 data SomeDim where SomeDim :: KnownDim d => !(Dim d) -> SomeDim
 
 instance Eq SomeDim where
-    SomeDim a == SomeDim b = dimVal' a == dimVal' b
+    SomeDim a == SomeDim b = fromDim' a == fromDim' b
 
 instance Ord SomeDim where
     compare (SomeDim a) (SomeDim b) = compareDim' a b
 
 instance Show SomeDim where
-    show (SomeDim d) = "SomeDim " ++ show (dimVal' d)
+    show (SomeDim d) = "SomeDim " ++ show (fromDim' d)
     showsPrec p (SomeDim d)
       = showParen (p >= 10)
-      $ showString "SomeDim " . showsPrec p (dimVal' d)
+      $ showString "SomeDim " . showsPrec p (fromDim' d)
 
 someDim :: Word -> Maybe SomeDim
 someDim w = reifyDim w SomeDim
+
+unsafeSomeDim :: Word -> SomeDim
+unsafeSomeDim w = unsafeReifyDim w $ \p -> SomeDim (reflect p)
 
 withSomeDim :: SomeDim -> (forall d. KnownDim d => Dim d -> r) -> r
 withSomeDim (SomeDim d) f = f d
 
 {-
 compareDims' :: Dims as -> Dims bs -> Ordering
-compareDims' a b = compare (listDims a) (listDims b)
+compareDims' a b = compare (fromDims a) (fromDims b)
 {-# INLINE compareDims #-}
 
 compareDims :: forall as bs p q
               . (Dimensions as, Dimensions bs)
              => p as -> q bs -> Ordering
-compareDims _ _ = compareDims' (dims @_ @as) (dims @_ @bs)
+compareDims _ _ = compareDims' (dims @as) (dims @bs)
 
-fromDims = listDims
+fromDims = fromDims
 compareDims
 sameDims
 totalDim

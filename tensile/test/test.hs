@@ -2,7 +2,7 @@ import Control.Monad
 import System.Exit (exitFailure)
 import System.IO (BufferMode(..), hSetBuffering, stdout, stderr)
 
-import qualified Test.Numeric.Tensile.Dimensions.Index.Property as DI
+import qualified Test.Numeric.Tensile.Dimensions.Idxs.Property as DI
 import qualified Test.Numeric.Tensile.Operations.Linear.Property as OL
 
 tests :: IO [Bool]

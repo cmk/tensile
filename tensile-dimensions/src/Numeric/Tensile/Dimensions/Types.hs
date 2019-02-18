@@ -64,8 +64,8 @@ rank' (TypedList ds) = fromIntegral $ Prelude.length ds
 {-# INLINE rank' #-}
 
 -- TODO unsafe, remove
-_reversed :: TypedList f d -> TypedList f d'
-_reversed = unsafeCoerce . Prelude.reverse . unsafeCoerce 
+unsafeReverse :: TypedList f d -> TypedList f d'
+unsafeReverse = unsafeCoerce . Prelude.reverse . unsafeCoerce 
 
 -- | Type-indexed list
 newtype TypedList (f :: Nat -> Type) (ds :: [Nat]) = TypedList [Any] 

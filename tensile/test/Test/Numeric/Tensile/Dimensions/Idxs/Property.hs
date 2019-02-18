@@ -1,9 +1,9 @@
 {-# LANGUAGE TemplateHaskell #-}
-module Test.Numeric.Tensile.Dimensions.Index.Property where
+module Test.Numeric.Tensile.Dimensions.Idxs.Property where
 
-import Numeric.Tensile.Dimensions.Types
+import Numeric.Tensile.Dimensions
 import Test.Numeric.Tensile.Dimensions.Gen
-import Test.Numeric.Tensile.Dimensions.Index.Predicate
+import Test.Numeric.Tensile.Dimensions.Idxs.Predicate
 
 import Hedgehog
 import qualified Hedgehog.Gen as G

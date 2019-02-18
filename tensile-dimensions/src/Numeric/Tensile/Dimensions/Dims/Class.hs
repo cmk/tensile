@@ -26,23 +26,23 @@ import Numeric.Tensile.Dimensions.Types
 type Dims (ds :: [Nat]) = TypedList Dim ds
 
 instance Show (Dims ds) where
-    show ds = "Dims " ++ show (dimsVal' ds)
+    show ds = "Dims " ++ show (fromDims' ds)
     showsPrec p ds
       = showParen (p >= 10)
-      $ showString "Dims " . showsPrec p (dimsVal' ds)
+      $ showString "Dims " . showsPrec p (fromDims' ds)
 
 -- | Similar to `natVal` from `GHC.TypeLits`, but returns `Word`.
-dimsVal' :: Dims ds -> [Word]
-dimsVal' ds = elimDims ds dimVal' --Numeric.Tensile.Dimensions.Types.map dimVal'
-{-# INLINE dimsVal' #-}
+fromDims' :: Dims ds -> [Word]
+fromDims' ds = elimDims ds fromDim' --Numeric.Tensile.Dimensions.Types.map fromDim'
+{-# INLINE fromDims' #-}
 
 -- | Product of all dimension sizes.
 size' :: Dims ds -> Word
-size' = product . dimsVal'
+size' = product . fromDims'
 {-# INLINE size' #-}
 
 compareDims' :: Dims as -> Dims bs -> Ordering
-compareDims' as bs = compare (dimsVal' as) (dimsVal' bs)
+compareDims' as bs = compare (fromDims' as) (fromDims' bs)
 {-# INLINE compareDims' #-}
 
 elimDims :: Dims ds -> (forall d. Dim d -> r) -> [r]

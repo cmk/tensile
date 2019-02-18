@@ -41,9 +41,9 @@ reflectDims2 f = f (dims @as) (dims @bs)
 
 
 -- | Similar to `natVal` from `GHC.TypeLits`, but returns `Word`.
-dimsVal :: forall ds. KnownDims ds => [Word]
-dimsVal = reflectDims @ds dimsVal'
-{-# INLINE dimsVal #-}
+fromDims :: forall ds. KnownDims ds => [Word]
+fromDims = reflectDims @ds fromDims'
+{-# INLINE fromDims #-}
 
 -- | Product of all dimension sizes.
 size :: forall ds . KnownDims ds => Word
@@ -68,16 +68,16 @@ refineDims p = reflectDims $ \x -> if p x then Just x else Nothing
 data SomeDims where SomeDims :: KnownDims ds => !(Dims ds) -> SomeDims
 
 instance Eq SomeDims where
-  SomeDims as == SomeDims bs = dimsVal' as == dimsVal' bs
+  SomeDims as == SomeDims bs = fromDims' as == fromDims' bs
 
 instance Ord SomeDims where
   compare (SomeDims as) (SomeDims bs) = compareDims' as bs
 
 instance Show SomeDims where
-  show (SomeDims ds) = "SomeDim " ++ show (dimsVal' ds)
+  show (SomeDims ds) = "SomeDim " ++ show (fromDims' ds)
   showsPrec p (SomeDims ds)
     = showParen (p >= 10)
-    $ showString "SomeDims " . showsPrec p (dimsVal' ds)
+    $ showString "SomeDims " . showsPrec p (fromDims' ds)
 
 someDims :: [Word] -> Maybe [SomeDim]
 someDims = traverse someDim
@@ -106,7 +106,7 @@ TODO: Add prop tests
 > traverseDims' pure sd
 [SomeDim 1,SomeDim 2,SomeDim 3]
 
-traverse (\s -> pure $ withSomeDim s dimVal') sd == withSomeDims sd dimsVal'
+traverse (\s -> pure $ withSomeDim s fromDim') sd == withSomeDims sd fromDims'
 
 -}
 
@@ -151,7 +151,7 @@ mapDims' f = runIdentity . traverseDims' (Identity . f)
 --withSomeDims d f = case someDims d of SomeDims d' -> f d'
 
 --foo :: KnownDims '[1,2] => [Word]
---foo = withDims dimsVal'
+--foo = withDims fromDims'
 
 {-
 -- | The "eliminator" for 'Dims'.  You can think of this as

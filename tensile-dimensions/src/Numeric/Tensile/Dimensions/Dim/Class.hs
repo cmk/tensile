@@ -14,7 +14,7 @@ module Numeric.Tensile.Dimensions.Dim.Class (
   Dim(),
   pattern Dim,
   KnownDim(..),
-  dimVal',
+  fromDim',
   dimEv,
   compareDim',
   sameDim',
@@ -51,9 +51,9 @@ instance Show (Dim d) where
 
 
 -- | Similar to `natVal` from `GHC.TypeLits`, but returns `Word`.
-dimVal' :: Dim d -> Word
-dimVal' (DimSing w) = w
-{-# INLINE dimVal' #-}
+fromDim' :: Dim d -> Word
+fromDim' (DimSing w) = w
+{-# INLINE fromDim' #-}
 
 dimEv :: Dim d -> Evidence (KnownDim d)
 dimEv d = reifyDim' d E
@@ -204,15 +204,15 @@ instance {-# OVERLAPPING #-} KnownDim 20 where
 
 {-
 compareDims' :: Dims as -> Dims bs -> Ordering
-compareDims' a b = compare (listDims a) (listDims b)
+compareDims' a b = compare (fromDims a) (fromDims b)
 {-# INLINE compareDims #-}
 
 compareDims :: forall as bs p q
               . (Dimensions as, Dimensions bs)
              => p as -> q bs -> Ordering
-compareDims _ _ = compareDims' (dims @_ @as) (dims @_ @bs)
+compareDims _ _ = compareDims' (dims @as) (dims @bs)
 
-fromDims = listDims
+fromDims = fromDims
 compareDims
 sameDims
 totalDim
