@@ -83,8 +83,8 @@ show' (SomeDim d) = show d
 
 data SomeDim = forall d. KnownDim d => SomeDim (Dim d)
 
-someDimVal :: Word -> Maybe SomeDim
-someDimVal w = reifySomeDim w $ \p -> if w > 0 then Just $ SomeDim (reflect p) else Nothing
+someDim :: Word -> Maybe SomeDim
+someDim w = reifySomeDim w $ \p -> if w > 0 then Just $ SomeDim (reflect p) else Nothing
 
 {-
 data SomeNat    = forall n. KnownNat n    => SomeNat    (Proxy n)

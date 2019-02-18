@@ -5,10 +5,11 @@ import Numeric.Tensile.Dimensions.Dim
 import Numeric.Tensile.Dimensions.Types
 import qualified Math.Combinat.Permutations as P
 
+type Permutable d d' = (Sort d ~ Sort d')
+
 newtype Perm (n :: Nat) = Perm { unPerm :: P.Permutation } deriving (Eq, Ord, Show)
 
 --newtype Perm' d d' = Perm { unPerm :: P.Permutation } deriving (Eq, Ord, Show)
-
 
 instance Semigroup (Perm n) where
   (Perm p) <> (Perm q) = Perm $ P.multiply p q

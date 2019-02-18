@@ -34,7 +34,6 @@ import qualified Data.Finite as F
 import qualified Math.Combinat.Permutations as P
 
 import  Numeric.Tensile.Dimensions.Types as T
-import  Numeric.Tensile.Dimensions.Types.List as T
 
 import GHC.TypeLits (KnownNat(..))
 import           Control.Arrow           (first)

@@ -1,7 +1,9 @@
+{-# LANGUAGE AllowAmbiguousTypes       #-}
 {-# LANGUAGE ExistentialQuantification #-}
 {-# LANGUAGE FlexibleInstances      #-}
 {-# LANGUAGE FunctionalDependencies #-}
 {-# LANGUAGE InstanceSigs           #-}
+{-# LANGUAGE LambdaCase           #-}
 {-# LANGUAGE MultiParamTypeClasses  #-}
 {-# LANGUAGE UndecidableInstances   #-} 
 module Numeric.Tensile.Dimensions.Dims where
@@ -16,7 +18,6 @@ import           Data.Type.Equality
 
 import Numeric.Tensile.Dimensions.Dim
 import Numeric.Tensile.Dimensions.Types
-import Numeric.Tensile.Dimensions.Types.List
 
 -- | Type-level dimensionality O(1).
 type Dims (ds :: [Nat]) = TypedList Dim ds
@@ -29,8 +30,12 @@ type Dims (ds :: [Nat]) = TypedList Dim ds
 --   Hide all information about Dimensions inside
 data SomeDims = forall (ns :: [Nat]) . SomeDims (Dims ns)
 
-someDimsVal :: [SomeDim] -> SomeDims
-someDimsVal = SomeDims . unsafeCoerce . fmap unsafeCoerce
+--type SomeDims = [SomeDim]
+
+someDims :: [Word] -> Maybe [SomeDim]
+someDims = traverse someDim
+{-# INLINE someDims #-}
+
 
 -- | Put runtime evidence of `Dims` value inside function constraints.
 --   Similar to `KnownDim` or `KnownNat`, but for lists of numbers.
@@ -77,8 +82,8 @@ reifySomeDims' d k = unsafeCoerce (WithSomeDims k :: WithSomeDims r) d Proxy
 reifySomeDims :: forall r. SomeDims -> (forall (d :: [Nat]). KnownDims d => Proxy d -> r) -> r
 reifySomeDims (SomeDims d) k = unsafeCoerce (WithSomeDims k :: WithSomeDims r) d Proxy
 
-withSomeDims :: forall r. [SomeDim] -> (forall d. Dims d -> r) -> r
-withSomeDims d f = case someDimsVal d of SomeDims d' -> f d'
+--withSomeDims :: forall r. [SomeDim] -> (forall d. Dims d -> r) -> r
+--withSomeDims d f = case someDims d of SomeDims d' -> f d'
 
 -- | A convenience function useful when we need to name a dimensional value multiple times.
 withDims :: KnownDims d => (Dims d -> r) -> r
@@ -94,11 +99,34 @@ withDims d = reifyDims d E
 -- property.  If the value does not satisfy the property, then the function
 -- returns 'Nothing'. 
 
-dimsThat :: KnownDims d => (Dims d -> Bool) -> Maybe (Dims d)
+dimsThat :: forall ds. KnownDims ds => (Dims ds -> Bool) -> Maybe (Dims ds)
 dimsThat p = withDims $ \x -> if p x then Just x else Nothing
 
 
 
+-- | Similar to `natVal` from `GHC.TypeLits`, but returns `Word`.
+dimsVal' :: Dims ds -> [Word]
+dimsVal' = undefined --Numeric.Tensile.Dimensions.Types.map dimVal'
+
+-- \case DimSing d -> d
+--unsafeCoerce#
+{-# INLINE dimsVal' #-}
+
+-- | Similar to `natVal` from `GHC.TypeLits`, but returns `Word`.
+dimsVal :: forall ds. KnownDims ds => [Word]
+dimsVal = dimsVal' (dims @ds)
+{-# INLINE dimsVal #-}
+
+
+-- | Product of all dimension sizes @O(Length xs)@.
+dimsSize' :: Dims ds -> Word
+dimsSize' = product . dimsVal'
+{-# INLINE dimsSize' #-}
+
+-- | Product of all dimension sizes @O(Length xs)@.
+dimsSize :: forall ds . KnownDims ds => Word
+dimsSize = dimsSize' (dims @ds)
+{-# INLINE dimsSize #-}
 
 
 {-
@@ -279,17 +307,6 @@ mapDims'
     -> SomeDims
 mapDims' f = runIdentity . traverseDims' (Identity . f)
 
--- | List equivalent of 'someDimVal'.  Convert a list of integers into an
--- unknown type-level list of naturals.  Will return 'Nothing' if any of
--- the given 'Word's is negative.
---
--- __Deprecated:__ Use 'toSing' from /singletons/ instead.
-someDimsVal :: [Word] -> Maybe SomeDims
-someDimsVal []     = Just (SomeDims U)
-someDimsVal (n:ns) = do
-    SomeDim  m  <- someDimVal n
-    SomeDims ms <- someDimsVal ns
-    return $ SomeDims (m :* ms)
 
 -- | List equivalent of 'reifyDim'.  Given a list of integers, takes
 -- a function in an "environment" with a @'Dims' ns@ corresponding to
