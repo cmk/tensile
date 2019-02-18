@@ -35,7 +35,10 @@ import Numeric.Tensile.Dimensions.Dim.Class
 
 
 reflectDim :: forall d r. KnownDim d => (Dim d -> r) -> r
-reflectDim f = f (dim @d) -- f Dim
+reflectDim f = f Dim
+
+reflectDim2 :: forall a b r. (KnownDim a, KnownDim b) => (Dim a -> Dim b -> r) -> r
+reflectDim2 f = f Dim Dim
 
 refineDim :: forall d. KnownDim d => (Dim d -> Bool) -> Maybe (Dim d)
 refineDim p = reflectDim $ \x -> if p x then Just x else Nothing
@@ -47,16 +50,29 @@ dimVal = reflectDim @d dimVal'
 
 -- | We either get evidence that this function
 --   was instantiated with the same type-level numbers, or Nothing.
-sameDim :: forall (x :: Nat) (y :: Nat) p q
-          . (KnownDim x, KnownDim y)
-         => p x -> q y -> Maybe (Evidence (x ~ y))
-sameDim _ _ = sameDim' (dim @x) (dim @y)
+sameDim :: forall a b. (KnownDim a, KnownDim b) => Maybe (Evidence (a ~ b))
+sameDim = reflectDim2 sameDim'
 {-# INLINE sameDim #-}
 
 -- | Ordering of dimension values.
 compareDim :: forall a b. (KnownDim a, KnownDim b) => Ordering
-compareDim = compareDim' (dim @a) (dim @b)
+compareDim = reflectDim2 @a @b compareDim'
 {-# INLINE compareDim #-}
+
+addDim :: forall a b. (KnownDim a, KnownDim b) => Dim (a + b)
+addDim = reflectDim2 @a @b addDim'
+
+subDim :: forall a b. (KnownDim a, KnownDim b, a < b) => Dim (a - b)
+subDim = reflectDim2 @a @b subDim'
+{-# INLINE subDim #-}
+
+mulDim :: forall a b. (KnownDim a, KnownDim b) => Dim (a * b)
+mulDim = reflectDim2 @a @b mulDim'
+{-# INLINE mulDim #-}
+
+expDim :: forall a b. (KnownDim a, KnownDim b) => Dim (a ^ b)
+expDim = reflectDim2 @a @b expDim'
+{-# INLINE expDim #-}
 
 --data SomeDim = forall d. SomeDim (Dim d)
 
