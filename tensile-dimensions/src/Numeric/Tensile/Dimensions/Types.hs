@@ -56,13 +56,14 @@ type family Size (xs :: [Nat]) :: Nat where
     Size (x ': xs) = x * Size xs
 
 rank :: forall xs . RepresentableList xs => Word
-rank = rank' (typeList @_ @xs)
+rank = rank' (listRep @_ @xs)
 {-# INLINE rank #-}
 
 rank' :: TypedList f xs -> Word
 rank' (TypedList xs) = fromIntegral $ Prelude.length xs
 {-# INLINE rank' #-}
 
+-- TODO :: specialize k to Nat
 -- | Type-indexed list
 newtype TypedList (f :: (k -> Type)) (xs :: [k]) = TypedList [Any]
 
@@ -92,26 +93,29 @@ class Reifies s a | s -> a where
 --   Allows getting type information about list structure at runtime.
 class RepresentableList (xs :: [k]) where
   -- | Get type-level constructed list
-  typeList :: TypeList xs
+  listRep :: TypeList xs
 
 instance RepresentableList ('[] :: [k]) where
-  typeList = U
+  listRep = U
 
-instance RepresentableList xs => RepresentableList (x ': xs :: [k]) where
-  typeList = Proxy @x :* typeList @k @xs
+instance RepresentableList ds => RepresentableList (d ': ds :: [k]) where
+  listRep = Proxy @d :* listRep @k @ds
 
--- | This function converts a user-supplied `typeList` function
+--TODO is this useful?
+--instance RepresentableList ds => Reifies ds (TypedList ds) where reflect _ = listRep
+
+newtype WithRepList ds r = WithRepList (RepresentableList ds => r)
+
+-- newtype WithSomeList r = WithSomeList (forall ds. RepresentableList ds => Proxy ds -> r)
+
+-- | This function converts a user-supplied `listRep` function
 --   to an instance of the `RepresentableList` typeclass at runtime.
-
 reifyRepList :: forall xs r
               . TypeList xs
              -> (RepresentableList xs => r)
              -> r
-reifyRepList tl k = unsafeCoerce# (MagicRepList k :: MagicRepList xs r) tl
+reifyRepList tl k = unsafeCoerce# (WithRepList k :: WithRepList xs r) tl
 {-# INLINE reifyRepList #-}
-newtype MagicRepList xs r = MagicRepList (RepresentableList xs => r)
-
-
 
 -- | Pattern matching against this causes `RepresentableList` instance
 --   come into scope.
@@ -120,7 +124,7 @@ pattern TypeList :: forall (xs :: [k])
                   . () => RepresentableList xs => TypeList xs
 pattern TypeList <- (mkRTL -> E)
   where
-    TypeList = typeList @k @xs
+    TypeList = listRep @k @xs
 
 -- | Pattern matching against this allows manipulating lists of constraints.
 --   Useful when creating functions that change the shape of dimensions.
@@ -128,7 +132,7 @@ pattern EvList :: forall (c :: k -> Constraint) (xs :: [k])
                 . () => (All c xs, RepresentableList xs) => EvidenceList c xs
 pattern EvList <- (mkEVL -> E)
   where
-    EvList = _evList (typeList @k @xs)
+    EvList = _evList (listRep @k @xs)
 
 -- | Zero-length type list
 pattern U :: forall (f :: k -> Type) (xs :: [k])

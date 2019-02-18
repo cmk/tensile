@@ -3,7 +3,7 @@
 {-# LANGUAGE ExistentialQuantification #-}
 {-# LANGUAGE FlexibleInstances      #-}
 {-# LANGUAGE FunctionalDependencies #-}
-{-# LANGUAGE GADTs #-}
+-- {-# LANGUAGE GADTs #-}
 {-# LANGUAGE InstanceSigs           #-}
 {-# LANGUAGE LambdaCase           #-}
 
@@ -62,11 +62,13 @@ powerDim (DimSing a) (DimSing b) = unsafeCoerce# (a ^ b)
 
 -- | Singleton type to store type-level dimension value.
 -- Dimensions are restricted to strictly positive naturals.
-data Dim :: Nat -> Type where DimSing :: 1 <= d => Word -> Dim d
+--data Dim :: Nat -> Type where DimSing :: 1 <= d => Word -> Dim d
+
+newtype Dim (d :: Nat) = DimSing Word
 
 -- | Similar to `natVal` from `GHC.TypeLits`, but returns `Word`.
 dimVal' :: Dim d -> Word
-dimVal' = \case DimSing d -> d
+dimVal' = unsafeCoerce -- \case DimSing d -> d
 --unsafeCoerce#
 {-# INLINE dimVal' #-}
 
@@ -84,7 +86,7 @@ show' (SomeDim d) = show d
 data SomeDim = forall d. KnownDim d => SomeDim (Dim d)
 
 someDim :: Word -> Maybe SomeDim
-someDim w = reifySomeDim w $ \p -> if w > 0 then Just $ SomeDim (reflect p) else Nothing
+someDim w = reifyDim w SomeDim
 
 {-
 data SomeNat    = forall n. KnownNat n    => SomeNat    (Proxy n)
@@ -120,8 +122,12 @@ newtype WithSomeDim r = WithSomeDim (forall d. KnownDim d => Proxy d -> r)
 reifyKnownDim :: forall d r . Dim d -> (KnownDim d => r) -> r
 reifyKnownDim d k = unsafeCoerce (WithKnownDim k :: WithKnownDim d r) d
 
-reifySomeDim :: forall r. Word -> (forall d. KnownDim d => Proxy d -> r) -> r
-reifySomeDim w k = unsafeCoerce (WithSomeDim k :: WithSomeDim r) w Proxy
+unsafeReifyDim :: forall r. Word -> (forall d. KnownDim d => Proxy d -> r) -> r
+unsafeReifyDim w k = unsafeCoerce (WithSomeDim k :: WithSomeDim r) w Proxy
+
+reifyDim :: forall r. Word -> (forall d. KnownDim d => Dim d -> r) -> Maybe r
+reifyDim w k = if w == 0 then Nothing else Just r
+  where r = unsafeReifyDim w $ \p -> k (reflect p) 
 
 dimEv :: Dim d -> Evidence (KnownDim d)
 dimEv d = reifyKnownDim d E

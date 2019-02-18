@@ -2,6 +2,7 @@
 {-# LANGUAGE ExistentialQuantification #-}
 {-# LANGUAGE FlexibleInstances      #-}
 {-# LANGUAGE FunctionalDependencies #-}
+{-# LANGUAGE GADTs                  #-}
 {-# LANGUAGE InstanceSigs           #-}
 {-# LANGUAGE LambdaCase           #-}
 {-# LANGUAGE MultiParamTypeClasses  #-}
@@ -11,6 +12,7 @@ module Numeric.Tensile.Dimensions.Dims where
 import Data.Proxy
 import Unsafe.Coerce (unsafeCoerce)
 
+import GHC.Base (Type)
 import           GHC.Exts           (Constraint)
 import GHC.TypeLits
 import           Data.Type.Bool
@@ -28,7 +30,12 @@ type Dims (ds :: [Nat]) = TypedList Dim ds
 
 -- | Same as SomeNat, but for Dimensions:
 --   Hide all information about Dimensions inside
-data SomeDims = forall (ns :: [Nat]) . SomeDims (Dims ns)
+--data SomeDims = forall (ns :: [Nat]) . SomeDims (Dims ns)
+
+data SomeDims :: Type where
+    SomeDims :: KnownDims ds => !(Dims ds) -> SomeDims
+
+--data SomeDim = forall d. KnownDim d => SomeDim (Dim d)
 
 --type SomeDims = [SomeDim]
 
@@ -36,7 +43,31 @@ someDims :: [Word] -> Maybe [SomeDim]
 someDims = traverse someDim
 {-# INLINE someDims #-}
 
+{-
+-- | Utility function for traversing over all of the @'Proxy' n@s in
+-- a 'Dims', each with the corresponding 'KnownDim' instance available.
+-- Gives the the ability to "change" the represented natural number to
+-- a new one, in a 'SomeDim'.
+--
+-- Can be considered a form of a @Traversal' 'SomeDims' 'SomeDim'@.
+traverseDims
+    :: forall f ns. Applicative f
+    => (forall n. KnownDim n => Dim n -> f SomeDim)
+    -> Dims ns
+    -> f SomeDims
+traverseDims f = go
+  where
+    go :: forall ds. Dims ds -> f SomeDims
+    go = \case
+      U      -> pure $ SomeDims U
+      n :* ns -> merge <$> f n <*> go ns
 
+    merge :: SomeDim -> SomeDims -> SomeDims
+    merge = \case
+      SomeDim n -> \case
+        SomeDims ns ->
+          SomeDims (n :* ns)
+-}
 -- | Put runtime evidence of `Dims` value inside function constraints.
 --   Similar to `KnownDim` or `KnownNat`, but for lists of numbers.
 --   Normally, the kind paramater is `Nat` (known dimenionality)
@@ -61,7 +92,7 @@ instance KnownDims ('[] :: [Nat]) where
     dims = U
     {-# INLINE dims #-}
 
-instance (KnownDim d, KnownDims ds) => KnownDims (d ': ds :: [Nat]) where
+instance (KnownDim d, KnownDims ds) => KnownDims (d :+ ds :: [Nat]) where
     dims = dim :* dims
     {-# INLINE dims #-}
 
@@ -75,41 +106,74 @@ newtype WithSomeDims r = WithSomeDims (forall ds. KnownDims ds => Proxy ds -> r)
 reifyKnownDims :: forall d r . Dims d -> (KnownDims d => r) -> r
 reifyKnownDims d k = unsafeCoerce (WithKnownDims k :: WithKnownDims d r) d
 
-
-reifySomeDims' :: forall r. [Word] -> (forall (d :: [Nat]). KnownDims d => Proxy d -> r) -> r
-reifySomeDims' d k = unsafeCoerce (WithSomeDims k :: WithSomeDims r) d Proxy
-
-reifySomeDims :: forall r. SomeDims -> (forall (d :: [Nat]). KnownDims d => Proxy d -> r) -> r
-reifySomeDims (SomeDims d) k = unsafeCoerce (WithSomeDims k :: WithSomeDims r) d Proxy
-
---withSomeDims :: forall r. [SomeDim] -> (forall d. Dims d -> r) -> r
---withSomeDims d f = case someDims d of SomeDims d' -> f d'
-
+-- TODO push this out everywhere
 -- | A convenience function useful when we need to name a dimensional value multiple times.
-withDims :: KnownDims d => (Dims d -> r) -> r
-withDims f = f dims
+reflectDims :: forall ds r. KnownDims ds => (Dims ds -> r) -> r
+reflectDims f = f (dims @ds)
 {-
 -- todo : prove reifyDims d == withEvidence (withDims d) 
 withDims :: Dims d -> Evidence (KnownDims d)
 withDims d = reifyDims d E
 -}
 
+unsafeReifyDims :: [Word] -> (forall ds. KnownDims ds => Dims ds -> r) -> r
+unsafeReifyDims []     f = f U
+unsafeReifyDims (w:ws) f = unsafeReifyDim w $ \p ->
+                             unsafeReifyDims ws $ \ps -> f ((reflect p) :* (reflect ps))
+
+reifyDims :: [Word] -> (forall ds. KnownDims ds => Dims ds -> r) -> Maybe r
+reifyDims w f = if all (>0) w then Just $ unsafeReifyDims w f else Nothing
+
+
+reifySomeDims' :: forall r. [Word] -> (forall (d :: [Nat]). KnownDims d => Proxy d -> r) -> r
+reifySomeDims' d k = unsafeCoerce (WithSomeDims k :: WithSomeDims r) d Proxy
+
+--reifySomeDims :: forall r. SomeDims -> (forall (d :: [Nat]). KnownDims d => Proxy d -> r) -> r
+--reifySomeDims (SomeDims d) k = unsafeCoerce (WithSomeDims k :: WithSomeDims r) d Proxy
+
+--withSomeDims :: forall r. [SomeDim] -> (forall d. Dims d -> r) -> r
+--withSomeDims d f = case someDims d of SomeDims d' -> f d'
+
+{-
+-- | List equivalent of 'reifyDim'.  Given a list of integers, takes
+-- a function in an "environment" with a @'Dims' ns@ corresponding to
+-- the given list, where every @n@ in @ns@ has a 'KnownDim' instance.
+--
+-- Essentially a continuation-style version of 'SomeDims'.
+--
+-- Be aware that this also produces @'KnownDim' n@s where @n@ is negative,
+-- without complaining.  To be consistent, within the library, this
+-- /should/ be called @reifyDimsNat@; however, the naming choice is for
+-- consistency with 'reifyDim' from the /reflections/ package.  Use
+-- 'reifyDims'' for a "safe" version.
+--
+
+-}
+
+
+
+
+--foo :: KnownDims '[1,2] => [Word]
+--foo = withDims dimsVal'
+
+elimDims :: Dims ds -> (forall d. Dim d -> r) -> [r]
+elimDims U _ = []
+elimDims (d :* ds) f = f d : elimDims ds f
 --
 -- | A convenience function that names a dimensional value satisfying a certain
 -- property.  If the value does not satisfy the property, then the function
 -- returns 'Nothing'. 
 
 dimsThat :: forall ds. KnownDims ds => (Dims ds -> Bool) -> Maybe (Dims ds)
-dimsThat p = withDims $ \x -> if p x then Just x else Nothing
+dimsThat p = reflectDims $ \x -> if p x then Just x else Nothing
 
 
+--dimVal' :: Dim d -> Word
+--dimVal' = \case DimSing d -> d
 
 -- | Similar to `natVal` from `GHC.TypeLits`, but returns `Word`.
 dimsVal' :: Dims ds -> [Word]
-dimsVal' = undefined --Numeric.Tensile.Dimensions.Types.map dimVal'
-
--- \case DimSing d -> d
---unsafeCoerce#
+dimsVal' ds = elimDims ds dimVal' --Numeric.Tensile.Dimensions.Types.map dimVal'
 {-# INLINE dimsVal' #-}
 
 -- | Similar to `natVal` from `GHC.TypeLits`, but returns `Word`.
@@ -226,28 +290,7 @@ data Dims :: [Nat] -> Type where
 infixr 5 :*
 deriving instance Show (Dims ns)
 
--- | Utility function for traversing over all of the @'Proxy' n@s in
--- a 'Dims', each with the corresponding 'KnownDim' instance available.
--- Gives the the ability to "change" the represented natural number to
--- a new one, in a 'SomeDim'.
---
--- Can be considered a form of a @Traversal' 'SomeDims' 'SomeDim'@.
-traverseDims
-    :: forall f ns. Applicative f
-    => (forall n. KnownDim n => Proxy n -> f SomeDim)
-    -> Dims ns
-    -> f SomeDims
-traverseDims f = go
-  where
-    go :: forall ms. Dims ms -> f SomeDims
-    go = \case
-      U      -> pure $ SomeDims U
-      n :* ns -> merge <$> f n <*> go ns
-    merge :: SomeDim -> SomeDims -> SomeDims
-    merge = \case
-      SomeDim n -> \case
-        SomeDims ns ->
-          SomeDims (n :* ns)
+
 
 -- | Like 'traverseDims', but literally actually a @Traversal'
 -- 'SomeDims' 'SomeDim'@, avoiding the Rank-2 types, so is usable with
@@ -308,24 +351,7 @@ mapDims'
 mapDims' f = runIdentity . traverseDims' (Identity . f)
 
 
--- | List equivalent of 'reifyDim'.  Given a list of integers, takes
--- a function in an "environment" with a @'Dims' ns@ corresponding to
--- the given list, where every @n@ in @ns@ has a 'KnownDim' instance.
---
--- Essentially a continuation-style version of 'SomeDims'.
---
--- Be aware that this also produces @'KnownDim' n@s where @n@ is negative,
--- without complaining.  To be consistent, within the library, this
--- /should/ be called @reifyDimsNat@; however, the naming choice is for
--- consistency with 'reifyDim' from the /reflections/ package.  Use
--- 'reifyDims'' for a "safe" version.
---
--- __Deprecated:__ Use 'withSomeSing' from /singletons/ instead.
-reifyDims :: [Word] -> (forall ns. KnownDims ns => Dims ns -> r) -> r
-reifyDims []     f = f U
-reifyDims (n:ns) f = reifyDim n $ \m ->
-                       reifyDims ns $ \ms ->
-                         f (m :* ms)
+
 
 -- | "Safe" version of 'reifyDims', which will only run the continuation if
 -- every 'Word' in the list is non-negative.  If not, then returns
