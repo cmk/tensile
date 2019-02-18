@@ -2,7 +2,6 @@
 {-# LANGUAGE ExistentialQuantification #-}
 {-# LANGUAGE FlexibleInstances      #-}
 {-# LANGUAGE FunctionalDependencies #-}
-{-# LANGUAGE GADTs                  #-}
 {-# LANGUAGE InstanceSigs           #-}
 {-# LANGUAGE LambdaCase           #-}
 {-# LANGUAGE MultiParamTypeClasses  #-}
@@ -24,16 +23,35 @@ import Numeric.Tensile.Dimensions.Types
 -- | Type-level dimensionality O(1).
 type Dims (ds :: [Nat]) = TypedList Dim ds
 
---type Dims (ds :: [Nat]) = DS.Dims ds
--- type Dims (ds :: [Nat]) = TypedList Dim ds
---
+
 
 -- | Same as SomeNat, but for Dimensions:
 --   Hide all information about Dimensions inside
---data SomeDims = forall (ns :: [Nat]) . SomeDims (Dims ns)
+data SomeDims = forall ds. SomeDims (Dims ds)
 
-data SomeDims :: Type where
-    SomeDims :: KnownDims ds => !(Dims ds) -> SomeDims
+compareDims' :: Dims as -> Dims bs -> Ordering
+compareDims' as bs = compare (dimsVal' as) (dimsVal' bs)
+{-# INLINE compareDims' #-}
+
+instance Eq SomeDims where
+    SomeDims as == SomeDims bs = dimsVal' as == dimsVal' bs
+
+instance Ord SomeDims where
+    compare (SomeDims as) (SomeDims bs) = compareDims' as bs
+
+instance Show (Dims ds) where
+    show ds = "Dims " ++ show (dimsVal' ds)
+    showsPrec p ds
+      = showParen (p >= 10)
+      $ showString "Dims " . showsPrec p (dimsVal' ds)
+
+instance Show SomeDims where
+    show (SomeDims ds) = "SomeDims " ++ show (dimsVal' ds)
+    showsPrec p (SomeDims ds)
+      = showParen (p >= 10)
+      $ showString "SomeDims " . showsPrec p (dimsVal' ds)
+
+--data SomeDims :: Type where SomeDims :: KnownDims ds => !(Dims ds) -> SomeDims
 
 --data SomeDim = forall d. KnownDim d => SomeDim (Dim d)
 
@@ -99,12 +117,8 @@ instance (KnownDim d, KnownDims ds) => KnownDims (d :+ ds :: [Nat]) where
 instance KnownDims (ds :: [Nat]) => Reifies ds (Dims ds) where
   reflect _ = dims
 
-newtype WithKnownDims ds r = WithKnownDims (KnownDims ds => r)
 
-newtype WithSomeDims r = WithSomeDims (forall ds. KnownDims ds => Proxy ds -> r)
 
-reifyKnownDims :: forall d r . Dims d -> (KnownDims d => r) -> r
-reifyKnownDims d k = unsafeCoerce (WithKnownDims k :: WithKnownDims d r) d
 
 -- TODO push this out everywhere
 -- | A convenience function useful when we need to name a dimensional value multiple times.
@@ -116,17 +130,31 @@ withDims :: Dims d -> Evidence (KnownDims d)
 withDims d = reifyDims d E
 -}
 
+-- | A convenience function that names a dimensional value satisfying a certain
+-- property.  If the value does not satisfy the property, then the function
+-- returns 'Nothing'. 
+
+refineDims :: forall ds. KnownDims ds => (Dims ds -> Bool) -> Maybe (Dims ds)
+refineDims p = reflectDims $ \x -> if p x then Just x else Nothing
+
+reifyDims :: [Word] -> (forall ds. KnownDims ds => Dims ds -> r) -> Maybe r
+reifyDims w f = if all (>0) w then Just $ unsafeReifyDims w f else Nothing
+
 unsafeReifyDims :: [Word] -> (forall ds. KnownDims ds => Dims ds -> r) -> r
 unsafeReifyDims []     f = f U
 unsafeReifyDims (w:ws) f = unsafeReifyDim w $ \p ->
                              unsafeReifyDims ws $ \ps -> f ((reflect p) :* (reflect ps))
 
-reifyDims :: [Word] -> (forall ds. KnownDims ds => Dims ds -> r) -> Maybe r
-reifyDims w f = if all (>0) w then Just $ unsafeReifyDims w f else Nothing
+reifyDims' :: forall d r . Dims d -> (KnownDims d => r) -> r
+reifyDims' d k = unsafeCoerce (WithKnownDims k :: WithKnownDims d r) d
 
+newtype WithKnownDims ds r = WithKnownDims (KnownDims ds => r)
 
 reifySomeDims' :: forall r. [Word] -> (forall (d :: [Nat]). KnownDims d => Proxy d -> r) -> r
 reifySomeDims' d k = unsafeCoerce (WithSomeDims k :: WithSomeDims r) d Proxy
+
+newtype WithSomeDims r = WithSomeDims (forall ds. KnownDims ds => Proxy ds -> r)
+
 
 --reifySomeDims :: forall r. SomeDims -> (forall (d :: [Nat]). KnownDims d => Proxy d -> r) -> r
 --reifySomeDims (SomeDims d) k = unsafeCoerce (WithSomeDims k :: WithSomeDims r) d Proxy
@@ -160,13 +188,6 @@ elimDims :: Dims ds -> (forall d. Dim d -> r) -> [r]
 elimDims U _ = []
 elimDims (d :* ds) f = f d : elimDims ds f
 --
--- | A convenience function that names a dimensional value satisfying a certain
--- property.  If the value does not satisfy the property, then the function
--- returns 'Nothing'. 
-
-dimsThat :: forall ds. KnownDims ds => (Dims ds -> Bool) -> Maybe (Dims ds)
-dimsThat p = reflectDims $ \x -> if p x then Just x else Nothing
-
 
 --dimVal' :: Dim d -> Word
 --dimVal' = \case DimSing d -> d
@@ -178,7 +199,7 @@ dimsVal' ds = elimDims ds dimVal' --Numeric.Tensile.Dimensions.Types.map dimVal'
 
 -- | Similar to `natVal` from `GHC.TypeLits`, but returns `Word`.
 dimsVal :: forall ds. KnownDims ds => [Word]
-dimsVal = dimsVal' (dims @ds)
+dimsVal = reflectDims @ds dimsVal'
 {-# INLINE dimsVal #-}
 
 
@@ -194,16 +215,14 @@ dimsSize = dimsSize' (dims @ds)
 
 
 {-
-compareDims' :: Dims as -> Dims bs -> Ordering
-compareDims' a b = compare (listDims a) (listDims b)
-{-# INLINE compareDims #-}
+
 
 compareDims :: forall as bs p q
               . (Dimensions as, Dimensions bs)
              => p as -> q bs -> Ordering
 compareDims _ _ = compareDims' (dims @_ @as) (dims @_ @bs)
 
-fromDims = listDims
+fromDims = dimsVal'
 compareDims
 sameDims
 totalDim
