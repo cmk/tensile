@@ -65,7 +65,7 @@ rank' (TypedList xs) = fromIntegral $ Prelude.length xs
 
 -- TODO :: specialize k to Nat
 -- | Type-indexed list
-newtype TypedList (f :: (k -> Type)) (xs :: [k]) = TypedList [Any]
+newtype TypedList (f :: (k -> Type)) (xs :: [k]) = TypedList [Any] 
 
 -- | A list of type proxies
 type TypeList (xs :: [k]) = TypedList Proxy xs
@@ -262,9 +262,9 @@ map k (TypedList xs) = unsafeCoerce# (Prelude.map k' xs)
     k' = unsafeCoerce# . k . unsafeCoerce#
 {-# INLINE map #-}
 
---------------------------------------------------------------------------------
--- internal
---------------------------------------------------------------------------------
+-------------------------------------------------------------------------------
+-- Internal
+-------------------------------------------------------------------------------
 
 
 {-

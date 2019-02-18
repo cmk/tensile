@@ -1,9 +1,7 @@
 {-# LANGUAGE AllowAmbiguousTypes    #-}
 {-# LANGUAGE CPP                    #-}
-{-# LANGUAGE ExistentialQuantification #-}
 {-# LANGUAGE FlexibleInstances      #-}
 {-# LANGUAGE FunctionalDependencies #-}
-{-# LANGUAGE GADTs #-}
 {-# LANGUAGE InstanceSigs           #-}
 {-# LANGUAGE LambdaCase           #-}
 
@@ -12,91 +10,199 @@
 {-# LANGUAGE PatternSynonyms        #-}
 {-# LANGUAGE UndecidableInstances   #-} 
 {-# LANGUAGE ViewPatterns           #-}
-module Numeric.Tensile.Dimensions.Dim (
-  module Numeric.Tensile.Dimensions.Dim,
-  module Numeric.Tensile.Dimensions.Dim.Class
+module Numeric.Tensile.Dimensions.Dim.Class (
+  Dim(),
+  pattern Dim,
+  KnownDim(..),
+  dimVal',
+  dimEv,
+  compareDim',
+  sameDim',
+  addDim',
+  subDim',
+  mulDim',
+  expDim',
+  reifyDim,
+  reifyDim',
+  unsafeReifyDim
 ) where
 
 import Data.Proxy
+import Data.Kind (Type)
+import Data.Type.Bool
+import Data.Type.Equality
+import GHC.Exts (Constraint, Proxy#, proxy#)
+import GHC.TypeLits
 import Numeric.Type.Evidence
 import Unsafe.Coerce (unsafeCoerce)
 
-import Data.Kind (Type)
-import           GHC.Exts           (Constraint, Proxy#, proxy#)
---import           GHC.Exts           (Constraint)
---import GHC.TypeLits
-import           Data.Type.Bool
-import           Data.Type.Equality
-import           GHC.TypeLits       as TL
-
---import Numeric.Tensile.Dimensions.Dim.Class
 import Numeric.Tensile.Dimensions.Types (Reifies(..), type (<))
-import Numeric.Tensile.Dimensions.Dim.Class
 
 
-reflectDim :: forall d r. KnownDim d => (Dim d -> r) -> r
-reflectDim f = f Dim
+-- | Singleton type to store type-level dimension value.
+-- Dimensions are restricted to strictly positive naturals.
 
-reflectDim2 :: forall a b r. (KnownDim a, KnownDim b) => (Dim a -> Dim b -> r) -> r
-reflectDim2 f = f Dim Dim
+-- TODO dont export DimSing
+newtype Dim (d :: Nat) = DimSing Word deriving (Eq, Ord)
 
-refineDim :: forall d. KnownDim d => (Dim d -> Bool) -> Maybe (Dim d)
-refineDim p = reflectDim $ \x -> if p x then Just x else Nothing
+instance Show (Dim d) where
+  show (DimSing w) = "Dim " ++ show w
+  showsPrec p (DimSing w)
+    = showParen (p >= 10)
+    $ showString "Dim " . showsPrec p w
+
 
 -- | Similar to `natVal` from `GHC.TypeLits`, but returns `Word`.
-dimVal :: forall d. KnownDim d => Word
-dimVal = reflectDim @d dimVal'
-{-# INLINE dimVal #-}
+dimVal' :: Dim d -> Word
+dimVal' (DimSing w) = w
+{-# INLINE dimVal' #-}
+
+dimEv :: Dim d -> Evidence (KnownDim d)
+dimEv d = reifyDim' d E
+{-# INLINE dimEv #-}
+
+--   Match against this pattern to bring a `KnownDim` instance into scope.
+pattern Dim :: forall d. KnownDim d => Dim d
+pattern Dim <- (dimEv -> E)
+  where
+    Dim = dim @d
+-- Starting from GHC 8.2, compiler supports specifying lists of complete
+-- pattern synonyms.
+#if __GLASGOW_HASKELL__ >= 802
+{-# COMPLETE Dim #-}
+#endif
+
+-------------------------------------------------------------------------------
+-- Arithmetic
+-------------------------------------------------------------------------------
 
 -- | We either get evidence that this function
 --   was instantiated with the same type-level numbers, or Nothing.
-sameDim :: forall a b. (KnownDim a, KnownDim b) => Maybe (Evidence (a ~ b))
-sameDim = reflectDim2 sameDim'
-{-# INLINE sameDim #-}
+--
+--   Note, this function works on @Nat@-indexed dimensions only,
+--   because @Dim (XN x)@ does not have runtime evidence to infer @x@
+--   and `KnownDim x` does not imply `KnownDim (XN x)`.
+sameDim' :: forall (x :: Nat) (y :: Nat)
+         . Dim x -> Dim y -> Maybe (Evidence (x ~ y))
+sameDim' (DimSing a) (DimSing b)
+  | a == b    = Just (unsafeCoerce (E @(x ~ x)))
+  | otherwise = Nothing
+{-# INLINE sameDim' #-}
 
 -- | Ordering of dimension values.
-compareDim :: forall a b. (KnownDim a, KnownDim b) => Ordering
-compareDim = reflectDim2 @a @b compareDim'
-{-# INLINE compareDim #-}
+compareDim' :: Dim a -> Dim b -> Ordering
+compareDim' (DimSing a) (DimSing b) = compare a b
+{-# INLINE compareDim' #-}
 
-addDim :: forall a b. (KnownDim a, KnownDim b) => Dim (a + b)
-addDim = reflectDim2 @a @b addDim'
+addDim' :: Dim a -> Dim b -> Dim (a + b)
+addDim' (DimSing a) (DimSing b) = unsafeCoerce (a + b)
+{-# INLINE addDim' #-}
 
-subDim :: forall a b. (KnownDim a, KnownDim b, a < b) => Dim (a - b)
-subDim = reflectDim2 @a @b subDim'
-{-# INLINE subDim #-}
+subDim' :: a < b => Dim a -> Dim b -> Dim (a - b)
+subDim' (DimSing a) (DimSing b) = unsafeCoerce (a - b)
+{-# INLINE subDim' #-}
 
-mulDim :: forall a b. (KnownDim a, KnownDim b) => Dim (a * b)
-mulDim = reflectDim2 @a @b mulDim'
-{-# INLINE mulDim #-}
+mulDim' :: Dim a -> Dim b -> Dim (a * b)
+mulDim' (DimSing a) (DimSing b) = unsafeCoerce (a * b)
+{-# INLINE mulDim' #-}
 
-expDim :: forall a b. (KnownDim a, KnownDim b) => Dim (a ^ b)
-expDim = reflectDim2 @a @b expDim'
-{-# INLINE expDim #-}
+expDim' :: Dim a -> Dim b -> Dim (a ^ b)
+expDim' (DimSing a) (DimSing b) = unsafeCoerce (a ^ b)
+{-# INLINE expDim' #-}
 
 -------------------------------------------------------------------------------
--- Existential 'Dim' type.
+-- Value Reification
 -------------------------------------------------------------------------------
 
-data SomeDim where SomeDim :: KnownDim d => !(Dim d) -> SomeDim
+instance KnownDim d => Reifies d (Dim d) where
+  reflect _ = dim
 
-instance Eq SomeDim where
-  SomeDim a == SomeDim b = dimVal' a == dimVal' b
+reifyDim :: forall r. Word -> (forall d. KnownDim d => Dim d -> r) -> Maybe r
+reifyDim w k = if w == 0 then Nothing else Just r
+  where r = unsafeReifyDim w $ \p -> k (reflect p) 
 
-instance Ord SomeDim where
-  compare (SomeDim a) (SomeDim b) = compareDim' a b
+unsafeReifyDim :: forall r. Word -> (forall d. KnownDim d => Proxy d -> r) -> r
+unsafeReifyDim w k = unsafeCoerce (WithSomeDim k :: WithSomeDim r) w Proxy
 
-instance Show SomeDim where
-  show (SomeDim d) = "SomeDim " ++ show (dimVal' d)
-  showsPrec p (SomeDim d)
-    = showParen (p >= 10)
-    $ showString "SomeDim " . showsPrec p (dimVal' d)
+newtype WithSomeDim r = WithSomeDim (forall d. KnownDim d => Proxy d -> r)
 
-someDim :: Word -> Maybe SomeDim
-someDim w = reifyDim w SomeDim
+reifyDim' :: forall d r. Dim d -> (KnownDim d => r) -> r
+reifyDim' d k = unsafeCoerce (WithKnownDim k :: WithKnownDim d r) d
 
-withSomeDim :: SomeDim -> (forall d. KnownDim d => Dim d -> r) -> r
-withSomeDim (SomeDim d) f = f d
+newtype WithKnownDim d r = WithKnownDim (KnownDim d => r)
+
+-------------------------------------------------------------------------------
+-- Type Reflection
+-------------------------------------------------------------------------------
+
+-- TODO dont export dim itself?
+-- | This class provides the `Dim` associated with a type-level natural,
+class KnownDim d where
+    -- | Get value of type-level dim at runtime.
+    --
+    --   Note, this function is supposed to be used with @TypeApplications@,
+    --   and the @KnownDim@ class has varying kind of the parameter;
+    --   thus, the function has two type paremeters (kind and type of @n@).
+    --   For example, you can type:
+    --
+    --   >>>:set -XTypeApplications
+    --   >>>:set -XDataKinds
+    --   >>>:t dim @3
+    --   dim @3 :: Dim 3
+    --
+    --   >>>:set -XTypeOperators
+    --   >>>:t dim @(13 - 6)
+    --   dim @(13 - 6) :: Dim 7
+    dim :: Dim d
+
+instance {-# OVERLAPPABLE #-} (KnownNat d, 1 <= d) => KnownDim d where
+    {-# INLINE dim #-}
+    dim = DimSing (fromInteger (natVal' (proxy# :: Proxy# d)))
+
+instance {-# OVERLAPPING #-} KnownDim 1  where
+  { {-# INLINE dim #-}; dim = DimSing 1 }
+instance {-# OVERLAPPING #-} KnownDim 2  where
+  { {-# INLINE dim #-}; dim = DimSing 2 }
+instance {-# OVERLAPPING #-} KnownDim 3  where
+  { {-# INLINE dim #-}; dim = DimSing 3 }
+instance {-# OVERLAPPING #-} KnownDim 4  where
+  { {-# INLINE dim #-}; dim = DimSing 4 }
+instance {-# OVERLAPPING #-} KnownDim 5  where
+  { {-# INLINE dim #-}; dim = DimSing 5 }
+instance {-# OVERLAPPING #-} KnownDim 6  where
+  { {-# INLINE dim #-}; dim = DimSing 6 }
+instance {-# OVERLAPPING #-} KnownDim 7  where
+  { {-# INLINE dim #-}; dim = DimSing 7 }
+instance {-# OVERLAPPING #-} KnownDim 8  where
+  { {-# INLINE dim #-}; dim = DimSing 8 }
+instance {-# OVERLAPPING #-} KnownDim 9  where
+  { {-# INLINE dim #-}; dim = DimSing 9 }
+instance {-# OVERLAPPING #-} KnownDim 10 where
+  { {-# INLINE dim #-}; dim = DimSing 10 }
+instance {-# OVERLAPPING #-} KnownDim 11 where
+  { {-# INLINE dim #-}; dim = DimSing 11 }
+instance {-# OVERLAPPING #-} KnownDim 12 where
+  { {-# INLINE dim #-}; dim = DimSing 12 }
+instance {-# OVERLAPPING #-} KnownDim 13 where
+  { {-# INLINE dim #-}; dim = DimSing 13 }
+instance {-# OVERLAPPING #-} KnownDim 14 where
+  { {-# INLINE dim #-}; dim = DimSing 14 }
+instance {-# OVERLAPPING #-} KnownDim 15 where
+  { {-# INLINE dim #-}; dim = DimSing 15 }
+instance {-# OVERLAPPING #-} KnownDim 16 where
+  { {-# INLINE dim #-}; dim = DimSing 16 }
+instance {-# OVERLAPPING #-} KnownDim 17 where
+  { {-# INLINE dim #-}; dim = DimSing 17 }
+instance {-# OVERLAPPING #-} KnownDim 18 where
+  { {-# INLINE dim #-}; dim = DimSing 18 }
+instance {-# OVERLAPPING #-} KnownDim 19 where
+  { {-# INLINE dim #-}; dim = DimSing 19 }
+instance {-# OVERLAPPING #-} KnownDim 20 where
+  { {-# INLINE dim #-}; dim = DimSing 20 }
+
+
+
+
 
 {-
 compareDims' :: Dims as -> Dims bs -> Ordering
@@ -337,6 +443,36 @@ reifyDims' ns d f =
 -- __Deprecated:__ Use 'toSing' from /singletons/ instead.
 someDimsValNat :: [Word] -> SomeDims
 someDimsValNat ns = reifyDims ns SomeDims
+
+-- | Get evidence that the two 'KnownDims' lists are actually the "same"
+-- list of 'Dim's (that they were instantiated with the same numbers).
+--
+-- Essentialy runs 'sameDim' over the lists:
+--
+-- @
+-- case 'sameDims' ns ms of
+--   Just 'Refl' -> -- in this branch, GHC recognizes that the two ['Dim']s
+--                  -- are the same.
+--   Nothing   -> -- in this branch, they aren't
+-- @
+--
+-- __Deprecated:__ Use '%~' from /singletons/ instead.
+sameDims
+    :: Dims ns
+    -> Dims ms
+    -> Maybe (ns :~: ms)
+sameDims = \case
+    U      -> \case
+      U      -> Just Refl
+      _ :* _  -> Nothing
+    n :* ns -> \case
+      U      -> Nothing
+      m :* ms -> do
+        Refl <- sameDim n m
+        Refl <- sameDims ns ms
+        return Refl
+
+
 
 
 -}
