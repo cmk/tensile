@@ -16,7 +16,8 @@ source-repository head
 
 library 
     hs-source-dirs: 
-        src
+        lib/src
+        lib/test
     exposed-modules:
         Numeric.Tensile.Dimensions
         Numeric.Tensile.Dimensions.Dim
@@ -28,11 +29,14 @@ library
         Numeric.Tensile.Dimensions.Idxs.Class
         Numeric.Tensile.Dimensions.Perm
         Numeric.Tensile.Dimensions.Types
+        Test.Numeric.Tensile.Dimensions.Gen
+        Test.Numeric.Tensile.Dimensions.Idxs.Predicate
     build-depends:
         base == 4.*,
         combinat,
         dimensions,
         finite-typelits,
+        hedgehog,
         singletons
     default-extensions: 
         ConstraintKinds, 
