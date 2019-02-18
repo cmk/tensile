@@ -1,8 +1,11 @@
 {-# LANGUAGE AllowAmbiguousTypes #-}
-module Numeric.Tensile.Dimensions.Permutation where
+module Numeric.Tensile.Dimensions.Perm where
 
 import Numeric.Tensile.Dimensions.Dim
+import Numeric.Tensile.Dimensions.Dims
 import Numeric.Tensile.Dimensions.Types
+import Unsafe.Coerce (unsafeCoerce)
+
 import qualified Math.Combinat.Permutations as P
 
 type Permutable d d' = (Sort d ~ Sort d')
@@ -19,20 +22,24 @@ instance KnownDim n => Monoid (Perm n) where
 
 cycles (Perm t) = P.permutationToDisjointCycles $ t
 
-{-
+-- TODO remark as unsafe or remove.
+--_permuted :: Permutable d d' => Perm (Rank d) -> TypedList f d -> TypedList f d'
+_permuted :: Perm (Rank d) -> TypedList f d -> TypedList f d'
+_permuted (Perm p) = unsafeCoerce . P.permuteList p . unsafeCoerce
+
 reversal :: forall d. KnownDims d => Perm (Rank d)
-reversal = reversal' (dims @_ @d)
+reversal = reversal' (dims @d)
 
 reversal' :: forall d. Dims d -> Perm (Rank d)
-reversal' = Perm . P.reversePermutation . length . listDims
+reversal' = Perm . P.reversePermutation . length . dimsVal'
 
 transposition' :: forall n. KnownDim n => Word -> Word -> Maybe (Perm n)
 transposition' i j = if i <= n' && j <= n' then Just p else Nothing
   where
     p = Perm $ P.transposition n (fromIntegral i, fromIntegral j)
-    n = fromIntegral $ dimVal' @n 
+    n = fromIntegral $ dimVal @n 
     n' = fromIntegral n
--}
+
 
 {-
 transposition'' :: Word -> Word -> Word -> Maybe (Perm n)

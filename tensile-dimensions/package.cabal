@@ -24,9 +24,9 @@ library
         Numeric.Tensile.Dimensions.Dims
         Numeric.Tensile.Dimensions.Dims.Class
         Numeric.Tensile.Dimensions.Idx.Class
+        Numeric.Tensile.Dimensions.Idxs
         Numeric.Tensile.Dimensions.Idxs.Class
-        Numeric.Tensile.Dimensions.Index
-        Numeric.Tensile.Dimensions.Permutation
+        Numeric.Tensile.Dimensions.Perm
         Numeric.Tensile.Dimensions.Types
     build-depends:
         base == 4.*,
