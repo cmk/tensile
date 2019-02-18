@@ -23,6 +23,8 @@ library
         Numeric.Tensile.Dimensions.Dim.Class
         Numeric.Tensile.Dimensions.Dims
         Numeric.Tensile.Dimensions.Dims.Class
+        Numeric.Tensile.Dimensions.Idx.Class
+        Numeric.Tensile.Dimensions.Idxs.Class
         Numeric.Tensile.Dimensions.Index
         Numeric.Tensile.Dimensions.Permutation
         Numeric.Tensile.Dimensions.Types

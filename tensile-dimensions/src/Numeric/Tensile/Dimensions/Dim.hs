@@ -30,7 +30,7 @@ import           Data.Type.Equality
 import           GHC.TypeLits       as TL
 
 --import Numeric.Tensile.Dimensions.Dim.Class
-import Numeric.Tensile.Dimensions.Types (Reifies(..), type (<))
+import Numeric.Tensile.Dimensions.Types (Reflects(..), type (<))
 import Numeric.Tensile.Dimensions.Dim.Class
 
 
@@ -81,16 +81,16 @@ expDim = reflectDim2 @a @b expDim'
 data SomeDim where SomeDim :: KnownDim d => !(Dim d) -> SomeDim
 
 instance Eq SomeDim where
-  SomeDim a == SomeDim b = dimVal' a == dimVal' b
+    SomeDim a == SomeDim b = dimVal' a == dimVal' b
 
 instance Ord SomeDim where
-  compare (SomeDim a) (SomeDim b) = compareDim' a b
+    compare (SomeDim a) (SomeDim b) = compareDim' a b
 
 instance Show SomeDim where
-  show (SomeDim d) = "SomeDim " ++ show (dimVal' d)
-  showsPrec p (SomeDim d)
-    = showParen (p >= 10)
-    $ showString "SomeDim " . showsPrec p (dimVal' d)
+    show (SomeDim d) = "SomeDim " ++ show (dimVal' d)
+    showsPrec p (SomeDim d)
+      = showParen (p >= 10)
+      $ showString "SomeDim " . showsPrec p (dimVal' d)
 
 someDim :: Word -> Maybe SomeDim
 someDim w = reifyDim w SomeDim

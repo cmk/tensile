@@ -49,12 +49,36 @@ elimDims :: Dims ds -> (forall d. Dim d -> r) -> [r]
 elimDims U _ = []
 elimDims (d :* ds) f = f d : elimDims ds f
 
+-------------------------------------------------------------------------------
+-- Value Reification
+-------------------------------------------------------------------------------
 
+reifyDims :: [Word] -> (forall ds. KnownDims ds => Dims ds -> r) -> Maybe r
+reifyDims x f = if all (>0) x then Just $ unsafeReifyDims x f else Nothing
 
+unsafeReifyDims :: [Word] -> (forall ds. KnownDims ds => Dims ds -> r) -> r
+unsafeReifyDims []     f = f U
+unsafeReifyDims (x:xs) f = 
+  unsafeReifyDim x $ \p ->
+    unsafeReifyDims xs $ \ps -> f ((reflect p) :* (reflect ps))
+
+reifyDims' :: forall d r . Dims d -> (KnownDims d => r) -> r
+reifyDims' d k = unsafeCoerce (WithKnownDims k :: WithKnownDims d r) d
+
+newtype WithKnownDims ds r = WithKnownDims (KnownDims ds => r)
+
+unsafeReifyDims' :: forall r. [Word] -> (forall ds. KnownDims ds => Proxy ds -> r) -> r
+unsafeReifyDims' d k = unsafeCoerce (WithSomeDims k :: WithSomeDims r) d Proxy
+
+newtype WithSomeDims r = WithSomeDims (forall ds. KnownDims ds => Proxy ds -> r)
+
+-------------------------------------------------------------------------------
+-- Type Reflection 
+-------------------------------------------------------------------------------
 
 -- | Put runtime evidence of `Dims` value inside function constraints.
 --   Similar to `KnownDim` or `KnownNat`, but for lists of numbers.
-class KnownDims (ds :: [Nat]) where
+class KnownDims ds where
     -- | Get dimensionality of a space at runtime,
     --   represented as a list of `Dim`.
     --
@@ -72,28 +96,11 @@ instance KnownDims ('[] :: [Nat]) where
     dims = U
     {-# INLINE dims #-}
 
-instance (KnownDim d, KnownDims ds) => KnownDims (d :+ ds :: [Nat]) where
-    dims = Dim :* dims
+instance (KnownDim d, KnownDims ds) => KnownDims (d :+ ds) where
+    dims = dim :* dims
     {-# INLINE dims #-}
 
-instance KnownDims (ds :: [Nat]) => Reifies ds (Dims ds) where
-  reflect _ = dims
+instance KnownDims ds => Reflects ds (Dims ds) where
+    reflect _ = dims
 
 
-reifyDims :: [Word] -> (forall ds. KnownDims ds => Dims ds -> r) -> Maybe r
-reifyDims w f = if all (>0) w then Just $ unsafeReifyDims w f else Nothing
-
-unsafeReifyDims :: [Word] -> (forall ds. KnownDims ds => Dims ds -> r) -> r
-unsafeReifyDims []     f = f U
-unsafeReifyDims (w:ws) f = unsafeReifyDim w $ \p ->
-                             unsafeReifyDims ws $ \ps -> f ((reflect p) :* (reflect ps))
-
-reifyDims' :: forall d r . Dims d -> (KnownDims d => r) -> r
-reifyDims' d k = unsafeCoerce (WithKnownDims k :: WithKnownDims d r) d
-
-newtype WithKnownDims ds r = WithKnownDims (KnownDims ds => r)
-
-unsafeReifyDims' :: forall r. [Word] -> (forall ds. KnownDims ds => Proxy ds -> r) -> r
-unsafeReifyDims' d k = unsafeCoerce (WithSomeDims k :: WithSomeDims r) d Proxy
-
-newtype WithSomeDims r = WithSomeDims (forall ds. KnownDims ds => Proxy ds -> r)

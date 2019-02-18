@@ -33,7 +33,7 @@ import Unsafe.Coerce (unsafeCoerce)
 import qualified Data.Finite as F
 import qualified Math.Combinat.Permutations as P
 
-import  Numeric.Tensile.Dimensions.Types as T
+import Numeric.Tensile.Dimensions.Types
 
 import GHC.TypeLits (KnownNat(..))
 import           Control.Arrow           (first)
@@ -269,8 +269,8 @@ toIdxs dsd i = go dsd $ fromIntegral i
     go :: forall ns . Dims ns -> Word -> Idxs ns
     go U 0 = U
     go U _ = error ("Idxs ") -- ++ show (listDims dsd)) TODO: fix
-    go (T.Snoc ds d) off = case divMod off (dimVal' d) of
-      (off', j) -> go ds off' `T.snoc` Idx j
+    go (Snoc ds d) off = case divMod off (dimVal' d) of
+      (off', j) -> go ds off' `snoc` Idx j
 
 instance Eq (Idxs xs) where
     (==) = unsafeCoerce# ((==) :: [Word] -> [Word] -> Bool)
@@ -363,8 +363,8 @@ instance KnownDims ds => Enum (Idxs ds) where
         go :: forall ns . Dims ns -> Word -> Idxs ns
         go U 0 = U
         go U _ = error ("Idxs ") -- ++ show (listDims dsd)) TODO fix
-        go (T.Snoc ds d) off = case divMod off (dimVal' d) of
-          (off', j) -> go ds off' `T.snoc` Idx j
+        go (Snoc ds d) off = case divMod off (dimVal' d) of
+          (off', j) -> go ds off' `snoc` Idx j
     {-# INLINE toEnum #-}
 
 
@@ -440,9 +440,7 @@ _stepIdx (d :* ds) di (Idx i :* is)
 _permuted :: Perm (Rank d) -> TypedList f d -> TypedList f d'
 _permuted (Perm p) = unsafeCoerce . P.permuteList p . unsafeCoerce
 
--- TODO unsafe, remove
-_reversed :: TypedList f d -> TypedList f d'
-_reversed = unsafeCoerce . Prelude.reverse . unsafeCoerce 
+
 
 
 -- | Remaps the index argument to the index with the same 'Int' representation under the permuted dimensions.
@@ -454,7 +452,7 @@ remapIdxs
   -> r
 remapIdxs (Perm p) ds ix f = 
   unsafeReifyDims' (P.permuteList p $ listDims ds) $ \ds' -> 
-    f (T.reflect ds') (toIdxs (T.reflect ds') . fromIdxs ds $ ix)
+    f (reflect ds') (toIdxs (reflect ds') . fromIdxs ds $ ix)
 
 
 {-
@@ -466,7 +464,7 @@ remapIdxs'
   -> (KnownDims ds' => r) 
   -> r
 remapIdxs' p ds ix f = 
-  T.reifyDims (_permuted p ds) f
+  reifyDims (_permuted p ds) f
 
 -- | Transform a permutation of tensor modes into a permutation of array indices.
 -- transpose (lowerPerm p1) . transpose (lowerPerm p2) == transpose (lowerPerm $ p1 <> p2)
@@ -487,14 +485,14 @@ overDimIdx_ :: Monad m
             -> (Idxs ds -> m ())     -- ^ Function to call on each dimension
             -> m ()
 overDimIdx_ U k = k U
-overDimIdx_ (T.Snoc ds d) k = overDimIdx_ ds k'
+overDimIdx_ (Snoc ds d) k = overDimIdx_ ds k'
   where
     dw = dimVal' d
     k' is = go 0
       where
         go i
           | i >= dw = return ()
-          | otherwise = k (is `T.snoc` Idx i) >> go (i+1)
+          | otherwise = k (is `snoc` Idx i) >> go (i+1)
 
 -- TODO reimplement bounds ord check 
 _foldDimPartIdx :: Idxs ds -- ^ Initial indices
@@ -553,7 +551,7 @@ overDim_ :: Monad m
          -> Int                      -- ^ Offset step
          -> m ()
 overDim_ U k offset _step = k U offset
-overDim_ (T.Snoc ds d) k offset step = overDim_ ds k' offset step -- (di * step)
+overDim_ (Snoc ds d) k offset step = overDim_ ds k' offset step -- (di * step)
   where
     dw = dimVal' d
     -- di = fromIntegral dw
@@ -561,7 +559,7 @@ overDim_ (T.Snoc ds d) k offset step = overDim_ ds k' offset step -- (di * step)
       where
         go i off
           | i >= dw = return ()
-          | otherwise = k (is `T.snoc` Idx i) off >> go (i+1) (off+step)
+          | otherwise = k (is `snoc` Idx i) off >> go (i+1) (off+step)
 
 -}
 

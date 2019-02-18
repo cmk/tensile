@@ -36,20 +36,18 @@ import GHC.TypeLits
 import Numeric.Type.Evidence
 import Unsafe.Coerce (unsafeCoerce)
 
-import Numeric.Tensile.Dimensions.Types (Reifies(..), type (<))
+import Numeric.Tensile.Dimensions.Types (Reflects(..), type (<))
 
 
 -- | Singleton type to store type-level dimension value.
 -- Dimensions are restricted to strictly positive naturals.
-
--- TODO dont export DimSing
 newtype Dim (d :: Nat) = DimSing Word deriving (Eq, Ord)
 
 instance Show (Dim d) where
-  show (DimSing w) = "Dim " ++ show w
-  showsPrec p (DimSing w)
-    = showParen (p >= 10)
-    $ showString "Dim " . showsPrec p w
+    show (DimSing w) = "Dim " ++ show w
+    showsPrec p (DimSing w)
+      = showParen (p >= 10)
+      $ showString "Dim " . showsPrec p w
 
 
 -- | Similar to `natVal` from `GHC.TypeLits`, but returns `Word`.
@@ -114,7 +112,7 @@ expDim' (DimSing a) (DimSing b) = unsafeCoerce (a ^ b)
 -- Value Reification
 -------------------------------------------------------------------------------
 
-instance KnownDim d => Reifies d (Dim d) where
+instance KnownDim d => Reflects d (Dim d) where
   reflect _ = dim
 
 reifyDim :: forall r. Word -> (forall d. KnownDim d => Dim d -> r) -> Maybe r
