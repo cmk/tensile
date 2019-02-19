@@ -381,7 +381,7 @@ f .*. g = fmap (\f' -> Foldable.foldl' add zero $ liftI2 (*.) f' g) f
 
 {-
 infixl 6 :+:, :-:
-infixl 7 :*:,.*:,:*.,*:,:*
+infixl 7 :+:,.*:,:+.,*:,:+
 
 
 

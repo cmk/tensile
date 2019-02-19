@@ -71,7 +71,7 @@ fromDims ds = elimDims ds fromDim --Numeric.Tensile.Dimensions.Types.map fromDim
 
 elimDims :: Dims ds -> (forall d. Dim d -> r) -> [r]
 elimDims U _ = []
-elimDims (d :* ds) f = f d : elimDims ds f
+elimDims (d :+ ds) f = f d : elimDims ds f
 
 -- | Product of all dimension sizes.
 size :: Dims ds -> Word
@@ -114,7 +114,7 @@ data PatKDims ds = (All KnownDim ds, KnownDims ds) => PatKDims
 
 patKDims :: Dims ns -> PatKDims ns
 patKDims U = PatKDims
-patKDims (Dim :* ns) = case patKDims ns of
+patKDims (Dim :+ ns) = case patKDims ns of
   PatKDims -> PatKDims
 #if __GLASGOW_HASKELL__ >= 802
 #else
@@ -137,7 +137,7 @@ someDims = traverse someDim
 withSomeDims :: SomeDims -> (forall ds. KnownDims ds => Dims ds -> r) -> r 
 withSomeDims []     f = f U
 withSomeDims (x:xs) f = withSomeDim x $ \d ->
-                          withSomeDims xs $ \ds -> f (d :* ds)
+                          withSomeDims xs $ \ds -> f (d :+ ds)
 {-# INLINE withSomeDims #-}
 
 -------------------------------------------------------------------------------
@@ -153,7 +153,7 @@ unsafeReifyDims :: [Word] -> (forall ds. KnownDims ds => Dims ds -> r) -> r
 unsafeReifyDims []     f = f U
 unsafeReifyDims (x:xs) f = 
   unsafeReifyDim x $ \p ->
-    unsafeReifyDims xs $ \ps -> f ((reflect p) :* (reflect ps))
+    unsafeReifyDims xs $ \ps -> f ((reflect p) :+ (reflect ps))
 
 -- @'reifyDims' ds == withEvidence ('withDims' ds)@ 
 withDims :: Dims ds -> Evidence (KnownDims ds)
@@ -194,7 +194,7 @@ instance KnownDims ('[] :: [Nat]) where
     {-# INLINE dims #-}
 
 instance (KnownDim d, KnownDims ds) => KnownDims (d :+ ds :: [Nat]) where
-    dims = dim :* dims
+    dims = dim :+ dims
     {-# INLINE dims #-}
 
 instance KnownDims ds => Reflects ds (Dims ds) where

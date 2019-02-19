@@ -21,15 +21,15 @@ show'
   -> String
 show' x = case dims @ds of
   U -> "{ " ++ show (ix# 0# x) ++ " }"
-  Dim :* U -> ('{' :) . drop 1 $
+  Dim :+ U -> ('{' :) . drop 1 $
                   foldr (\i s -> ", " ++ show (ix i x) ++ s) " }"
                           [minBound .. maxBound]
-  (Dim :: Dim n) :* (Dim :: Dim m) :* (Dims :: Dims dss) ->
+  (Dim :: Dim n) :+ (Dim :: Dim m) :+ (Dims :: Dims dss) ->
     let loopInner :: Idxs dss -> Idxs '[n,m] -> String
-        loopInner ods (n:*m:*_) = ('{' :) . drop 2 $
+        loopInner ods (n:+m:+_) = ('{' :) . drop 2 $
                         foldr (\i ss -> '\n':
                                 foldr (\j s ->
-                                         ", " ++ show' (ix (i :* j :* ods) x) ++ s
+                                         ", " ++ show' (ix (i :+ j :+ ods) x) ++ s
                                       ) ss [1..m]
                               ) " }" [1..n]
         loopOuter ::  Idxs dss -> String -> String
@@ -627,9 +627,9 @@ overDim_'# :: Dims (ds :: [k])
            -> State# s
            -> (# State# s, Int# #)
 overDim_'# U f = f U
-overDim_'# (d :* ds) f = overDim_'# ds (loop 1)
+overDim_'# (d :+ ds) f = overDim_'# ds (loop 1)
   where
     n = fromDim d
     loop i js off# s | i > n = (# s , off#  #)
-                     | otherwise = case f (Idx i :* js) off# s of
+                     | otherwise = case f (Idx i :+ js) off# s of
                          (# s', off1# #) -> loop (i+1) js off1# s'

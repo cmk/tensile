@@ -92,7 +92,7 @@ foldTypedList
   :: forall (a :: *) (f :: Nat -> a) (ds :: [Nat]) r
    . (a -> r -> r) -> r -> TypedList f ds -> r
 foldTypedList f r U = r
-foldTypedList f r (d :* ds) = foldTypedList f (f d r) ds
+foldTypedList f r (d :+ ds) = foldTypedList f (f d r) ds
 -}
 
 class Reflects s a | s -> a where
@@ -109,7 +109,7 @@ instance KnownList ('[] :: [Nat]) where
   listRep = U
 
 instance KnownList ds => KnownList (d :+ ds) where
-  listRep = Proxy @d :* listRep @ds
+  listRep = Proxy @d :+ listRep @ds
 
 --TODO is this useful?
 --instance KnownList ds => Reflects ds (ProxyList ds) where reflect _ = listRep
@@ -157,12 +157,14 @@ pattern Empty :: forall (f :: Nat -> Type) ds
 pattern Empty = U
 
 -- | Constructing a type-indexed list
-pattern (:*) :: forall (f :: Nat -> Type) ds
+pattern (:+) :: forall (f :: Nat -> Type) ds
               . ()
              => forall (y :: Nat) (ys :: [Nat])
               . (ds ~ (y ': ys)) => f y -> TypedList f ys -> TypedList f ds
-pattern (:*) d ds = Cons d ds
-infixr 5 :*
+pattern (:+) d ds = Cons d ds
+infixr 5 :+
+
+
 
 -- | Constructing a type-indexed list
 pattern Cons :: forall (f :: Nat -> Type) (ds :: [Nat])
@@ -207,10 +209,10 @@ pattern Reverse sx <- (unreverseTL @f @ds -> PatReverse sx)
 #if __GLASGOW_HASKELL__ >= 802
 {-# COMPLETE ProxyList #-}
 {-# COMPLETE EvList #-}
-{-# COMPLETE U, (:*) #-}
+{-# COMPLETE U, (:+) #-}
 {-# COMPLETE U, Cons #-}
 {-# COMPLETE U, Snoc #-}
-{-# COMPLETE Empty, (:*) #-}
+{-# COMPLETE Empty, (:+) #-}
 {-# COMPLETE Empty, Cons #-}
 {-# COMPLETE Empty, Snoc #-}
 {-# COMPLETE Reverse #-}
@@ -347,7 +349,7 @@ patTL (TypedList (x : ds))
 mkEVL :: forall (c :: Nat -> Constraint) (ds :: [Nat])
        . EvidenceList c ds -> Evidence (All c ds, KnownList ds)
 mkEVL U = E
-mkEVL (E' :* evs) = case mkEVL evs of E -> E
+mkEVL (E' :+ evs) = case mkEVL evs of E -> E
 #if __GLASGOW_HASKELL__ >= 802
 #else
 mkEVL _ = impossible
@@ -356,7 +358,7 @@ mkEVL _ = impossible
 _evList :: forall (c :: Nat -> Constraint) (ds :: [Nat])
         . All c ds => ProxyList ds -> EvidenceList c ds
 _evList U = U
-_evList (_ :* ds) = case _evList ds of evs -> E' :* evs
+_evList (_ :+ ds) = case _evList ds of evs -> E' :+ evs
 #if __GLASGOW_HASKELL__ >= 802
 #else
 _evList _ = impossible

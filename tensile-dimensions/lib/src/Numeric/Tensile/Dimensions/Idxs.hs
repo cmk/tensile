@@ -125,7 +125,7 @@ foldDimsPartIdx s e k = _foldDimsPartIdx (unsafeReverse s) (unsafeReverse e) k
 -- TODO reimplement bounds ord check 
 _foldDimsPartIdx :: Idxs ds -> Idxs ds -> (Idxs ds -> a -> a) -> a -> a
 _foldDimsPartIdx U U k = k U
-_foldDimsPartIdx (start :* starts) (end :* ends) k
+_foldDimsPartIdx (start :+ starts) (end :+ ends) k
   | iEnd >= iStart = _foldDimsPartIdx starts ends (loop iStart)
   | otherwise      = _foldDimsPartIdx starts ends (looi iStart)
   where
@@ -133,10 +133,10 @@ _foldDimsPartIdx (start :* starts) (end :* ends) k
     Idx iEnd   = end
     loop i is
       | i > iEnd = id
-      | otherwise = k (Idx i :* is) . loop (i+1) is
+      | otherwise = k (Idx i :+ is) . loop (i+1) is
     looi i is
       | i < iEnd = id
-      | otherwise = k (Idx i :* is) . looi (i-1) is
+      | otherwise = k (Idx i :+ is) . looi (i-1) is
 
 {-
 -- TODO convert to row major
@@ -147,7 +147,7 @@ overDimPartIdx_ :: Monad m
                           -- ^ Function to call on each dimension
                -> m ()
 overDimPartIdx_ U U k = k U
-overDimPartIdx_ (start :* starts) (end :* ends) k
+overDimPartIdx_ (start :+ starts) (end :+ ends) k
   | iEnd >= iStart = overDimPartIdx_ starts ends loop'
   | otherwise      = overDimPartIdx_ starts ends looi'
   where
@@ -157,12 +157,12 @@ overDimPartIdx_ (start :* starts) (end :* ends) k
       where
         loop i
           | i > iEnd = return ()
-          | otherwise = k (Idx i :* is) >> loop (i+1)
+          | otherwise = k (Idx i :+ is) >> loop (i+1)
     looi' is = looi iStart
       where
         looi i
           | i < iEnd = return ()
-          | otherwise = k (Idx i :* is) >> looi (i-1)
+          | otherwise = k (Idx i :+ is) >> looi (i-1)
 
 -- TODO probably just delete this
 -- | Go over all dimensions keeping track of index and offset

@@ -61,7 +61,7 @@ majorToMinor dims = fromIntegral . go 1 dims
   where
     go :: forall ns . Word -> Dims ns -> Idxs ns -> Word
     go _ U U                     = 0
-    go m (d :* ds) (Idx i :* is) = m * i + go (m * fromDim d) ds is
+    go m (d :+ ds) (Idx i :+ is) = m * i + go (m * fromDim d) ds is
 
 minorToMajor :: forall ds i. Integral i => Dims ds -> Idxs ds -> i
 minorToMajor d i = majorToMinor (unsafeReverse d) (unsafeReverse i)
@@ -112,30 +112,30 @@ instance Show (Idxs ds) where
 {-
 -- | With this instance we can slightly reduce indexing expressions, e.g.
 --
---   > x ! (1 :* 2 :* 4) == x ! (1 :* 2 :* 4 :* U)
+--   > x ! (1 :+ 2 :+ 4) == x ! (1 :+ 2 :+ 4 :+ U)
 --
 instance KnownDim n => Num (Idxs '[n]) where
-    (a:*U) + (b:*U) = (a+b) :* U
+    (a:+U) + (b:+U) = (a+b) :+ U
     {-# INLINE (+) #-}
-    (a:*U) - (b:*U) = (a-b) :* U
+    (a:+U) - (b:+U) = (a-b) :+ U
     {-# INLINE (-) #-}
-    (a:*U) * (b:*U) = (a*b) :* U
+    (a:+U) * (b:+U) = (a*b) :+ U
     {-# INLINE (*) #-}
-    signum (a:*U)   = signum a :* U
+    signum (a:+U)   = signum a :+ U
     {-# INLINE signum #-}
-    abs (a:*U)      = abs a :* U
+    abs (a:+U)      = abs a :+ U
     {-# INLINE abs #-}
-    fromInteger i   = fromInteger i :* U
+    fromInteger i   = fromInteger i :+ U
     {-# INLINE fromInteger #-}
 -}
 
 maxBound' :: forall ds . Dims ds -> Idxs ds
 maxBound' U         = U
-maxBound' (d :* ds) = Idx (fromDim d - 1) :* maxBound' ds
+maxBound' (d :+ ds) = Idx (fromDim d - 1) :+ maxBound' ds
 
 minBound' :: forall ds . Dims ds -> Idxs ds
 minBound' U         = U
-minBound' (_ :* ds) = Idx 0 :* minBound' ds
+minBound' (_ :+ ds) = Idx 0 :+ minBound' ds
 
 instance KnownDims ds => Bounded (Idxs ds) where
     maxBound = maxBound' (dims @ds)
@@ -149,18 +149,18 @@ instance KnownDims ds => Enum (Idxs ds) where
       where
         go :: forall ns . Dims ns -> Idxs ns -> Idxs ns
         go U U = succError $ "Idxs " -- ++ show (fromDims $ dims @ds) TODO fix
-        go (d :* ds) (Idx i :* is)
-          | i == fromDim d = Idx 0 :* go ds is
-          | otherwise     = Idx (i+1) :* is
+        go (d :+ ds) (Idx i :+ is)
+          | i == fromDim d = Idx 0 :+ go ds is
+          | otherwise     = Idx (i+1) :+ is
     {-# INLINE succ #-}
 
     pred = go (dims @ds)
       where
         go :: forall ns . Dims ns -> Idxs ns -> Idxs ns
         go U U = predError $ "Idxs " -- ++ show (fromDims $ dims @ds) TODO fix
-        go (d :* ds) (Idx i :* is)
-          | i == 0    = Idx (fromDim d) :* go ds is
-          | otherwise = Idx (i-1) :* is
+        go (d :+ ds) (Idx i :+ is)
+          | i == 0    = Idx (fromDim d) :+ go ds is
+          | otherwise = Idx (i-1) :+ is
     {-# INLINE pred #-}
 
     toEnum i = go dsd $ fromIntegral i
@@ -218,7 +218,7 @@ diffIdxs d i j = _diffIdxs (unsafeReverse d) (unsafeReverse i) (unsafeReverse j)
 -- | Offset difference of two indices @idx1 - idx2@
 _diffIdxs :: Dims ds -> Idxs ds -> Idxs ds -> Int
 _diffIdxs U U U = 0
-_diffIdxs (d :* ds) (Idx i1 :* is1) (Idx i2 :* is2)
+_diffIdxs (d :+ ds) (Idx i1 :+ is1) (Idx i2 :+ is2)
   = fromIntegral i1 - fromIntegral i2
   + fromIntegral (fromDim d) * _diffIdxs ds is1 is2
 
@@ -229,7 +229,7 @@ stepIdxs d di i = _stepIdxs (unsafeReverse d) di (unsafeReverse i)
 
 _stepIdxs :: Dims ds -> Int -> Idxs ds -> Idxs ds
 _stepIdxs U _ U = U
-_stepIdxs (d :* ds) di (Idx i :* is)
+_stepIdxs (d :+ ds) di (Idx i :+ is)
       = case divMod (di + fromIntegral i) (fromIntegral (fromDim d)) of
-         (0  , i') -> Idx (fromIntegral i') :* is
-         (di', i') -> Idx (fromIntegral i') :* _stepIdxs ds di' is
+         (0  , i') -> Idx (fromIntegral i') :+ is
+         (di', i') -> Idx (fromIntegral i') :+ _stepIdxs ds di' is
