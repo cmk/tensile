@@ -86,6 +86,10 @@ expDim :: Dim a -> Dim b -> Dim (a ^ b)
 expDim (DimSing a) (DimSing b) = unsafeCoerce (a ^ b)
 {-# INLINE expDim #-}
 
+refineDim :: forall d. KnownDim d => (Dim d -> Bool) -> Maybe (Dim d)
+refineDim p = reflectDim $ \x -> if p x then Just x else Nothing
+{-# INLINE refineDim #-}
+
 --  Match against this pattern to bring a `KnownDim` instance into scope.
 pattern Dim :: forall d. KnownDim d => Dim d
 pattern Dim <- (withDim -> E)

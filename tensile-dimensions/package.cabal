@@ -20,13 +20,12 @@ library
         lib/test
     exposed-modules:
         Numeric.Tensile.Dimensions
-        Numeric.Tensile.Dimensions.Dim
         Numeric.Tensile.Dimensions.Dim.Types
-        Numeric.Tensile.Dimensions.Dims
         Numeric.Tensile.Dimensions.Dims.Types
+        Numeric.Tensile.Dimensions.Dims
         Numeric.Tensile.Dimensions.Idx.Types
-        Numeric.Tensile.Dimensions.Idxs
         Numeric.Tensile.Dimensions.Idxs.Types
+        Numeric.Tensile.Dimensions.Idxs
         Numeric.Tensile.Dimensions.Perm
         Numeric.Tensile.Dimensions.Types
         Test.Numeric.Tensile.Dimensions.Gen

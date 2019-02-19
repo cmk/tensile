@@ -9,6 +9,7 @@
 {-# LANGUAGE GADTs #-}
 module Numeric.Tensile.Dimensions.Dims (
   module Numeric.Tensile.Dimensions.Dims,
+  module Numeric.Tensile.Dimensions.Dim.Types,
   module Numeric.Tensile.Dimensions.Dims.Types
 ) where
 
@@ -22,17 +23,10 @@ import GHC.TypeLits
 import           Data.Type.Bool
 import           Data.Type.Equality
 
-import Numeric.Tensile.Dimensions.Dim
+import Numeric.Tensile.Dimensions.Dim.Types
 import Numeric.Tensile.Dimensions.Dims.Types
 import Numeric.Tensile.Dimensions.Types
 
-
--- | A convenience function that names a dimensional value satisfying a certain
--- property.  If the value does not satisfy the property, then the function
--- returns 'Nothing'. 
-
-refineDims :: forall ds. KnownDims ds => (Dims ds -> Bool) -> Maybe (Dims ds)
-refineDims p = reflectDims $ \x -> if p x then Just x else Nothing
 
 -- | Utility function for traversing over all of the @'Dim' d@s in
 -- a 'Dims', each with the corresponding 'KnownDim' instance available.

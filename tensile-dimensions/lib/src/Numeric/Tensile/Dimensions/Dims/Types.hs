@@ -52,6 +52,10 @@ compareDims :: Dims as -> Dims bs -> Ordering
 compareDims as bs = compare (fromDims as) (fromDims bs)
 {-# INLINE compareDims #-}
 
+refineDims :: forall ds. KnownDims ds => (Dims ds -> Bool) -> Maybe (Dims ds)
+refineDims p = reflectDims $ \x -> if p x then Just x else Nothing
+{-# INLINE refineDims #-}
+
 -- Starting from GHC 8.2, compiler supports specifying lists of complete
 -- pattern synonyms.
 #if __GLASGOW_HASKELL__ >= 802
