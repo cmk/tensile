@@ -28,6 +28,7 @@ module Numeric.Tensile.Dimensions.Idxs (
 
 
 import Control.Arrow (first)
+import Control.Monad ((>=>))
 import GHC.Base
 import GHC.Enum
 import GHC.TypeLits (KnownNat(..))
@@ -80,6 +81,12 @@ lowerPerm
   -> Perm (Size ds)  -- ^ Index-level permutation
 lowerPerm d p f = D.foldDimIdx d (\i p' -> p' <> f d i p) (mempty :: Perm (Size ds))
 
+> :t forM_
+forM_ :: (Foldable t, Monad m) => t a -> (a -> m b) -> m ()
+> :t foldM
+foldM
+  :: (Foldable t, Monad m) => (b -> a -> m b) -> b -> t a -> m b
+
 -}
 
 -------------------------------------------------------------------------------
@@ -92,6 +99,14 @@ forMIdxs_ (Snoc ds d) k = forMIdxs_ ds k'
   where k' is = go 0
           where go i | i >= fromDim d = return ()
                      | otherwise = k (is `snoc` Idx i) >> go (i+1)
+
+foldMIdxs :: Monad m => Dims ds -> (Idxs ds -> a -> m a) -> a -> m a
+foldMIdxs U k = k U
+foldMIdxs (Snoc ds d) k = foldMIdxs ds k'
+  where k' is = go 0
+          where go i | i >= fromDim d = return
+                     | otherwise = k (is `snoc` Idx i) >=> go (i+1)
+{-# INLINE foldMIdxs #-}
 
 foldDimsPartIdx :: Idxs ds -> Idxs ds -> (Idxs ds -> a -> a) -> a -> a
 foldDimsPartIdx s e k = _foldDimsPartIdx (unsafeReverse s) (unsafeReverse e) k
