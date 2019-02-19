@@ -93,12 +93,14 @@ foldM
 -- Indexed folds.
 -------------------------------------------------------------------------------
 
-forMIdxs_ :: Monad m => Dims ds -> (Idxs ds -> m ()) -> m ()
-forMIdxs_ U k = k U
-forMIdxs_ (Snoc ds d) k = forMIdxs_ ds k'
+-- | Fold over all dimensions keeping track of index
+foldIdxs :: Dims ds -> (Idxs ds -> a -> a) -> a -> a
+foldIdxs U k = k U
+foldIdxs (Snoc ds d) k = foldIdxs ds k'
   where k' is = go 0
-          where go i | i >= fromDim d = return ()
-                     | otherwise = k (is `snoc` Idx i) >> go (i+1)
+          where go i | i >= fromDim d = id
+                     | otherwise = go (i+1) . k (is `snoc` Idx i)
+{-# INLINE foldIdxs #-}
 
 foldMIdxs :: Monad m => Dims ds -> (Idxs ds -> a -> m a) -> a -> m a
 foldMIdxs U k = k U
@@ -107,6 +109,15 @@ foldMIdxs (Snoc ds d) k = foldMIdxs ds k'
           where go i | i >= fromDim d = return
                      | otherwise = k (is `snoc` Idx i) >=> go (i+1)
 {-# INLINE foldMIdxs #-}
+
+forMIdxs_ :: Monad m => Dims ds -> (Idxs ds -> m ()) -> m ()
+forMIdxs_ U k = k U
+forMIdxs_ (Snoc ds d) k = forMIdxs_ ds k'
+  where k' is = go 0
+          where go i | i >= fromDim d = return ()
+                     | otherwise = k (is `snoc` Idx i) >> go (i+1)
+{-# INLINE forMIdxs_ #-}
+
 
 foldDimsPartIdx :: Idxs ds -> Idxs ds -> (Idxs ds -> a -> a) -> a -> a
 foldDimsPartIdx s e k = _foldDimsPartIdx (unsafeReverse s) (unsafeReverse e) k
