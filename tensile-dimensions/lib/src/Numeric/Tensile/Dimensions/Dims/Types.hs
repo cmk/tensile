@@ -22,16 +22,19 @@ import GHC.TypeLits
 import           Data.Type.Bool
 import           Data.Type.Equality
 
-import Numeric.Tensile.Dimensions.Dim
+import Numeric.Tensile.Dimensions.Dim.Types
 import Numeric.Tensile.Dimensions.Types
 
 -- | A list of 'Dim' used to express the shape of a tensor.
 type Dims (ds :: [Nat]) = TypedList Dim ds
 
+instance Eq (Dims ds) where
+    (==) = unsafeCoerce ((==) :: [Word] -> [Word] -> Bool)
+    {-# INLINE (==) #-}
+
 instance Show (Dims ds) where
     show ds = "Dims " ++ show (fromDims ds)
-    showsPrec p ds
-      = showParen (p >= 10)
+    showsPrec p ds = showParen (p >= 10)
       $ showString "Dims " . showsPrec p (fromDims ds)
 
 -- | Similar to `natVal` from `GHC.TypeLits`, but returns `Word`.
@@ -107,28 +110,7 @@ withSomeDims :: SomeDims -> (forall ds. KnownDims ds => Dims ds -> r) -> r
 withSomeDims []     f = f U
 withSomeDims (x:xs) f = withSomeDim x $ \d ->
                           withSomeDims xs $ \ds -> f (d :* ds)
-{-
-
-TODO: Add prop tests
-> ds = dims @'[1,2,3]
-> traverseDims (pure . SomeDim) ds
-[SomeDim 1,SomeDim 2,SomeDim 3]
-
-> sd = fromJust $ someDims [1,2,3]
-> traverseDims' pure sd
-[SomeDim 1,SomeDim 2,SomeDim 3]
-
-> ds = dims @'[1,2,3]
-> mapDims SomeDim ds
-[SomeDim 1,SomeDim 2,SomeDim 3]
-
-> sd = fromJust $ someDims [1,2,3]
-> traverseDims' pure sd
-[SomeDim 1,SomeDim 2,SomeDim 3]
-
-traverse (\s -> pure $ withSomeDim s fromDim) sd == withSomeDims sd fromDims
-
--}
+{-# INLINE withSomeDims #-}
 
 -------------------------------------------------------------------------------
 -- Value Reification

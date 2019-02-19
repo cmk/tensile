@@ -34,7 +34,7 @@ import Control.Arrow           (first)
 import GHC.Base
 import GHC.Enum
 
-import Numeric.Tensile.Dimensions.Dim
+import Numeric.Tensile.Dimensions.Dim.Types
 import Numeric.Tensile.Dimensions.Types as T
 
 

@@ -1,7 +1,6 @@
 {-# LANGUAGE AllowAmbiguousTypes #-}
 module Numeric.Tensile.Dimensions.Perm where
 
-import Numeric.Tensile.Dimensions.Dim
 import Numeric.Tensile.Dimensions.Dims
 import Numeric.Tensile.Dimensions.Types
 import Unsafe.Coerce (unsafeCoerce)

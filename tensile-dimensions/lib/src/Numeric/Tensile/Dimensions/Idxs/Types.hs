@@ -24,7 +24,6 @@ module Numeric.Tensile.Dimensions.Idxs.Types where
 
 --import Numeric.KnownDims.Idxs (Idx(..), Idxs(..))
  --(Nat, TypedList(..), Dims(..), Dim(..), KnownDim(..), KnownDims(..), Permutable, Size, Rank)
-import Numeric.Tensile.Dimensions.Dim
 import Numeric.Tensile.Dimensions.Dims
 import Numeric.Tensile.Dimensions.Idx.Types
 import Numeric.Tensile.Dimensions.Types

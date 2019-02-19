@@ -33,7 +33,6 @@ import GHC.Enum
 import GHC.TypeLits (KnownNat(..))
 import Unsafe.Coerce (unsafeCoerce)
 
-import Numeric.Tensile.Dimensions.Dim
 import Numeric.Tensile.Dimensions.Dims
 import Numeric.Tensile.Dimensions.Idx.Types
 import Numeric.Tensile.Dimensions.Idxs.Types
