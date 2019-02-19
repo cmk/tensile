@@ -46,6 +46,8 @@ import qualified Math.Combinat.Permutations as P
 
 -- | Remaps the index argument to the index with the same 'Int' representation 
 -- under the permuted dimensions.
+-- TODO articulate some law here:
+-- check xs minorToMajor == check (Prelude.reverse xs) (remapIdxsTest minorToMajor)
 remapIdxs 
   :: forall (ds :: [Nat]) r
    . Perm (Rank ds) 
