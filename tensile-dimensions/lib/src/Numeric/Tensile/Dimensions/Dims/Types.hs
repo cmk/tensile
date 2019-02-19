@@ -133,6 +133,7 @@ someDims :: [Word] -> Maybe SomeDims
 someDims = traverse someDim
 {-# INLINE someDims #-}
 
+-- @'withSomeDims' ds 'fromDims' == runIdentity . traverse (\s -> Identity $ Numeric.Tensile.Dimensions.Dim.Types.withSomeDim s Numeric.Tensile.Dimensions.Dim.Types.fromDim) $ ds@ 
 withSomeDims :: SomeDims -> (forall ds. KnownDims ds => Dims ds -> r) -> r 
 withSomeDims []     f = f U
 withSomeDims (x:xs) f = withSomeDim x $ \d ->
@@ -154,7 +155,7 @@ unsafeReifyDims (x:xs) f =
   unsafeReifyDim x $ \p ->
     unsafeReifyDims xs $ \ps -> f ((reflect p) :* (reflect ps))
 
--- @'reifyDims' d == withEvidence ('withDims' d)@ 
+-- @'reifyDims' ds == withEvidence ('withDims' ds)@ 
 withDims :: Dims ds -> Evidence (KnownDims ds)
 withDims ds = reifyDims ds E
 {-# INLINE withDims #-}

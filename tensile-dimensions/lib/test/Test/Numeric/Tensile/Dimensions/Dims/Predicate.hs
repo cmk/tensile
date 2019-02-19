@@ -1,22 +1,32 @@
 module Test.Numeric.Tensile.Dimensions.Dims.Predicate where
 
+import Data.Functor.Identity
 import Numeric.Tensile.Dimensions.Dims
 import Numeric.Tensile.Dimensions.Types
 
-reifyReflect :: Dims d -> Dims d
-reifyReflect d = reifyDims d (reflectDims id)
+reifyReflect :: Dims ds -> Dims ds
+reifyReflect ds = reifyDims ds (reflectDims id)
 
-pred_reify_reflect :: forall (d :: [Nat]). Dims d -> Bool
-pred_reify_reflect d = reifyReflect d == d
+pred_reify_reflect :: Dims ds -> Bool
+pred_reify_reflect ds = reifyReflect ds == ds
 
-pred_reify_evidence :: Dims d -> Bool
-pred_reify_evidence d = 
-  reifyDims d (fromDims Dims) == withEvidence (withDims d) (fromDims Dims)
+evidenceReflect :: Dims ds -> Dims ds
+evidenceReflect ds = withEvidence (withDims ds) (reflectDims id)
+
+pred_evidence_reflect :: Dims ds -> Bool
+pred_evidence_reflect ds = evidenceReflect ds == ds 
+
+traverseSomeDims :: SomeDims -> [Word]
+traverseSomeDims = runIdentity . traverse (\s -> Identity $ withSomeDim s fromDim) 
+
+pred_traverse_somedims :: SomeDims -> Bool
+pred_traverse_somedims ds = withSomeDims ds fromDims == traverseSomeDims ds
 
 {-
 
-reifyDims d (reflectDims fromDims)
-withEvidence (withDims d) (fromDims Dims)
+ 
+pred_traverse_dims :: Dims ds -> Bool
+pred_traverse_dims ds = evidenceReflect ds == ds 
 
 TODO: Add prop tests
 > ds = dims @'[1,2,3]
@@ -35,6 +45,5 @@ TODO: Add prop tests
 > traverseDims' pure sd
 [SomeDim 1,SomeDim 2,SomeDim 3]
 
-traverse (\s -> pure $ withSomeDim s fromDim) sd == withSomeDims sd fromDims
 
 -}
