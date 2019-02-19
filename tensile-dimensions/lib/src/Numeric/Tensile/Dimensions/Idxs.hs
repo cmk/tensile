@@ -43,7 +43,8 @@ import qualified Data.Finite as F
 import qualified Math.Combinat.Permutations as P
 
 
--- | Remaps the index argument to the index with the same 'Int' representation under the permuted dimensions.
+-- | Remaps the index argument to the index with the same 'Int' representation 
+-- under the permuted dimensions.
 remapIdxs 
   :: forall (ds :: [Nat]) r
    . Perm (Rank ds) 
@@ -81,32 +82,26 @@ lowerPerm d p f = D.foldDimIdx d (\i p' -> p' <> f d i p) (mempty :: Perm (Size 
 
 -}
 
+-------------------------------------------------------------------------------
+-- Indexed folds.
+-------------------------------------------------------------------------------
 
-overDimIdx_ :: Monad m
-            => Dims ds               -- ^ Tensor dimensions
-            -> (Idxs ds -> m ())     -- ^ Function to call on each dimension
-            -> m ()
-overDimIdx_ U k = k U
-overDimIdx_ (Snoc ds d) k = overDimIdx_ ds k'
-  where
-    dw = fromDim d
-    k' is = go 0
-      where
-        go i
-          | i >= dw = return ()
-          | otherwise = k (is `snoc` Idx i) >> go (i+1)
+forMIdxs_ :: Monad m => Dims ds -> (Idxs ds -> m ()) -> m ()
+forMIdxs_ U k = k U
+forMIdxs_ (Snoc ds d) k = forMIdxs_ ds k'
+  where k' is = go 0
+          where go i | i >= fromDim d = return ()
+                     | otherwise = k (is `snoc` Idx i) >> go (i+1)
+
+foldDimsPartIdx :: Idxs ds -> Idxs ds -> (Idxs ds -> a -> a) -> a -> a
+foldDimsPartIdx s e k = _foldDimsPartIdx (unsafeReverse s) (unsafeReverse e) k
 
 -- TODO reimplement bounds ord check 
-_foldDimPartIdx :: Idxs ds -- ^ Initial indices
-               -> Idxs ds -- ^ Final indices
-               -> (Idxs ds -> a -> a)
-                          -- ^ Function to call on each dimension
-               -> a       -- ^ initial value
-               -> a
-_foldDimPartIdx U U k = k U
-_foldDimPartIdx (start :* starts) (end :* ends) k
-  | iEnd >= iStart = _foldDimPartIdx starts ends (loop iStart)
-  | otherwise      = _foldDimPartIdx starts ends (looi iStart)
+_foldDimsPartIdx :: Idxs ds -> Idxs ds -> (Idxs ds -> a -> a) -> a -> a
+_foldDimsPartIdx U U k = k U
+_foldDimsPartIdx (start :* starts) (end :* ends) k
+  | iEnd >= iStart = _foldDimsPartIdx starts ends (loop iStart)
+  | otherwise      = _foldDimsPartIdx starts ends (looi iStart)
   where
     Idx iStart = start
     Idx iEnd   = end
@@ -117,7 +112,6 @@ _foldDimPartIdx (start :* starts) (end :* ends) k
       | i < iEnd = id
       | otherwise = k (Idx i :* is) . looi (i-1) is
 
-foldDimPartIdx s e k = foldDimPartIdx (unsafeReverse s) (unsafeReverse e) k
 {-
 -- TODO convert to row major
 overDimPartIdx_ :: Monad m

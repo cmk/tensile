@@ -242,12 +242,12 @@ fill :: forall d e. Elt e => Dims d -> (Idxs d -> e) -> Tensor d e
 fill d f = Tensor $ S.create $ do
   mv <- M.new $ fromIntegral $ product $ fromDims d
   let act ix = M.write mv (minorToMajor d ix) $ f ix
-  overDimIdx_ d act
+  forMIdxs_ d act
   return mv
 
 -- TODO unsafe consider using sized vectors internally
 modifyIdxs :: forall d e. Storable e => Dims d -> S.Vector e -> (forall s. Idxs d -> M.MVector s e -> ST s ()) -> S.Vector e
-modifyIdxs d v f = S.modify (\mv -> overDimIdx_ d (\i -> f i mv)) v
+modifyIdxs d v f = S.modify (\mv -> forMIdxs_ d (\i -> f i mv)) v
 
 {-
 
@@ -297,7 +297,7 @@ pack0 v = Tensor res
                 off = fromIntegral $ i' * size
                 v' = unTensor t
                 act ix = M.write mv (off + fromEnum ix) $ v' S.! (fromEnum ix) -- could use a tensor op instead here
-            in overDimIdx_ d act
+            in forMIdxs_ d act
           return mv
 
 

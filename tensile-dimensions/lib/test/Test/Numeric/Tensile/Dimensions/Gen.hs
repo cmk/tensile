@@ -7,6 +7,8 @@ import Numeric.Tensile.Dimensions
 import qualified Hedgehog.Gen as G
 import qualified Hedgehog.Range as R
 
+-- We guarantee that the arg > 0.
+unsafeSomeDim :: Word -> SomeDim
 unsafeSomeDim = fromJust . someDim
 
 gen_dim :: MonadGen m => m SomeDim

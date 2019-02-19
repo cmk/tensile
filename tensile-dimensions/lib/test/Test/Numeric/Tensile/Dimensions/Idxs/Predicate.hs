@@ -42,8 +42,8 @@ res == Just [(11,13),(12,16),(15,17)]
 
 reify d233 $ \p -> totalDim' $ reflect p
 
-reifySomeDims (reverse [2,3,3]) $ \p -> overDimIdx_ (reflect p) print
-> reifySomeDims (reverse [2,3,3]) $ \p -> overDimIdx_ (reflect p) print
+reifySomeDims (reverse [2,3,3]) $ \p -> forMIdxs_ (reflect p) print
+> reifySomeDims (reverse [2,3,3]) $ \p -> forMIdxs_ (reflect p) print
 Idxs [1,1,1]
 Idxs [2,1,1]
 Idxs [3,1,1]
@@ -63,7 +63,7 @@ Idxs [1,3,2]
 Idxs [2,3,2]
 Idxs [3,3,2]
 
-> reifySomeDims (reverse [2,3,3]) $ \p -> Numeric.Tensile.Operations.Linear.Internal.overDimIdx_ (reflect p) print
+> reifySomeDims (reverse [2,3,3]) $ \p -> Numeric.Tensile.Operations.Linear.Internal.forMIdxs_ (reflect p) print
 Idxs [1,1,1]
 Idxs [1,1,2]
 Idxs [1,2,1]
@@ -91,7 +91,7 @@ re = reversal
 a :: Idxs '[2, 3, 3]
 a = fromJust $ idxsFromWords [2, 1, 3]  
 
-> overDimIdx_ (dims @'[2,3,3]) print
+> forMIdxs_ (dims @'[2,3,3]) print
 Idxs [1,1,1]
 Idxs [2,1,1]
 Idxs [1,2,1]
@@ -111,7 +111,7 @@ Idxs [2,2,3]
 Idxs [1,3,3]
 Idxs [2,3,3]
 
-> overDimIdx_ (dims @'[2,3,3]) (\i -> remapIdxs re (dims @'[2,3,3]) i print)
+> forMIdxs_ (dims @'[2,3,3]) (\i -> remapIdxs re (dims @'[2,3,3]) i print)
 Idxs [1,1,1]
 Idxs [2,1,1]
 Idxs [3,1,1]
@@ -131,8 +131,8 @@ Idxs [1,3,2]
 Idxs [2,3,2]
 Idxs [3,3,2]
 
-overDimIdx_ f print
-overDimIdx_ f (\i -> remapIdxs re f i (\_ j -> print j))
+forMIdxs_ f print
+forMIdxs_ f (\i -> remapIdxs re f i (\_ j -> print j))
 
 
 
