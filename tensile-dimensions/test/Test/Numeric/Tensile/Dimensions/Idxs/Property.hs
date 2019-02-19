@@ -13,7 +13,7 @@ dims_large :: Range Word
 dims_large = R.constant 0 100
 
 dims_small :: Range Word
-dims_small = R.constant 0 3
+dims_small = R.constant 0 5
 
 prop_max_diff_idxs :: Property
 prop_max_diff_idxs = property $ 
