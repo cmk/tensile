@@ -9,20 +9,12 @@ pred_max_diff_idxs ds =
 pred_sum_idxs :: forall ds. Dims ds -> Bool
 pred_sum_idxs ds = foldIdxs ds (\_ a -> a + 1) 0 == (product . fromDims $ ds)
 
-remapIdxsTest
-  :: forall ds r
-  . (forall ds'. Dims ds' -> Idxs ds' -> r)
-  -> Dims ds -> Idxs ds -> r
-remapIdxsTest f ds ix = 
-  unsafeReifyDims (Prelude.reverse $ fromDims ds) $ \ds' -> 
-    f ds' (toIdxs ds' . fromIdxs ds $ ix)
+pred_transpose_idxs :: forall ds. Dims ds -> Bool
+pred_transpose_idxs ds = check ds minorToMajor == check (unsafeReverse ds) (transposeIdxs minorToMajor)
+  where check :: Dims ds -> (forall ds i. Integral i => Dims ds -> Idxs ds -> i) -> [Word]
+        check ds f = foldIdxs ds (\i xs -> f ds i : xs) []
 
-pred_remap_idxs :: forall ds. Dims ds -> Bool
-pred_remap_idxs ds = check xs minorToMajor == check (Prelude.reverse xs) (remapIdxsTest minorToMajor)
-  where xs = fromDims ds
 
-        check :: [Word] -> (forall ds i. Integral i => Dims ds -> Idxs ds -> i) -> [Word]
-        check ds f = unsafeReifyDims ds $ \p -> foldIdxs (reflect p) (\i xs -> f (reflect p) i : xs) []
 
 {-
  -

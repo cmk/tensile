@@ -23,9 +23,9 @@ prop_sum_idxs :: Property
 prop_sum_idxs = property $ 
   assert . (\d -> withSomeDims d pred_sum_idxs) =<< forAll (gen_dims_small dims_small)
 
-prop_remap_idxs :: Property
-prop_remap_idxs = property $ 
-  assert . (\d -> withSomeDims d pred_remap_idxs) =<< forAll (gen_dims_small dims_small)
+prop_transpose_idxs :: Property
+prop_transpose_idxs = property $ 
+  assert . (\d -> withSomeDims d pred_transpose_idxs) =<< forAll (gen_dims_small dims_small)
 
 tests :: IO Bool
 tests = checkParallel $$(discover)

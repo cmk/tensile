@@ -46,10 +46,9 @@ import qualified Math.Combinat.Permutations as P
 
 -- | Remaps the index argument to the index with the same 'Int' representation 
 -- under the permuted dimensions.
--- TODO articulate some law here:
--- check xs minorToMajor == check (Prelude.reverse xs) (remapIdxsTest minorToMajor)
+-- @'foldIdxs' ds 'minorToMajor' [] == 'foldIdxs' ('unsafeReverse' ds) ('remapIdxs' 'reversal' 'minorToMajor') []@
 remapIdxs 
-  :: forall (ds :: [Nat]) r
+  :: forall ds r
    . Perm (Rank ds) 
   -> Dims ds 
   -> Idxs ds 
@@ -57,6 +56,14 @@ remapIdxs
   -> r
 remapIdxs (Perm p) ds ix f = 
   unsafeReifyDims (P.permuteList p $ fromDims ds) $ \ds' -> 
+    f ds' (toIdxs ds' . fromIdxs ds $ ix)
+
+transposeIdxs 
+  :: forall ds r
+  . (forall ds'. Dims ds' -> Idxs ds' -> r)
+  -> Dims ds -> Idxs ds -> r
+transposeIdxs f ds ix = 
+  unsafeReifyDims (Prelude.reverse $ fromDims ds) $ \ds' -> 
     f ds' (toIdxs ds' . fromIdxs ds $ ix)
 
 {-
