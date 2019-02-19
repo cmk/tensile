@@ -9,11 +9,14 @@ reifyReflect d = reifyDims d (reflectDims id)
 pred_reify_reflect :: forall (d :: [Nat]). Dims d -> Bool
 pred_reify_reflect d = reifyReflect d == d
 
+pred_reify_evidence :: Dims d -> Bool
+pred_reify_evidence d = 
+  reifyDims d (fromDims Dims) == withEvidence (withDims d) (fromDims Dims)
+
 {-
 
-pred_reify_evidence :: forall (d :: [Nat]). Dims d -> Bool
-pred_reify_evidence d = reifyDims d == withEvidence (withDims d)
-
+reifyDims d (reflectDims fromDims)
+withEvidence (withDims d) (fromDims Dims)
 
 TODO: Add prop tests
 > ds = dims @'[1,2,3]

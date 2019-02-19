@@ -10,6 +10,33 @@
 {-# LANGUAGE PatternSynonyms        #-}
 {-# LANGUAGE UndecidableInstances   #-} 
 {-# LANGUAGE ViewPatterns           #-}
+
+{-# OPTIONS_GHC -fno-warn-orphans      #-}
+{-# LANGUAGE AllowAmbiguousTypes       #-}
+{-# LANGUAGE CPP                       #-}
+{-# LANGUAGE ConstraintKinds           #-}
+{-# LANGUAGE DataKinds                 #-}
+{-# LANGUAGE ExistentialQuantification #-}
+{-# LANGUAGE ExplicitNamespaces        #-}
+{-# LANGUAGE FlexibleContexts          #-}
+{-# LANGUAGE FlexibleInstances         #-}
+{-# LANGUAGE GADTs                     #-}
+{-# LANGUAGE KindSignatures            #-}
+{-# LANGUAGE MagicHash                 #-}
+{-# LANGUAGE MultiParamTypeClasses     #-}
+{-# LANGUAGE PatternSynonyms           #-}
+{-# LANGUAGE PolyKinds                 #-}
+{-# LANGUAGE Rank2Types                #-}
+{-# LANGUAGE RoleAnnotations           #-}
+{-# LANGUAGE ScopedTypeVariables       #-}
+{-# LANGUAGE TypeApplications          #-}
+{-# LANGUAGE TypeFamilies              #-}
+{-# LANGUAGE TypeFamilyDependencies    #-}
+{-# LANGUAGE TypeInType                #-}
+{-# LANGUAGE TypeOperators             #-}
+{-# LANGUAGE UndecidableInstances      #-}
+{-# LANGUAGE UndecidableSuperClasses   #-}
+{-# LANGUAGE ViewPatterns              #-}
 module Numeric.Tensile.Dimensions.Dims.Types where
 
 import Data.Functor.Identity
@@ -165,7 +192,7 @@ instance KnownDims ('[] :: [Nat]) where
     dims = U
     {-# INLINE dims #-}
 
-instance (KnownDim d, KnownDims ds) => KnownDims (d :+ ds) where
+instance (KnownDim d, KnownDims ds) => KnownDims (d :+ ds :: [Nat]) where
     dims = dim :* dims
     {-# INLINE dims #-}
 
