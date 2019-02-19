@@ -2,6 +2,7 @@
 {-# LANGUAGE CPP                    #-}
 {-# LANGUAGE FlexibleInstances      #-}
 {-# LANGUAGE FunctionalDependencies #-}
+{-# LANGUAGE GADTs                  #-}
 {-# LANGUAGE InstanceSigs           #-}
 {-# LANGUAGE LambdaCase             #-}
 {-# LANGUAGE MagicHash              #-}
@@ -11,18 +12,23 @@
 {-# LANGUAGE ViewPatterns           #-}
 module Numeric.Tensile.Dimensions.Dim.Types (
   Dim(),
-  pattern Dim,
+  SomeDim(..),
   KnownDim(..),
-  fromDim',
-  withDim,
-  compareDim',
-  sameDim',
-  addDim',
-  subDim',
-  mulDim',
-  expDim',
+  fromDim,
   reifyDim,
-  unsafeReifyDim
+  reflectDim,
+  reflectDim2,
+  unsafeReifyDim,
+  compareDim,
+  sameDim,
+  someDim,
+  withDim,
+  withSomeDim,
+  addDim,
+  subDim,
+  mulDim,
+  expDim,
+  pattern Dim
 ) where
 
 import Data.Proxy
@@ -36,7 +42,6 @@ import Unsafe.Coerce (unsafeCoerce)
 
 import Numeric.Tensile.Dimensions.Types (Reflects(..), type (<))
 
-
 -- | Singleton type to store type-level dimension value.
 -- Dimensions are restricted to strictly positive naturals.
 newtype Dim (d :: Nat) = DimSing Word deriving (Eq, Ord)
@@ -48,14 +53,38 @@ instance Show (Dim d) where
       $ showString "Dim " . showsPrec p w
 
 -- | Similar to `natVal` from `GHC.TypeLits`, but returns `Word`.
-fromDim' :: Dim d -> Word
-fromDim' (DimSing w) = w
-{-# INLINE fromDim' #-}
+fromDim :: Dim d -> Word
+fromDim (DimSing w) = w
+{-# INLINE fromDim #-}
 
--- @'reifyDim' d == withEvidence ('withDim' d)@ 
-withDim :: Dim d -> Evidence (KnownDim d)
-withDim d = reifyDim d E
-{-# INLINE withDim #-}
+-- | Obtain evidence that both values were instantiated with the same 'Nat's.
+sameDim :: forall (x :: Nat) (y :: Nat)
+         . Dim x -> Dim y -> Maybe (Evidence (x ~ y))
+sameDim (DimSing a) (DimSing b)
+  | a == b    = Just (unsafeCoerce (E @(x ~ x)))
+  | otherwise = Nothing
+{-# INLINE sameDim #-}
+
+-- | Ordering of dimension values.
+compareDim :: Dim a -> Dim b -> Ordering
+compareDim (DimSing a) (DimSing b) = compare a b
+{-# INLINE compareDim #-}
+
+addDim :: Dim a -> Dim b -> Dim (a + b)
+addDim (DimSing a) (DimSing b) = unsafeCoerce (a + b)
+{-# INLINE addDim #-}
+
+subDim :: a < b => Dim a -> Dim b -> Dim (a - b)
+subDim (DimSing a) (DimSing b) = unsafeCoerce (a - b)
+{-# INLINE subDim #-}
+
+mulDim :: Dim a -> Dim b -> Dim (a * b)
+mulDim (DimSing a) (DimSing b) = unsafeCoerce (a * b)
+{-# INLINE mulDim #-}
+
+expDim :: Dim a -> Dim b -> Dim (a ^ b)
+expDim (DimSing a) (DimSing b) = unsafeCoerce (a ^ b)
+{-# INLINE expDim #-}
 
 --  Match against this pattern to bring a `KnownDim` instance into scope.
 pattern Dim :: forall d. KnownDim d => Dim d
@@ -69,42 +98,29 @@ pattern Dim <- (withDim -> E)
 #endif
 
 -------------------------------------------------------------------------------
--- Arithmetic
+-- Existential 'Dim' type.
 -------------------------------------------------------------------------------
 
--- | We either get evidence that this function
---   was instantiated with the same type-level numbers, or Nothing.
---
---   Note, this function works on @Nat@-indexed dimensions only,
---   because @Dim (XN x)@ does not have runtime evidence to infer @x@
---   and `KnownDim x` does not imply `KnownDim (XN x)`.
-sameDim' :: forall (x :: Nat) (y :: Nat)
-         . Dim x -> Dim y -> Maybe (Evidence (x ~ y))
-sameDim' (DimSing a) (DimSing b)
-  | a == b    = Just (unsafeCoerce (E @(x ~ x)))
-  | otherwise = Nothing
-{-# INLINE sameDim' #-}
+data SomeDim where SomeDim :: KnownDim d => !(Dim d) -> SomeDim
 
--- | Ordering of dimension values.
-compareDim' :: Dim a -> Dim b -> Ordering
-compareDim' (DimSing a) (DimSing b) = compare a b
-{-# INLINE compareDim' #-}
+instance Eq SomeDim where
+    SomeDim a == SomeDim b = fromDim a == fromDim b
 
-addDim' :: Dim a -> Dim b -> Dim (a + b)
-addDim' (DimSing a) (DimSing b) = unsafeCoerce (a + b)
-{-# INLINE addDim' #-}
+instance Ord SomeDim where
+    compare (SomeDim a) (SomeDim b) = compareDim a b
 
-subDim' :: a < b => Dim a -> Dim b -> Dim (a - b)
-subDim' (DimSing a) (DimSing b) = unsafeCoerce (a - b)
-{-# INLINE subDim' #-}
+instance Show SomeDim where
+    show (SomeDim d) = "SomeDim " ++ show (fromDim d)
+    showsPrec p (SomeDim d)
+      = showParen (p >= 10)
+      $ showString "SomeDim " . showsPrec p (fromDim d)
 
-mulDim' :: Dim a -> Dim b -> Dim (a * b)
-mulDim' (DimSing a) (DimSing b) = unsafeCoerce (a * b)
-{-# INLINE mulDim' #-}
+someDim :: Word -> Maybe SomeDim
+someDim w = if w == 0 then Nothing else Just sd
+  where sd = unsafeReifyDim w $ \p -> SomeDim (reflect p)
 
-expDim' :: Dim a -> Dim b -> Dim (a ^ b)
-expDim' (DimSing a) (DimSing b) = unsafeCoerce (a ^ b)
-{-# INLINE expDim' #-}
+withSomeDim :: SomeDim -> (forall d. KnownDim d => Dim d -> r) -> r
+withSomeDim (SomeDim d) f = f d
 
 -------------------------------------------------------------------------------
 -- Value Reification
@@ -120,9 +136,21 @@ unsafeReifyDim w k = unsafeCoerce (WithSomeDim k :: WithSomeDim r) w Proxy
 
 newtype WithSomeDim r = WithSomeDim (forall d. KnownDim d => Proxy d -> r)
 
+-- @'reifyDim' d == withEvidence ('withDim' d)@ 
+withDim :: Dim d -> Evidence (KnownDim d)
+withDim d = reifyDim d E
+{-# INLINE withDim #-}
+
 -------------------------------------------------------------------------------
 -- Type Reflection
 -------------------------------------------------------------------------------
+
+-- @d == 'reifyDim' d ('reflectDim' id)@ 
+reflectDim :: forall d r. KnownDim d => (Dim d -> r) -> r
+reflectDim f = f Dim
+
+reflectDim2 :: forall a b r. (KnownDim a, KnownDim b) => (Dim a -> Dim b -> r) -> r
+reflectDim2 f = f Dim Dim
 
 -- TODO dont export dim itself?
 -- | This class provides the `Dim` associated with a type-level natural,

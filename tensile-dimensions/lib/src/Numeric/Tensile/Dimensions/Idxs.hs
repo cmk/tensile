@@ -53,11 +53,11 @@ remapIdxs
   -> (forall (ds' :: [Nat]). Dims ds' -> Idxs ds' -> r) 
   -> r
 remapIdxs (Perm p) ds ix f = 
-  unsafeReifyDims (P.permuteList p $ fromDims' ds) $ \ds' -> 
+  unsafeReifyDims (P.permuteList p $ fromDims ds) $ \ds' -> 
     f ds' (toIdxs ds' . fromIdxs ds $ ix)
 
 {-
-  unsafeReifyDims' (P.permuteList p $ fromDims' ds) $ \ds' -> 
+  unsafeReifyDims' (P.permuteList p $ fromDims ds) $ \ds' -> 
     f (reflect ds') (toIdxs (reflect ds') . fromIdxs ds $ ix)
 
 remapIdxs' 
@@ -90,7 +90,7 @@ overDimIdx_ :: Monad m
 overDimIdx_ U k = k U
 overDimIdx_ (Snoc ds d) k = overDimIdx_ ds k'
   where
-    dw = fromDim' d
+    dw = fromDim d
     k' is = go 0
       where
         go i
@@ -156,7 +156,7 @@ overDim_ :: Monad m
 overDim_ U k offset _step = k U offset
 overDim_ (Snoc ds d) k offset step = overDim_ ds k' offset step -- (di * step)
   where
-    dw = fromDim' d
+    dw = fromDim d
     -- di = fromIntegral dw
     k' is = go 0
       where

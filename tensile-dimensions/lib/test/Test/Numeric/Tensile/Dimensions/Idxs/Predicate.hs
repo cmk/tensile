@@ -3,7 +3,7 @@ module Test.Numeric.Tensile.Dimensions.Idxs.Predicate where
 import Numeric.Tensile.Dimensions
 
 pred_max_diffIdx :: forall (d :: [Nat]). Dims d -> Bool
-pred_max_diffIdx d = (fromIntegral $ 1 + diffIdxs d (maxBound' d) (minBound' d)) == (product . fromDims' $ d)
+pred_max_diffIdx d = (fromIntegral $ 1 + diffIdxs d (maxBound' d) (minBound' d)) == (product . fromDims $ d)
 
 
 {-

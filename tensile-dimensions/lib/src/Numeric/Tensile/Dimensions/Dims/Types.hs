@@ -29,33 +29,28 @@ import Numeric.Tensile.Dimensions.Types
 type Dims (ds :: [Nat]) = TypedList Dim ds
 
 instance Show (Dims ds) where
-    show ds = "Dims " ++ show (fromDims' ds)
+    show ds = "Dims " ++ show (fromDims ds)
     showsPrec p ds
       = showParen (p >= 10)
-      $ showString "Dims " . showsPrec p (fromDims' ds)
+      $ showString "Dims " . showsPrec p (fromDims ds)
 
 -- | Similar to `natVal` from `GHC.TypeLits`, but returns `Word`.
-fromDims' :: Dims ds -> [Word]
-fromDims' ds = elimDims ds fromDim' --Numeric.Tensile.Dimensions.Types.map fromDim'
-{-# INLINE fromDims' #-}
+fromDims :: Dims ds -> [Word]
+fromDims ds = elimDims ds fromDim --Numeric.Tensile.Dimensions.Types.map fromDim
+{-# INLINE fromDims #-}
 
 elimDims :: Dims ds -> (forall d. Dim d -> r) -> [r]
 elimDims U _ = []
 elimDims (d :* ds) f = f d : elimDims ds f
 
--- @'reifyDims' d == withEvidence ('withDims' d)@ 
-withDims :: Dims ds -> Evidence (KnownDims ds)
-withDims ds = reifyDims ds E
-{-# INLINE withDims #-}
-
 -- | Product of all dimension sizes.
-size' :: Dims ds -> Word
-size' = product . fromDims'
-{-# INLINE size' #-}
+size :: Dims ds -> Word
+size = product . fromDims
+{-# INLINE size #-}
 
-compareDims' :: Dims as -> Dims bs -> Ordering
-compareDims' as bs = compare (fromDims' as) (fromDims' bs)
-{-# INLINE compareDims' #-}
+compareDims :: Dims as -> Dims bs -> Ordering
+compareDims as bs = compare (fromDims as) (fromDims bs)
+{-# INLINE compareDims #-}
 
 -- Starting from GHC 8.2, compiler supports specifying lists of complete
 -- pattern synonyms.
@@ -93,6 +88,44 @@ patKDims _ = impossible
 #endif
 {-# INLINE patKDims #-}
 -}
+
+-------------------------------------------------------------------------------
+-- Existential 'Dims' type.
+-------------------------------------------------------------------------------
+
+type SomeDims = [SomeDim]
+
+someDims :: [Word] -> Maybe SomeDims
+someDims = traverse someDim
+{-# INLINE someDims #-}
+
+withSomeDims :: SomeDims -> (forall ds. KnownDims ds => Dims ds -> r) -> r 
+withSomeDims []     f = f U
+withSomeDims (x:xs) f = withSomeDim x $ \d ->
+                          withSomeDims xs $ \ds -> f (d :* ds)
+{-
+
+TODO: Add prop tests
+> ds = dims @'[1,2,3]
+> traverseDims (pure . SomeDim) ds
+[SomeDim 1,SomeDim 2,SomeDim 3]
+
+> sd = fromJust $ someDims [1,2,3]
+> traverseDims' pure sd
+[SomeDim 1,SomeDim 2,SomeDim 3]
+
+> ds = dims @'[1,2,3]
+> mapDims SomeDim ds
+[SomeDim 1,SomeDim 2,SomeDim 3]
+
+> sd = fromJust $ someDims [1,2,3]
+> traverseDims' pure sd
+[SomeDim 1,SomeDim 2,SomeDim 3]
+
+traverse (\s -> pure $ withSomeDim s fromDim) sd == withSomeDims sd fromDims
+
+-}
+
 -------------------------------------------------------------------------------
 -- Value Reification
 -------------------------------------------------------------------------------
@@ -108,9 +141,23 @@ unsafeReifyDims (x:xs) f =
   unsafeReifyDim x $ \p ->
     unsafeReifyDims xs $ \ps -> f ((reflect p) :* (reflect ps))
 
+-- @'reifyDims' d == withEvidence ('withDims' d)@ 
+withDims :: Dims ds -> Evidence (KnownDims ds)
+withDims ds = reifyDims ds E
+{-# INLINE withDims #-}
+
 -------------------------------------------------------------------------------
 -- Type Reflection 
 -------------------------------------------------------------------------------
+
+-- | A convenience function useful when we need to name a dimensional value multiple times.
+-- @d == 'reifyDims' d ('reflectDims' id)@ 
+reflectDims :: forall ds r. KnownDims ds => (Dims ds -> r) -> r
+reflectDims f = f Dims 
+
+reflectDims2 
+  :: forall as bs r. (KnownDims as, KnownDims bs) => (Dims as -> Dims bs -> r) -> r
+reflectDims2 f = f Dims Dims 
 
 -- | Put runtime evidence of `Dims` value inside function constraints.
 --   Similar to `KnownDim` or `KnownNat`, but for lists of numbers.
@@ -138,5 +185,3 @@ instance (KnownDim d, KnownDims ds) => KnownDims (d :+ ds) where
 
 instance KnownDims ds => Reflects ds (Dims ds) where
     reflect _ = dims
-
-

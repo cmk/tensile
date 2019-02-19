@@ -26,35 +26,6 @@ import Numeric.Tensile.Dimensions.Dim
 import Numeric.Tensile.Dimensions.Dims.Types
 import Numeric.Tensile.Dimensions.Types
 
--- | A convenience function useful when we need to name a dimensional value multiple times.
-reflectDims :: forall ds r. KnownDims ds => (Dims ds -> r) -> r
-reflectDims f = f Dims 
-{-
--- todo : prove 
-reifyDims d == withEvidence (withDims d) 
-
-reifyReflect :: Dims ds -> Dims ds
-reifyReflect d = reifyDims d (reflectDims id)
--}
-
-reflectDims2 
-  :: forall as bs r. (KnownDims as, KnownDims bs) => (Dims as -> Dims bs -> r) -> r
-reflectDims2 f = f Dims Dims 
-
--- | Similar to `natVal` from `GHC.TypeLits`, but returns `Word`.
-fromDims :: forall ds. KnownDims ds => [Word]
-fromDims = reflectDims @ds fromDims'
-{-# INLINE fromDims #-}
-
--- | Product of all dimension sizes.
-size :: forall ds . KnownDims ds => Word
-size = reflectDims @ds size'
-{-# INLINE size #-}
-
-compareDims 
-  :: forall as bs. (KnownDims as, KnownDims bs) => Dims as -> Dims bs -> Ordering
-compareDims as bs = reflectDims2 @as @bs compareDims'
-{-# INLINE compareDims #-}
 
 -- | A convenience function that names a dimensional value satisfying a certain
 -- property.  If the value does not satisfy the property, then the function
@@ -62,43 +33,6 @@ compareDims as bs = reflectDims2 @as @bs compareDims'
 
 refineDims :: forall ds. KnownDims ds => (Dims ds -> Bool) -> Maybe (Dims ds)
 refineDims p = reflectDims $ \x -> if p x then Just x else Nothing
-
--------------------------------------------------------------------------------
--- Existential 'Dims' type.
--------------------------------------------------------------------------------
-
-type SomeDims = [SomeDim]
-
-someDims :: [Word] -> Maybe SomeDims
-someDims = traverse someDim
-{-# INLINE someDims #-}
-
-withSomeDims :: SomeDims -> (forall ds. KnownDims ds => Dims ds -> r) -> r 
-withSomeDims []     f = f U
-withSomeDims (x:xs) f = withSomeDim x $ \d ->
-                          withSomeDims xs $ \ds -> f (d :* ds)
-{-
-
-TODO: Add prop tests
-> ds = dims @'[1,2,3]
-> traverseDims (pure . SomeDim) ds
-[SomeDim 1,SomeDim 2,SomeDim 3]
-
-> sd = fromJust $ someDims [1,2,3]
-> traverseDims' pure sd
-[SomeDim 1,SomeDim 2,SomeDim 3]
-
-> ds = dims @'[1,2,3]
-> mapDims SomeDim ds
-[SomeDim 1,SomeDim 2,SomeDim 3]
-
-> sd = fromJust $ someDims [1,2,3]
-> traverseDims' pure sd
-[SomeDim 1,SomeDim 2,SomeDim 3]
-
-traverse (\s -> pure $ withSomeDim s fromDim') sd == withSomeDims sd fromDims'
-
--}
 
 -- | Utility function for traversing over all of the @'Dim' d@s in
 -- a 'Dims', each with the corresponding 'KnownDim' instance available.
@@ -141,7 +75,7 @@ mapDims' f = runIdentity . traverseDims' (Identity . f)
 --withSomeDims d f = case someDims d of SomeDims d' -> f d'
 
 --foo :: KnownDims '[1,2] => [Word]
---foo = withDims fromDims'
+--foo = withDims fromDims
 
 {-
 -- | The "eliminator" for 'Dims'.  You can think of this as
