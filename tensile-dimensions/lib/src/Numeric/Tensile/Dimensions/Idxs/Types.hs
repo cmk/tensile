@@ -20,13 +20,12 @@
 {-# OPTIONS_GHC -fno-warn-incomplete-patterns #-}
 #endif
 
-module Numeric.Tensile.Dimensions.Idxs.Class where
+module Numeric.Tensile.Dimensions.Idxs.Types where
 
 --import Numeric.KnownDims.Idxs (Idx(..), Idxs(..))
  --(Nat, TypedList(..), Dims(..), Dim(..), KnownDim(..), KnownDims(..), Permutable, Size, Rank)
-import Numeric.Tensile.Dimensions.Dim
 import Numeric.Tensile.Dimensions.Dims
-import Numeric.Tensile.Dimensions.Idx.Class
+import Numeric.Tensile.Dimensions.Idx.Types
 import Numeric.Tensile.Dimensions.Types
 
 
@@ -51,7 +50,7 @@ listIdxs = unsafeCoerce
 {-# INLINE listIdxs #-}
 
 idxsFromWords :: forall ds . KnownDims ds => [Word] -> Maybe (Idxs ds)
-idxsFromWords = unsafeCoerce . go (fromDims' (dims @ds))
+idxsFromWords = unsafeCoerce . go (fromDims (dims @ds))
   where
     go [] [] = Just []
     go (d : ds) (i : is) | i >= 0 && i < d = (i:) <$> go ds is
@@ -62,7 +61,7 @@ majorToMinor dims = fromIntegral . go 1 dims
   where
     go :: forall ns . Word -> Dims ns -> Idxs ns -> Word
     go _ U U                     = 0
-    go m (d :* ds) (Idx i :* is) = m * i + go (m * fromDim' d) ds is
+    go m (d :* ds) (Idx i :* is) = m * i + go (m * fromDim d) ds is
 
 minorToMajor :: forall ds i. Integral i => Dims ds -> Idxs ds -> i
 minorToMajor d i = majorToMinor (unsafeReverse d) (unsafeReverse i)
@@ -75,8 +74,8 @@ toIdxs dsd i = go dsd $ fromIntegral i
   where
     go :: forall ns . Dims ns -> Word -> Idxs ns
     go U 0 = U
-    go U _ = error ("Idxs ") -- ++ show (fromDims' dsd)) TODO: fix
-    go (Snoc ds d) off = case divMod off (fromDim' d) of
+    go U _ = error ("Idxs ") -- ++ show (fromDims dsd)) TODO: fix
+    go (Snoc ds d) off = case divMod off (fromDim d) of
       (off', j) -> go ds off' `snoc` Idx j
 
 instance Eq (Idxs ds) where
@@ -132,7 +131,7 @@ instance KnownDim n => Num (Idxs '[n]) where
 
 maxBound' :: forall ds . Dims ds -> Idxs ds
 maxBound' U         = U
-maxBound' (d :* ds) = Idx (fromDim' d - 1) :* maxBound' ds
+maxBound' (d :* ds) = Idx (fromDim d - 1) :* maxBound' ds
 
 minBound' :: forall ds . Dims ds -> Idxs ds
 minBound' U         = U
@@ -149,18 +148,18 @@ instance KnownDims ds => Enum (Idxs ds) where
     succ = go (dims @ds)
       where
         go :: forall ns . Dims ns -> Idxs ns -> Idxs ns
-        go U U = succError $ "Idxs " -- ++ show (fromDims' $ dims @ds) TODO fix
+        go U U = succError $ "Idxs " -- ++ show (fromDims $ dims @ds) TODO fix
         go (d :* ds) (Idx i :* is)
-          | i == fromDim' d = Idx 0 :* go ds is
+          | i == fromDim d = Idx 0 :* go ds is
           | otherwise     = Idx (i+1) :* is
     {-# INLINE succ #-}
 
     pred = go (dims @ds)
       where
         go :: forall ns . Dims ns -> Idxs ns -> Idxs ns
-        go U U = predError $ "Idxs " -- ++ show (fromDims' $ dims @ds) TODO fix
+        go U U = predError $ "Idxs " -- ++ show (fromDims $ dims @ds) TODO fix
         go (d :* ds) (Idx i :* is)
-          | i == 0    = Idx (fromDim' d) :* go ds is
+          | i == 0    = Idx (fromDim d) :* go ds is
           | otherwise = Idx (i-1) :* is
     {-# INLINE pred #-}
 
@@ -169,8 +168,8 @@ instance KnownDims ds => Enum (Idxs ds) where
         dsd = dims @ds
         go :: forall ns . Dims ns -> Word -> Idxs ns
         go U 0 = U
-        go U _ = error ("Idxs ") -- ++ show (fromDims' dsd)) TODO fix
-        go (Snoc ds d) off = case divMod off (fromDim' d) of
+        go U _ = error ("Idxs ") -- ++ show (fromDims dsd)) TODO fix
+        go (Snoc ds d) off = case divMod off (fromDim d) of
           (off', j) -> go ds off' `snoc` Idx j
     {-# INLINE toEnum #-}
 
@@ -221,7 +220,7 @@ _diffIdxs :: Dims ds -> Idxs ds -> Idxs ds -> Int
 _diffIdxs U U U = 0
 _diffIdxs (d :* ds) (Idx i1 :* is1) (Idx i2 :* is2)
   = fromIntegral i1 - fromIntegral i2
-  + fromIntegral (fromDim' d) * _diffIdxs ds is1 is2
+  + fromIntegral (fromDim d) * _diffIdxs ds is1 is2
 
 -- | Step dimension index by an Int offset
 stepIdxs :: Dims ds -> Int -> Idxs ds -> Idxs ds
@@ -231,6 +230,6 @@ stepIdxs d di i = _stepIdxs (unsafeReverse d) di (unsafeReverse i)
 _stepIdxs :: Dims ds -> Int -> Idxs ds -> Idxs ds
 _stepIdxs U _ U = U
 _stepIdxs (d :* ds) di (Idx i :* is)
-      = case divMod (di + fromIntegral i) (fromIntegral (fromDim' d)) of
+      = case divMod (di + fromIntegral i) (fromIntegral (fromDim d)) of
          (0  , i') -> Idx (fromIntegral i') :* is
          (di', i') -> Idx (fromIntegral i') :* _stepIdxs ds di' is

@@ -38,8 +38,8 @@ pred_prism_transpose t = t == (g . f) t
 
 TODO
 
-reifyDims' :: forall r. [Word] -> (forall (d :: [Nat]). KnownDims d => Proxy d -> r) -> r
-reifyDims' d k = unsafeCoerce (MagicDims k :: MagicDims r) d Proxy
+reifyDims :: forall r. [Word] -> (forall (d :: [Nat]). KnownDims d => Proxy d -> r) -> r
+reifyDims d k = unsafeCoerce (MagicDims k :: MagicDims r) d Proxy
 
 
 pred_transposition' :: (Elt e, Eq e, V.Storable e) => Dims d -> Tensor d e -> Bool
@@ -56,8 +56,8 @@ pred_transposition' :: forall d e. (Elt e, Eq e) => Dims d -> Tensor d e -> Bool
 pred_transposition' d t = t'' == t
   where
     w = fromDims d
-    t' = reifyDims' (reverse w) $ \d -> transpose' (reflect d) (reversal' $ reflect d) t
-    t'' = reifyDims' w $ \d ->transpose' (reflect d) (reversal' $ reflect d) $ t'
+    t' = reifyDims (reverse w) $ \d -> transpose' (reflect d) (reversal' $ reflect d) t
+    t'' = reifyDims w $ \d ->transpose' (reflect d) (reversal' $ reflect d) $ t'
 
 
 pred_transposition' :: (Elt e, Eq e, V.Storable e) => Dims d -> Tensor d e -> Bool

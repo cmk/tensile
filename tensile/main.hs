@@ -34,7 +34,6 @@ main = do
       print $ t + t
       print $ t .&. t
       print $ t `xor` t
-      print $ bitSize t
       print $ rotate t 1
       println
    

@@ -67,6 +67,7 @@ rank' (TypedList ds) = fromIntegral $ Prelude.length ds
 unsafeReverse :: TypedList f d -> TypedList f d'
 unsafeReverse = unsafeCoerce . Prelude.reverse . unsafeCoerce 
 
+-- TODO hide constructor
 -- | Type-indexed list
 newtype TypedList (f :: Nat -> Type) (ds :: [Nat]) = TypedList [Any] 
 
@@ -85,6 +86,14 @@ type ProxyList ds = TypedList Proxy ds
 types :: TypedList f ds -> ProxyList ds
 types (TypedList ds) = unsafeCoerce (Prelude.map (const Proxy) ds)
 {-# INLINE types #-}
+
+{-
+foldTypedList 
+  :: forall (a :: *) (f :: Nat -> a) (ds :: [Nat]) r
+   . (a -> r -> r) -> r -> TypedList f ds -> r
+foldTypedList f r U = r
+foldTypedList f r (d :* ds) = foldTypedList f (f d r) ds
+-}
 
 class Reflects s a | s -> a where
   -- | Recover a value inside a 'reify' context, given a proxy for its reified type.

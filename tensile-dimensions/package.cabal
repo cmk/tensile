@@ -16,23 +16,27 @@ source-repository head
 
 library 
     hs-source-dirs: 
-        src
+        lib/src
+        lib/test
     exposed-modules:
         Numeric.Tensile.Dimensions
-        Numeric.Tensile.Dimensions.Dim
-        Numeric.Tensile.Dimensions.Dim.Class
+        Numeric.Tensile.Dimensions.Dim.Types
+        Numeric.Tensile.Dimensions.Dims.Types
         Numeric.Tensile.Dimensions.Dims
-        Numeric.Tensile.Dimensions.Dims.Class
-        Numeric.Tensile.Dimensions.Idx.Class
+        Numeric.Tensile.Dimensions.Idx.Types
+        Numeric.Tensile.Dimensions.Idxs.Types
         Numeric.Tensile.Dimensions.Idxs
-        Numeric.Tensile.Dimensions.Idxs.Class
         Numeric.Tensile.Dimensions.Perm
         Numeric.Tensile.Dimensions.Types
+        Test.Numeric.Tensile.Dimensions.Gen
+        Test.Numeric.Tensile.Dimensions.Idxs.Predicate
+        Test.Numeric.Tensile.Dimensions.Dims.Predicate
     build-depends:
         base == 4.*,
         combinat,
         dimensions,
         finite-typelits,
+        hedgehog,
         singletons
     default-extensions: 
         ConstraintKinds, 
@@ -44,3 +48,26 @@ library
         TypeFamilies,
         TypeOperators 
     default-language: Haskell2010
+
+test-suite test
+    type:                
+        exitcode-stdio-1.0
+    hs-source-dirs: 
+        test
+    main-is:            
+        test.hs
+    other-modules:
+        Test.Numeric.Tensile.Dimensions.Idxs.Property
+        Test.Numeric.Tensile.Dimensions.Dims.Property  
+    build-depends:       
+        base == 4.*,
+        hedgehog,
+        tensile-dimensions == 0.0.*
+    default-extensions:
+        ScopedTypeVariables,
+        TypeApplications,
+        TypeInType,
+        TypeOperators,
+        OverloadedLists
+    default-language: Haskell2010
+    ghc-options: -threaded -rtsopts -with-rtsopts=-N -Wall

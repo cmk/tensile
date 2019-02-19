@@ -15,7 +15,7 @@ import qualified Data.Vector.Storable.Mutable as M
 
 
 -- f :: (Dims d' -> Perm n -> Perm n) -> Perm n -> Tensor d e -> Tensor d e'
--- f dim2Idx perm t = Tensor $ reifyDims (permuteDims perm (dims @d)) $ \p ->
+-- f dim2Idx perm t = Tensor $ reifySomeDims (permuteDims perm (dims @d)) $ \p ->
 --   modifyIdx (reflect p) (modify (permuteIdxs (dim2Idx (reflect p) perm) _)) (reflect p)) t -- basically make user derive the Idxs d' -> Idxs d'
 
 -- dim2Idx :: Rank d ~ n => Dims d -> Perm n -> Perm n
@@ -107,7 +107,7 @@ product
   => KnownDims y
   => T (x +: m) -> T (m :+ y) -> T (x ++ y)
 product t u
-    | I# m <- fromIntegral $ fromDim' @m
+    | I# m <- fromIntegral $ fromDim @m
     , I# n <- fromIntegral $ totalDim' @x
     , I# k <- fromIntegral $ totalDim' @y
     , nk <- n *# k
@@ -159,8 +159,8 @@ transpose
   -> T '[m, n] --(m :+ n :+ x)
 transpose t = case elemSize0 t of
   0# -> broadcast (ix# 0# t)
-  nm | I# m <- fromIntegral $ fromDim' @m
-     , I# n <- fromIntegral $ fromDim' @n
+  nm | I# m <- fromIntegral $ fromDim @m
+     , I# n <- fromIntegral $ fromDim @n
      -> let f ( I# i,  I# j )
               | isTrue# (i ==# m) = f ( 0 , I# (j +# 1#) ) -- skip to next col
               | otherwise         = (# ( I# (i +# 1#), I# j ), ix# (i *# n +# j) t #) --col-major indexing

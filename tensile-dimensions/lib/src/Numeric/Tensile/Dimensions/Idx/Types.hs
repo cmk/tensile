@@ -20,7 +20,7 @@
 {-# OPTIONS_GHC -fno-warn-incomplete-patterns #-}
 #endif
 
-module Numeric.Tensile.Dimensions.Idx.Class where
+module Numeric.Tensile.Dimensions.Idx.Types where
 
 
 import Unsafe.Coerce (unsafeCoerce)
@@ -34,7 +34,7 @@ import Control.Arrow           (first)
 import GHC.Base
 import GHC.Enum
 
-import Numeric.Tensile.Dimensions.Dim
+import Numeric.Tensile.Dimensions.Dim.Types
 import Numeric.Tensile.Dimensions.Types as T
 
 
