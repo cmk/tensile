@@ -104,7 +104,6 @@ test-suite test
     main-is:            
         test.hs
     other-modules:
-        Test.Numeric.Tensile.Dimensions.Idxs.Property 
         Test.Numeric.Tensile.Operations.Linear.Property
     build-depends:       
         base == 4.*,

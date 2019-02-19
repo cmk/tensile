@@ -15,7 +15,7 @@ import qualified Data.Vector.Storable.Mutable as M
 
 
 -- f :: (Dims d' -> Perm n -> Perm n) -> Perm n -> Tensor d e -> Tensor d e'
--- f dim2Idx perm t = Tensor $ reifyDims (permuteDims perm (dims @d)) $ \p ->
+-- f dim2Idx perm t = Tensor $ reifySomeDims (permuteDims perm (dims @d)) $ \p ->
 --   modifyIdx (reflect p) (modify (permuteIdxs (dim2Idx (reflect p) perm) _)) (reflect p)) t -- basically make user derive the Idxs d' -> Idxs d'
 
 -- dim2Idx :: Rank d ~ n => Dims d -> Perm n -> Perm n

@@ -2,10 +2,10 @@ import Control.Monad
 import System.Exit (exitFailure)
 import System.IO (BufferMode(..), hSetBuffering, stdout, stderr)
 
-import qualified Test.Numeric.Tensile.Operations.Linear.Property as OL
+import qualified Test.Numeric.Tensile.Dimensions.Idxs.Property as DI
 
 tests :: IO [Bool]
-tests = sequence [OL.tests]
+tests = sequence [DI.tests]
 
 main :: IO ()
 main = do

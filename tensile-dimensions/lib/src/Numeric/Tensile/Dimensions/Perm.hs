@@ -44,9 +44,9 @@ transposition' i j = if i <= n' && j <= n' then Just p else Nothing
 {-
 transposition'' :: Word -> Word -> Word -> Maybe (Perm n)
 transposition'' n i j = 
-  reifyDim n $ \n ->
-    reifyDim i $ \i -> 
-      reifyDim j $ \j -> transposition' (reflect i) (reflect j)
+  reifySomeDim n $ \n ->
+    reifySomeDim i $ \i -> 
+      reifySomeDim j $ \j -> transposition' (reflect i) (reflect j)
 
 -- TODO clean up type sig
 transposition

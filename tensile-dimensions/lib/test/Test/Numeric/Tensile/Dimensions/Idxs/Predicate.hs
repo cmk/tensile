@@ -1,14 +1,9 @@
 module Test.Numeric.Tensile.Dimensions.Idxs.Predicate where
 
 import Numeric.Tensile.Dimensions
-import Test.Numeric.Tensile.Dimensions.Gen
 
 pred_max_diffIdx :: forall (d :: [Nat]). Dims d -> Bool
 pred_max_diffIdx d = (fromIntegral $ 1 + diffIdxs d (maxBound' d) (minBound' d)) == (product . fromDims' $ d)
-
-pred_max_diffIdx' :: SomeDims -> Bool
-pred_max_diffIdx' (SomeDims d) = (fromIntegral $ 1 + diffIdxs d (maxBound' d) (minBound' d)) == (product . fromDims' $ d)
-
 
 
 {-
@@ -16,11 +11,11 @@ pred_max_diffIdx' (SomeDims d) = (fromIntegral $ 1 + diffIdxs d (maxBound' d) (m
 -- test -
 
 
-pred_diffIdx d = reifyDims d f
+pred_diffIdx d = reifySomeDims d f
   where f = (fromIntegral $ 1 + diffIdx d (maxBound' d) (minBound' d)) == (product . fromDims $ d)
 
 
-> reifyDims' [2,2,3] $ \p -> (fromIntegral $ 1 + diffIdx (reflect p) maxBound minBound) == (product . fromDims $ reflect p)
+> reifyDims [2,2,3] $ \p -> (fromIntegral $ 1 + diffIdx (reflect p) maxBound minBound) == (product . fromDims $ reflect p)
 
 diffIdx :: Dims xs -> Idxs xs -> Idxs xs -> Int
 diffIdx d i j = _diffIdx (unsafeReverse d) (unsafeReverse i) (unsafeReverse j)
@@ -47,8 +42,8 @@ res == Just [(11,13),(12,16),(15,17)]
 
 reify d233 $ \p -> totalDim' $ reflect p
 
-reifyDims (reverse [2,3,3]) $ \p -> overDimIdx_ (reflect p) print
-> reifyDims (reverse [2,3,3]) $ \p -> overDimIdx_ (reflect p) print
+reifySomeDims (reverse [2,3,3]) $ \p -> overDimIdx_ (reflect p) print
+> reifySomeDims (reverse [2,3,3]) $ \p -> overDimIdx_ (reflect p) print
 Idxs [1,1,1]
 Idxs [2,1,1]
 Idxs [3,1,1]
@@ -68,7 +63,7 @@ Idxs [1,3,2]
 Idxs [2,3,2]
 Idxs [3,3,2]
 
-> reifyDims (reverse [2,3,3]) $ \p -> Numeric.Tensile.Operations.Linear.Internal.overDimIdx_ (reflect p) print
+> reifySomeDims (reverse [2,3,3]) $ \p -> Numeric.Tensile.Operations.Linear.Internal.overDimIdx_ (reflect p) print
 Idxs [1,1,1]
 Idxs [1,1,2]
 Idxs [1,2,1]

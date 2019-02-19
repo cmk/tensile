@@ -22,8 +22,8 @@
 
 module Numeric.Tensile.Dimensions.Idxs (
   module Numeric.Tensile.Dimensions.Idxs,
-  module Numeric.Tensile.Dimensions.Idx.Class,
-  module Numeric.Tensile.Dimensions.Idxs.Class,
+  module Numeric.Tensile.Dimensions.Idx.Types,
+  module Numeric.Tensile.Dimensions.Idxs.Types,
 ) where
 
 
@@ -35,8 +35,8 @@ import Unsafe.Coerce (unsafeCoerce)
 
 import Numeric.Tensile.Dimensions.Dim
 import Numeric.Tensile.Dimensions.Dims
-import Numeric.Tensile.Dimensions.Idx.Class
-import Numeric.Tensile.Dimensions.Idxs.Class
+import Numeric.Tensile.Dimensions.Idx.Types
+import Numeric.Tensile.Dimensions.Idxs.Types
 import Numeric.Tensile.Dimensions.Perm
 import Numeric.Tensile.Dimensions.Types
 
@@ -46,16 +46,20 @@ import qualified Math.Combinat.Permutations as P
 
 -- | Remaps the index argument to the index with the same 'Int' representation under the permuted dimensions.
 remapIdxs 
-  :: forall (ds :: [Nat]) r. Perm (Rank ds) 
+  :: forall (ds :: [Nat]) r
+   . Perm (Rank ds) 
   -> Dims ds 
   -> Idxs ds 
   -> (forall (ds' :: [Nat]). Dims ds' -> Idxs ds' -> r) 
   -> r
 remapIdxs (Perm p) ds ix f = 
+  unsafeReifyDims (P.permuteList p $ fromDims' ds) $ \ds' -> 
+    f ds' (toIdxs ds' . fromIdxs ds $ ix)
+
+{-
   unsafeReifyDims' (P.permuteList p $ fromDims' ds) $ \ds' -> 
     f (reflect ds') (toIdxs (reflect ds') . fromIdxs ds $ ix)
 
-{-
 remapIdxs' 
   :: forall (ds :: [Nat]) (ds' :: [Nat]) r. Permutable ds ds'
   => Perm (Rank ds) 
@@ -64,7 +68,7 @@ remapIdxs'
   -> (KnownDims ds' => r) 
   -> r
 remapIdxs' p ds ix f = 
-  reifyDims (unsafePermute p ds) f
+  reifySomeDims (unsafePermute p ds) f
 
 -- | Transform a permutation of tensor modes into a permutation of array indices.
 -- transpose (lowerPerm p1) . transpose (lowerPerm p2) == transpose (lowerPerm $ p1 <> p2)

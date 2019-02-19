@@ -110,7 +110,7 @@ packages: onnx, tensile, tensile-onnx, tensile-tensorflow
 -- tensile
 Numeric.Tensile (with* functions and Tensor re-exports)
 Numeric.Tensile.Tensor
-Numeric.Tensile.Operator.Class (typeclass defns here)
+Numeric.Tensile.Operator.Types (typeclass defns here)
 Numeric.Tensile.Operator.Lifted (ie w backprop)
 
 Numeric.Tensile.Model / Combinators / Network etc
@@ -854,13 +854,13 @@ instance Reifies s Int => Dims (ReifiedDim s) where reflectDims = retagDim refle
 
 
 
-reifyDims :: Int -> (forall (s :: *). Dims s => Proxy s -> r) -> r
-reifyDims i f = R.reify i (go f) where
+reifySomeDims :: Int -> (forall (s :: *). Dims s => Proxy s -> r) -> r
+reifySomeDims i f = R.reify i (go f) where
   go :: (Proxy (ReifiedDims n) -> a) -> proxy n -> a
   go g _ = g Proxy
 
 reifyVector :: forall a r. Vector a -> (forall (n :: *). Dim n => V n a -> r) -> r
-reifyVector v f = reifyDim (V.length v) $ \(Proxy :: Proxy n) -> f (V v :: V n a)
+reifyVector v f = reifySomeDim (V.length v) $ \(Proxy :: Proxy n) -> f (V v :: V n a)
 
 dim :: forall n a. Dim n => V n a -> Int
 dim _ = reflectDim (Proxy :: Proxy n)
