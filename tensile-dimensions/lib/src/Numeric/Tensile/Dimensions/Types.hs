@@ -164,14 +164,24 @@ pattern (:*) :: forall (f :: Nat -> Type) ds
 pattern (:*) d ds = Cons d ds
 infixr 5 :*
 
--- | Constructing a type-indexed list in the canonical way
+-- | Constructing a type-indexed list
 pattern Cons :: forall (f :: Nat -> Type) (ds :: [Nat])
               . ()
              => forall (y :: Nat) (ys :: [Nat])
               . (ds ~ (y ': ys)) => f y -> TypedList f ys -> TypedList f ds
-pattern Cons x ds <- (patTL @f @ds -> PatCons x ds)
+pattern Cons d ds <- (patTL @f @ds -> PatCons d ds)
   where
     Cons = Numeric.Tensile.Dimensions.Types.cons
+
+{-
+-- | Constructing a type-indexed list from the other end
+pattern (*:) :: forall (f :: Nat -> Type) ds 
+              . ()
+             => forall (sy :: [Nat]) (y :: Nat)
+              . (ds ~ (sy +: y)) => TypedList f sy -> f y -> TypedList f ds
+pattern (*:) sx x = Snoc sx x
+infixl 5 *:
+-}
 
 -- | Constructing a type-indexed list from the other end
 pattern Snoc :: forall (f :: Nat -> Type) (ds :: [Nat])
