@@ -1,15 +1,13 @@
-module Test.Numeric.Tensile.Dimensions.Index.Predicate where
+module Test.Numeric.Tensile.Dimensions.Idxs.Predicate where
 
-import Numeric.Tensile.Dimensions.Types
-import Numeric.Tensile.Dimensions.Index -- (diffIdx)
-import Numeric.Tensile.Dimensions.Permutation (Perm(..), reversal, reversal')
+import Numeric.Tensile.Dimensions
 import Test.Numeric.Tensile.Dimensions.Gen
 
 pred_max_diffIdx :: forall (d :: [Nat]). Dims d -> Bool
-pred_max_diffIdx d = (fromIntegral $ 1 + diffIdx d (maxBound' d) (minBound' d)) == (product . listDims $ d)
+pred_max_diffIdx d = (fromIntegral $ 1 + diffIdxs d (maxBound' d) (minBound' d)) == (product . fromDims' $ d)
 
 pred_max_diffIdx' :: SomeDims -> Bool
-pred_max_diffIdx' (SomeDims d) = (fromIntegral $ 1 + diffIdx d (maxBound' d) (minBound' d)) == (product . listDims $ d)
+pred_max_diffIdx' (SomeDims d) = (fromIntegral $ 1 + diffIdxs d (maxBound' d) (minBound' d)) == (product . fromDims' $ d)
 
 
 
@@ -19,13 +17,13 @@ pred_max_diffIdx' (SomeDims d) = (fromIntegral $ 1 + diffIdx d (maxBound' d) (mi
 
 
 pred_diffIdx d = reifyDims d f
-  where f = (fromIntegral $ 1 + diffIdx d (maxBound' d) (minBound' d)) == (product . listDims $ d)
+  where f = (fromIntegral $ 1 + diffIdx d (maxBound' d) (minBound' d)) == (product . fromDims $ d)
 
 
-> reifyDims' [2,2,3] $ \p -> (fromIntegral $ 1 + diffIdx (reflect p) maxBound minBound) == (product . listDims $ reflect p)
+> reifyDims' [2,2,3] $ \p -> (fromIntegral $ 1 + diffIdx (reflect p) maxBound minBound) == (product . fromDims $ reflect p)
 
 diffIdx :: Dims xs -> Idxs xs -> Idxs xs -> Int
-diffIdx d i j = _diffIdx (_reversed d) (_reversed i) (_reversed j)
+diffIdx d i j = _diffIdx (unsafeReverse d) (unsafeReverse i) (unsafeReverse j)
 
 --test 
 a :: Maybe (Idxs '[2, 3, 3])
@@ -98,7 +96,7 @@ re = reversal
 a :: Idxs '[2, 3, 3]
 a = fromJust $ idxsFromWords [2, 1, 3]  
 
-> overDimIdx_ (dims @_ @'[2,3,3]) print
+> overDimIdx_ (dims @'[2,3,3]) print
 Idxs [1,1,1]
 Idxs [2,1,1]
 Idxs [1,2,1]
@@ -118,7 +116,7 @@ Idxs [2,2,3]
 Idxs [1,3,3]
 Idxs [2,3,3]
 
-> overDimIdx_ (dims @_ @'[2,3,3]) (\i -> remapIdxs re (dims @_ @'[2,3,3]) i print)
+> overDimIdx_ (dims @'[2,3,3]) (\i -> remapIdxs re (dims @'[2,3,3]) i print)
 Idxs [1,1,1]
 Idxs [2,1,1]
 Idxs [3,1,1]

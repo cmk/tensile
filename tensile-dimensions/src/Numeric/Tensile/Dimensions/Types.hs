@@ -1,414 +1,344 @@
+{-# LANGUAGE AllowAmbiguousTypes    #-}
+{-# LANGUAGE CPP                    #-}
 {-# LANGUAGE ExistentialQuantification #-}
 {-# LANGUAGE FlexibleInstances      #-}
 {-# LANGUAGE FunctionalDependencies #-}
+{-# LANGUAGE GADTs                  #-}
 {-# LANGUAGE InstanceSigs           #-}
+{-# LANGUAGE MagicHash              #-}
 {-# LANGUAGE MultiParamTypeClasses  #-}
 {-# LANGUAGE UndecidableInstances   #-} 
+{-# LANGUAGE PatternSynonyms        #-}
+
+{-# LANGUAGE PolyKinds              #-}
+{-# LANGUAGE Rank2Types             #-}
+{-# LANGUAGE TypeFamilies           #-}
+{-# LANGUAGE TypeFamilyDependencies #-}
+{-# LANGUAGE TypeOperators          #-}
+{-# LANGUAGE ViewPatterns           #-}
+
 module Numeric.Tensile.Dimensions.Types (
-  Numeric.TypedList.TypedList(..),
-  Numeric.TypedList.snoc,
-  Dims(..),
-  Dim(..),
-  Nat(..),
-  KnownDims(..),
-  KnownDim(..),
-  KnownNat(..),
-  SomeDim(..),
-  SomeDims(..),
-  someDimVal,
-  someDimsVal,
-  DS.listDims,
-  DS.dims,
-  D.dimVal,
-  D.dimVal',
-  natVal,
-  S.Sort(..),
-  --module Numeric.Dim,
-  module Numeric.Type.Evidence,
   module Numeric.Tensile.Dimensions.Types,
-  module Numeric.Type.List
+  module Numeric.Type.Evidence,
+  module Numeric.Type.List,
+  Nat(..),
+  KnownNat(..),
+  natVal,
+  SomeNat(..),
+  S.Sort(..)
 ) where
 
+import Control.Arrow         (first)
 import Data.Proxy
-import Numeric.Type.Evidence
-import Numeric.TypedList
-import Unsafe.Coerce (unsafeCoerce)
-
-import           GHC.Exts           (Constraint)
+import Data.Type.Bool
+import Data.Type.Equality
+import GHC.Base              (Type)
+import GHC.Exts              
 import GHC.TypeLits
-import           Data.Type.Bool
-import           Data.Type.Equality
+import Numeric.Type.Evidence
+import Numeric.Type.List  -- (type(+:),(+:))
+import Unsafe.Coerce         (unsafeCoerce)
+import qualified Data.Singletons.Prelude.List as S (Sort(..))
 
-import Numeric.Dim (KnownDim(..))
-import Numeric.Dimensions.Dims (Dimensions(..),SomeDims(..))
-import Numeric.Type.List -- (type(+:),(+:))
-
-import qualified Data.Singletons.Prelude.List as S (Reverse(..),Sort(..))
-import qualified Numeric.Dim as D
-import qualified Numeric.Dimensions.Dims as DS
-
-
---import qualified  Numeric.Type.List as L
 impossible :: a
 impossible = error "Numeric.Tensile: impossible"
 
-type Dim (d :: Nat) = D.Dim d
+type x < y = (CmpNat x y) ~ 'LT
 
--- data SomeDims = forall (ns :: [Nat]) . SomeDims (Dims ns)
--- should be > 1
-data SomeDim = forall (n :: Nat). SomeDim (Dim n) 
-instance Show SomeDim where show (SomeDim d) = show d
-
--- unsafe should be > 1
-someDimVal :: Word -> SomeDim
-someDimVal = SomeDim . unsafeCoerce
-
-someDimsVal :: [SomeDim] -> SomeDims
-someDimsVal = SomeDims . unsafeCoerce . fmap unsafeCoerce
-
-type Dims (d :: [Nat]) = DS.Dims d
--- type Dims (ds :: [Nat]) = TypedList Dim ds
---
-type Pos d = (1 <= d)
-
-type family Positive (xs :: [Nat]) :: Constraint where
-    Positive '[] = ()
-    Positive (x ': xs) = (Pos x, Positive xs)
-
--- TODO this is a bit of a hack. Error message is:
--- Couldn't match type ‘'False’ with ‘'True’
---
--- Rewrite KnownDim to enforce positivity.
-type KnownDims (ds :: [Nat]) = Dimensions ds -- (Dimensions ds, Positive ds)
-
-type family Rank (xs :: [k]) :: Nat where
-    Rank '[] = 0
-    Rank (_ ': xs) = 1 + Rank xs
-
-type family Size (xs :: [Nat]) :: Nat where
+type family Size (ds :: [Nat]) :: Nat where
     Size '[] = 1
-    Size (x ': xs) = x * Size xs
+    Size (x ': ds) = x * Size ds
 
-
-type Permutable d d' = (S.Sort d ~ S.Sort d')
 type Reshapable d d' = (Size d ~ Size d')
 
-class Reifies s a | s -> a where
+type family Rank (ds :: [Nat]) :: Nat where
+    Rank '[] = 0
+    Rank (_ ': ds) = 1 + Rank ds
+
+rank :: forall ds . KnownList ds => Word
+rank = rank' (listRep @ds)
+{-# INLINE rank #-}
+
+rank' :: TypedList f ds -> Word
+rank' (TypedList ds) = fromIntegral $ Prelude.length ds
+{-# INLINE rank' #-}
+
+-- TODO unsafe, remove
+unsafeReverse :: TypedList f d -> TypedList f d'
+unsafeReverse = unsafeCoerce . Prelude.reverse . unsafeCoerce 
+
+-- | Type-indexed list
+newtype TypedList (f :: Nat -> Type) (ds :: [Nat]) = TypedList [Any] 
+
+-- | A list of evidence for constraints.
+type EvidenceList (c :: Nat -> Constraint) ds = TypedList (Evidence' c) ds
+
+-- | A list of type proxies.
+type ProxyList ds = TypedList Proxy ds
+
+-- | Get a constructible `ProxyList` from any other `TypedList`;
+--   Pattern matching agains the result brings `KnownList` constraint
+--   into the scope:
+--
+--   > case types ts of ProxyList -> ...
+--
+types :: TypedList f ds -> ProxyList ds
+types (TypedList ds) = unsafeCoerce (Prelude.map (const Proxy) ds)
+{-# INLINE types #-}
+
+class Reflects s a | s -> a where
   -- | Recover a value inside a 'reify' context, given a proxy for its reified type.
   reflect :: proxy s -> a
 
-instance KnownDim (d :: Nat) => Reifies d (Dim d) where
-  reflect _ = dim
+-- | Known type lists.
+--   Allows getting type information about list structure at runtime.
+class KnownList ds where
+  -- | Get type-level constructed list
+  listRep :: ProxyList ds
 
-instance KnownDims (d :: [Nat]) => Reifies d (Dims d) where
-  reflect _ = dims
+instance KnownList ('[] :: [Nat]) where
+  listRep = U
 
-newtype MagicDim d r = MagicDim (KnownDim d => r)
+instance KnownList ds => KnownList (d :+ ds) where
+  listRep = Proxy @d :* listRep @ds
 
-newtype MagicDim' r = MagicDim' (forall (d :: Nat). KnownDim d => Proxy d -> r)
+--TODO is this useful?
+--instance KnownList ds => Reflects ds (ProxyList ds) where reflect _ = listRep
 
-reifyDim :: forall d r . Dim d -> (KnownDim d => r) -> r
-reifyDim d k = unsafeCoerce (MagicDim k :: MagicDim d r) d
+newtype WithKnownList ds r = WithKnownList (KnownList ds => r)
 
-reifyDim' :: forall r. Word -> (forall (d :: Nat). KnownDim d => Proxy d -> r) -> r
-reifyDim' d k = unsafeCoerce (MagicDim' k :: MagicDim' r) d Proxy
+--newtype WithSomeList r = WithSomeList (forall ds. KnownList ds => Proxy ds -> r)
 
-newtype WithKnownDims d r = WithKnownDims (KnownDims d => r)
+-- | This function converts a user-supplied `listRep` function
+--   to an instance of the `KnownList` typeclass at runtime.
+reifyList' :: forall ds r
+              . ProxyList ds
+             -> (KnownList ds => r)
+             -> r
+reifyList' tl k = unsafeCoerce (WithKnownList k :: WithKnownList ds r) tl
+{-# INLINE reifyList' #-}
 
-newtype WithSomeDims r = WithSomeDims (forall (d :: [Nat]). KnownDims d => Proxy d -> r)
+-- | Pattern matching against this causes `KnownList` instance
+--   come into scope.
+--   Also it allows constructing a term-level list out of a constraint.
+pattern ProxyList :: forall ds
+                  . () => KnownList ds => ProxyList ds
+pattern ProxyList <- (mkRTL -> E)
+  where
+    ProxyList = listRep @ds
 
-reifyDims :: forall d r . Dims d -> (KnownDims d => r) -> r
-reifyDims d k = unsafeCoerce (WithKnownDims k :: WithKnownDims d r) d
+-- | Pattern matching against this allows manipulating lists of constraints.
+--   Useful when creating functions that change the shape of dimensions.
+pattern EvList :: forall (c :: Nat -> Constraint) ds
+                . () => (All c ds, KnownList ds) => EvidenceList c ds
+pattern EvList <- (mkEVL -> E)
+  where
+    EvList = _evList (listRep @ds)
 
-{-
--- todo : prove reifyDims d == withEvidence (withDims d) 
-withDims :: Dims d -> Evidence (KnownDims d)
-withDims d = reifyDims d E
--}
+-- | Zero-length type list
+pattern U :: forall (f :: Nat -> Type) ds
+           . () => (ds ~ '[]) => TypedList f ds
+pattern U <- (patTL @f @ds -> PatCNil)
+  where
+    U = unsafeCoerce []
 
-reifyDims' :: forall r. [Word] -> (forall (d :: [Nat]). KnownDims d => Proxy d -> r) -> r
-reifyDims' d k = unsafeCoerce (WithSomeDims k :: WithSomeDims r) d Proxy
+-- | Zero-length type list; synonym to `U`.
+pattern Empty :: forall (f :: Nat -> Type) ds
+               . () => (ds ~ '[]) => TypedList f ds
+pattern Empty = U
 
-reifySomeDims :: forall r. SomeDims -> (forall (d :: [Nat]). KnownDims d => Proxy d -> r) -> r
-reifySomeDims (SomeDims d) k = unsafeCoerce (WithSomeDims k :: WithSomeDims r) d Proxy
-
--- | A convenience function useful when we need to name a dimensional value multiple times.
-withDims :: KnownDims d => (Dims d -> r) -> r
-withDims f = f dims
-
-withSomeDims :: forall r. [SomeDim] -> (forall d. Dims d -> r) -> r
-withSomeDims d f = case someDimsVal d of SomeDims d' -> f d'
-
---
--- | A convenience function that names a dimensional value satisfying a certain
--- property.  If the value does not satisfy the property, then the function
--- returns 'Nothing'. 
-
-dimsThat :: KnownDims d => (Dims d -> Bool) -> Maybe (Dims d)
-dimsThat p = withDims $ \x -> if p x then Just x else Nothing
-
-
-{-
-compareDims' :: Dims as -> Dims bs -> Ordering
-compareDims' a b = compare (listDims a) (listDims b)
-{-# INLINE compareDims #-}
-
-compareDims :: forall as bs p q
-              . (Dimensions as, Dimensions bs)
-             => p as -> q bs -> Ordering
-compareDims _ _ = compareDims' (dims @_ @as) (dims @_ @bs)
-
-fromDims = listDims
-compareDims
-sameDims
-totalDim
-
-http://hackage.haskell.org/package/typelits-witnesses-0.3.0.3/docs/src/GHC.TypeLits.List.html#KnownNats
-
-{-# LANGUAGE ConstraintKinds      #-}
-{-# LANGUAGE FlexibleContexts     #-}
-{-# LANGUAGE GADTs                #-}
-{-# LANGUAGE KindSignatures       #-}
-{-# LANGUAGE LambdaCase           #-}
-{-# LANGUAGE PolyKinds            #-}
-{-# LANGUAGE RankNTypes           #-}
-{-# LANGUAGE ScopedTypeVariables  #-}
-{-# LANGUAGE StandaloneDeriving   #-}
-{-# LANGUAGE TypeFamilies         #-}
-{-# LANGUAGE TypeInType           #-}
-{-# LANGUAGE TypeOperators        #-}
-{-# LANGUAGE UndecidableInstances #-} 
-import           Data.Functor.Identity
-import           Data.Kind
-import           Data.Proxy
-import           Data.Reflection
-import           Data.Type.Equality
-import           GHC.TypeLits
-
-
--- | @'KnownDims' ns@ is intended to represent that every 'Dim' in the
--- type-level list 'ns' is itself a 'KnownDim' (meaning, you can use
--- 'natVal' to get its corresponding 'Word').
---
--- In practice, just knowing that every item has a 'KnownDim' instance is
--- not enough; it's nice, but unless you're able to "iterate" over every
--- 'Dim' in the list, it's of limited use.  That's why this class also
--- provides a constructor for @'Dims' ns@, so that you can produce
--- a 'Dims' for every @'KnownDim' ns@, which you can iterate over to get
--- @'Proxy' n@s for every 'n' in 'ns' along with the @'KnownDim' n@
--- instances.
---
--- It also has an analogy to 'natVal', 'natsVal', which lets you get a list
--- of the represented 'Word's for, say, @'Proxy' [1,2,3]@.
---
--- __Deprecated:__ Use 'SingI' from /singletons/ instead.
-class KnownDims (ns :: [Nat]) where
-    -- | __Deprecated:__ Use 'fromSing' from /singletons/ instead.
-    natsVal  :: p ns -> [Word]
-    -- | __Deprecated:__ Use 'sing' from /singletons/ instead.
-    natsList :: Dims ns
-
-instance KnownDims '[] where
-    natsVal  _ = []
-    natsList   = U
-
-instance (KnownDim n, KnownDims ns) => KnownDims (n ': ns) where
-    natsVal  _ = natVal (Proxy :: Proxy n) : natsVal (Proxy :: Proxy ns)
-    natsList   = Proxy :* natsList
-
--- | Represents unknown type-level lists of type-level natural numbers.
--- It's a 'Dims', but you don't know what the list contains at
--- compile-time.
---
--- __Deprecated:__ Use 'SomeSing' from /singletons/ instead.
-data SomeDims :: Type where
-    SomeDims :: KnownDims ns => !(Dims ns) -> SomeDims
-
--- | Same as SomeNat, but for Dimensions:
---   Hide all information about Dimensions inside
-data SomeDims = forall (ns :: [Nat]) . SomeDims (Dims ns)
-
-
--- | Singleton-esque type for "traversing" over type-level lists of 'Dim's.
--- Essentially contains a (value-level) list of @'Proxy' n@s, but each 'n'
--- has a 'KnownDim' instance for you to use.  At runtime (after type
--- erasure), is more or less equivalent to a @['Word']@.
---
--- Typically generated using 'natsList'.
---
--- __Deprecated:__ Use 'Sing' from /singletons/ instead.
-data Dims :: [Nat] -> Type where
-    U   :: Dims '[]
-    (:*) :: (KnownDim n, KnownDims ns)
-          => !(Proxy n) -> !(Dims ns) -> Dims (n ': ns)
-
+-- | Constructing a type-indexed list
+pattern (:*) :: forall (f :: Nat -> Type) ds
+              . ()
+             => forall (y :: Nat) (ys :: [Nat])
+              . (ds ~ (y ': ys)) => f y -> TypedList f ys -> TypedList f ds
+pattern (:*) d ds = Cons d ds
 infixr 5 :*
-deriving instance Show (Dims ns)
 
--- | Utility function for traversing over all of the @'Proxy' n@s in
--- a 'Dims', each with the corresponding 'KnownDim' instance available.
--- Gives the the ability to "change" the represented natural number to
--- a new one, in a 'SomeDim'.
---
--- Can be considered a form of a @Traversal' 'SomeDims' 'SomeDim'@.
-traverseDims
-    :: forall f ns. Applicative f
-    => (forall n. KnownDim n => Proxy n -> f SomeDim)
-    -> Dims ns
-    -> f SomeDims
-traverseDims f = go
+-- | Constructing a type-indexed list in the canonical way
+pattern Cons :: forall (f :: Nat -> Type) (ds :: [Nat])
+              . ()
+             => forall (y :: Nat) (ys :: [Nat])
+              . (ds ~ (y ': ys)) => f y -> TypedList f ys -> TypedList f ds
+pattern Cons x ds <- (patTL @f @ds -> PatCons x ds)
   where
-    go :: forall ms. Dims ms -> f SomeDims
-    go = \case
-      U      -> pure $ SomeDims U
-      n :* ns -> merge <$> f n <*> go ns
-    merge :: SomeDim -> SomeDims -> SomeDims
-    merge = \case
-      SomeDim n -> \case
-        SomeDims ns ->
-          SomeDims (n :* ns)
+    Cons = Numeric.Tensile.Dimensions.Types.cons
 
--- | Like 'traverseDims', but literally actually a @Traversal'
--- 'SomeDims' 'SomeDim'@, avoiding the Rank-2 types, so is usable with
--- lens-library machinery.
-traverseDims'
-    :: forall f. Applicative f
-    => (SomeDim -> f SomeDim)
-    -> SomeDims
-    -> f SomeDims
-traverseDims' f = \case
-    SomeDims ns -> traverseDims (f . SomeDim) ns
-
--- | Utility function for traversing over all of the @'Proxy' n@s in
--- a 'Dims', each with the corresponding 'KnownDim' instance available.
--- Results are ignored.
-traverseDims_
-    :: forall f a ns. Applicative f
-    => (forall n. KnownDim n => Proxy n -> f a)
-    -> Dims ns
-    -> f ()
-traverseDims_ f = go
+-- | Constructing a type-indexed list from the other end
+pattern Snoc :: forall (f :: Nat -> Type) (ds :: [Nat])
+              . ()
+             => forall (sy :: [Nat]) (y :: Nat)
+              . (ds ~ (sy +: y)) => TypedList f sy -> f y -> TypedList f ds
+pattern Snoc sx x <- (unsnocTL @f @ds -> PatSnoc sx x)
   where
-    go :: forall ms. Dims ms -> f ()
-    go = \case
-      U       -> pure ()
-      n :* ns -> f n *> go ns
+    Snoc = Numeric.Tensile.Dimensions.Types.snoc
 
--- | The "eliminator" for 'Dims'.  You can think of this as
--- a dependently typed analogy for a fold.
---
--- /Since 0.2.1.0/
-elimDims
-    :: forall p ns. ()
-    => p '[]
-    -> (forall m ms. (KnownDim m, KnownDims ms) => Proxy m -> p ms -> p (m ': ms))
-    -> Dims ns
-    -> p ns
-elimDims z s = \case
-    U      -> z
-    n :* ns -> s n (elimDims z s ns)
+-- | Reverse a typed list
+pattern Reverse :: forall (f :: Nat -> Type) (ds :: [Nat])
+                 . ()
+                => forall (sx :: [Nat])
+                 . (ds ~ Reverse sx, sx ~ Reverse ds)
+                => TypedList f sx -> TypedList f ds
+pattern Reverse sx <- (unreverseTL @f @ds -> PatReverse sx)
+  where
+    Reverse = Numeric.Tensile.Dimensions.Types.reverse
 
+-- Starting from GHC 8.2, compiler supports specifying lists of complete
+-- pattern synonyms.
+#if __GLASGOW_HASKELL__ >= 802
+{-# COMPLETE ProxyList #-}
+{-# COMPLETE EvList #-}
+{-# COMPLETE U, (:*) #-}
+{-# COMPLETE U, Cons #-}
+{-# COMPLETE U, Snoc #-}
+{-# COMPLETE Empty, (:*) #-}
+{-# COMPLETE Empty, Cons #-}
+{-# COMPLETE Empty, Snoc #-}
+{-# COMPLETE Reverse #-}
+#endif
 
--- | Utility function for \"mapping\" over each of the 'Dim's in the
--- 'Dims'.
-mapDims
-    :: (forall n. KnownDim n => Proxy n -> SomeDim)
-    -> Dims ns
-    -> SomeDims
-mapDims f = runIdentity . traverseDims (Identity . f)
+cons :: f x -> TypedList f ds -> TypedList f (x :+ ds)
+cons x ds = TypedList (unsafeCoerce x : unsafeCoerce ds)
+{-# INLINE cons #-}
 
--- | Like 'mapDims', but avoids the Rank-2 types, so can be used with
--- '.' (function composition) and in other situations where 'mapDims'
--- would cause problems.
-mapDims'
-    :: (SomeDim -> SomeDim)
-    -> SomeDims
-    -> SomeDims
-mapDims' f = runIdentity . traverseDims' (Identity . f)
+snoc :: TypedList f ds -> f x -> TypedList f (ds +: x)
+snoc ds x = TypedList (unsafeCoerce ds ++ [unsafeCoerce x])
+{-# INLINE snoc #-}
 
--- | List equivalent of 'someDimVal'.  Convert a list of integers into an
--- unknown type-level list of naturals.  Will return 'Nothing' if any of
--- the given 'Word's is negative.
---
--- __Deprecated:__ Use 'toSing' from /singletons/ instead.
-someDimsVal :: [Word] -> Maybe SomeDims
-someDimsVal []     = Just (SomeDims U)
-someDimsVal (n:ns) = do
-    SomeDim  m  <- someDimVal n
-    SomeDims ms <- someDimsVal ns
-    return $ SomeDims (m :* ms)
+reverse :: TypedList f ds -> TypedList f (Reverse ds)
+reverse (TypedList sx) = unsafeCoerce (Prelude.reverse sx)
+{-# INLINE reverse #-}
 
--- | List equivalent of 'reifyDim'.  Given a list of integers, takes
--- a function in an "environment" with a @'Dims' ns@ corresponding to
--- the given list, where every @n@ in @ns@ has a 'KnownDim' instance.
---
--- Essentially a continuation-style version of 'SomeDims'.
---
--- Be aware that this also produces @'KnownDim' n@s where @n@ is negative,
--- without complaining.  To be consistent, within the library, this
--- /should/ be called @reifyDimsNat@; however, the naming choice is for
--- consistency with 'reifyDim' from the /reflections/ package.  Use
--- 'reifyDims'' for a "safe" version.
---
--- __Deprecated:__ Use 'withSomeSing' from /singletons/ instead.
-reifyDims :: [Word] -> (forall ns. KnownDims ns => Dims ns -> r) -> r
-reifyDims []     f = f U
-reifyDims (n:ns) f = reifyDim n $ \m ->
-                       reifyDims ns $ \ms ->
-                         f (m :* ms)
+{-
+take :: Dim n -> TypedList f ds -> TypedList f (Take n ds)
+take d (TypedList ds) = unsafeCoerce (Prelude.take (_intD d) ds)
+{-# INLINE take #-}
 
--- | "Safe" version of 'reifyDims', which will only run the continuation if
--- every 'Word' in the list is non-negative.  If not, then returns
--- the given "default" value instead.
---
--- __Deprecated:__ Use 'withSomeSing' from /singletons/ instead.
-reifyDims'
-    :: [Word]
-    -> r
-    -> (forall ns. KnownDims ns => Dims ns -> r)
-    -> r
-reifyDims' ns d f =
-    case someDimsVal ns of
-      Just (SomeDims ms) -> f ms
-      Nothing            -> d
-
--- | Like 'someDimsVal', but will also go ahead and produce 'KnownDim's
--- whose integer values are negative.  It won't ever error on producing
--- them, but extra care must be taken when using the produced 'SomeDim's.
---
--- __Deprecated:__ Use 'toSing' from /singletons/ instead.
-someDimsValNat :: [Word] -> SomeDims
-someDimsValNat ns = reifyDims ns SomeDims
-
--- | Get evidence that the two 'KnownDims' lists are actually the "same"
--- list of 'Dim's (that they were instantiated with the same numbers).
---
--- Essentialy runs 'sameDim' over the lists:
---
--- @
--- case 'sameDims' ns ms of
---   Just 'Refl' -> -- in this branch, GHC recognizes that the two ['Dim']s
---                  -- are the same.
---   Nothing   -> -- in this branch, they aren't
--- @
---
--- __Deprecated:__ Use '%~' from /singletons/ instead.
-sameDims
-    :: Dims ns
-    -> Dims ms
-    -> Maybe (ns :~: ms)
-sameDims = \case
-    U      -> \case
-      U      -> Just Refl
-      _ :* _  -> Nothing
-    n :* ns -> \case
-      U      -> Nothing
-      m :* ms -> do
-        Refl <- sameDim n m
-        Refl <- sameDims ns ms
-        return Refl
-
-
-
-
+drop :: Dim n -> TypedList f ds -> TypedList f (Drop n ds)
+drop d (TypedList ds) = unsafeCoerce (Prelude.drop (_intD d) ds)
+{-# INLINE drop #-}
 -}
+
+head :: TypedList f ds -> f (Head ds)
+head (TypedList ds) = unsafeCoerce (Prelude.head ds)
+{-# INLINE head #-}
+
+tail :: TypedList f ds -> TypedList f (Tail ds)
+tail (TypedList ds) = unsafeCoerce (Prelude.tail ds)
+{-# INLINE tail #-}
+
+init :: TypedList f ds -> TypedList f (Init ds)
+init (TypedList ds) = unsafeCoerce (Prelude.init ds)
+{-# INLINE init #-}
+
+last :: TypedList f ds -> f (Last ds)
+last (TypedList ds) = unsafeCoerce (Prelude.last ds)
+{-# INLINE last #-}
+
+{-
+length :: TypedList f ds -> Dim (Length ds)
+length = order
+{-# INLINE length #-}
+
+splitAt :: Dim n
+        -> TypedList f ds
+        -> (TypedList f (Take n ds), TypedList f (Drop n ds))
+splitAt d (TypedList ds) = unsafeCoerce (Prelude.splitAt (_intD d) ds)
+{-# INLINE splitAt #-}
+-}
+
+concat :: TypedList f ds
+       -> TypedList f ys
+       -> TypedList f (ds ++ ys)
+concat (TypedList ds) (TypedList ys) = unsafeCoerce (ds ++ ys)
+{-# INLINE concat #-}
+
+-- | Map a function over contents of a typed list
+map :: (forall a . f a -> g a)
+    -> TypedList f ds
+    -> TypedList g ds
+map k (TypedList ds) = unsafeCoerce (Prelude.map k' ds)
+  where
+    k' :: Any -> Any
+    k' = unsafeCoerce . k . unsafeCoerce
+{-# INLINE map #-}
+
+-------------------------------------------------------------------------------
+-- Internal
+-------------------------------------------------------------------------------
+
+
+{-
+_intD :: Dim n -> Int
+_intD = (fromIntegral :: Word -> Int) . unsafeCoerce
+-}
+
+data PatReverse f ds
+  = forall (sx :: [Nat]) . (ds ~ Reverse sx, sx ~ Reverse ds)
+  => PatReverse (TypedList f sx)
+
+unreverseTL :: forall f ds . TypedList f ds -> PatReverse f ds
+unreverseTL (TypedList ds)
+  = case (unsafeCoerce (E @(ds ~ ds, ds ~ ds))
+           :: Evidence (ds ~ Reverse sx, sx ~ Reverse ds)
+         ) of
+      E -> PatReverse (unsafeCoerce (Prelude.reverse ds))
+{-# INLINE unreverseTL #-}
+
+
+mkRTL :: forall (ds :: [Nat])
+       . ProxyList ds
+      -> Evidence (KnownList ds)
+mkRTL ds = reifyList' ds E
+{-# INLINE mkRTL #-}
+
+
+data PatSnoc f ds where
+  PatSNil :: PatSnoc f '[]
+  PatSnoc :: TypedList f ys -> f y -> PatSnoc f (ys +: y)
+
+unsnocTL :: forall f ds . TypedList f ds -> PatSnoc f ds
+unsnocTL (TypedList [])
+  = case (unsafeCoerce (E @(ds ~ ds)) :: Evidence (ds ~ '[])) of
+      E -> PatSNil
+unsnocTL (TypedList (x:ds))
+  = case (unsafeCoerce (E @(ds ~ ds)) :: Evidence (ds ~ (Init ds +: Last ds))) of
+      E -> PatSnoc (unsafeCoerce sy) (unsafeCoerce y)
+  where
+    (sy, y) = unsnoc x ds
+    unsnoc t []     = ([], t)
+    unsnoc t (z:zs) = first (t:) (unsnoc z zs)
+{-# INLINE unsnocTL #-}
+
+
+data PatCons f ds where
+  PatCNil :: PatCons f '[]
+  PatCons :: f y -> TypedList f ys -> PatCons f (y ': ys)
+
+patTL :: forall f ds . TypedList f ds -> PatCons f ds
+patTL (TypedList [])
+  = case (unsafeCoerce (E @(ds ~ ds)) :: Evidence (ds ~ '[])) of
+      E -> PatCNil
+patTL (TypedList (x : ds))
+  = case (unsafeCoerce (E @(ds ~ ds)) :: Evidence (ds ~ (Head ds ': Tail ds))) of
+      E -> PatCons (unsafeCoerce x) (unsafeCoerce ds)
+{-# INLINE patTL #-}
+
+
+mkEVL :: forall (c :: Nat -> Constraint) (ds :: [Nat])
+       . EvidenceList c ds -> Evidence (All c ds, KnownList ds)
+mkEVL U = E
+mkEVL (E' :* evs) = case mkEVL evs of E -> E
+#if __GLASGOW_HASKELL__ >= 802
+#else
+mkEVL _ = impossible
+#endif
+
+_evList :: forall (c :: Nat -> Constraint) (ds :: [Nat])
+        . All c ds => ProxyList ds -> EvidenceList c ds
+_evList U = U
+_evList (_ :* ds) = case _evList ds of evs -> E' :* evs
+#if __GLASGOW_HASKELL__ >= 802
+#else
+_evList _ = impossible
+#endif

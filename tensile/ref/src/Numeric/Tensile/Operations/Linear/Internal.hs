@@ -1,24 +1,21 @@
 module Numeric.Tensile.Operations.Linear.Internal where
 
+import Data.Vector.Sized (Vector)
+import Numeric.Tensile.Dimensions
 import Numeric.Tensile.Tensor.Internal
-import Numeric.Tensile.Dimensions.Types
-import Numeric.Tensile.Dimensions.Index
-import Numeric.Tensile.Dimensions.Permutation
 import Unsafe.Coerce (unsafeCoerce)
 
-import Data.Vector.Sized (Vector)
 import qualified Data.Finite as F
 import qualified Data.Vector.Sized as N
 import qualified Data.Vector.Storable as S
 import qualified Data.Vector.Storable.Mutable as M
 
-import GHC.TypeLits (KnownNat(..), natVal)
 -- import qualified Numeric.LinearAlgebra.HMatrix as Ma
 
 
 
 -- f :: (Dims d' -> Perm n -> Perm n) -> Perm n -> Tensor d e -> Tensor d e'
--- f dim2Idx perm t = Tensor $ reifyDims (permuteDims perm (dims @_ @d)) $ \p ->
+-- f dim2Idx perm t = Tensor $ reifyDims (permuteDims perm (dims @d)) $ \p ->
 --   modifyIdx (reflect p) (modify (permuteIdxs (dim2Idx (reflect p) perm) _)) (reflect p)) t -- basically make user derive the Idxs d' -> Idxs d'
 
 -- dim2Idx :: Rank d ~ n => Dims d -> Perm n -> Perm n
@@ -41,7 +38,7 @@ transpose'
 transpose' d p (Tensor v) = Tensor v'
   where v' = modifyIdxs d v $ \i m -> 
                remapIdxs p d i $ \d' i' -> 
-                 M.modify m (const $ v S.! fromIdxs d' (_permuted p i)) (fromIdxs d' i')
+                 M.modify m (const $ v S.! fromIdxs d' (unsafePermute p i)) (fromIdxs d' i')
 
 
 {-
@@ -101,7 +98,7 @@ productN
   -> T (x +: a +: c)
 productN = undefined
   where
-    d = dims @_ @x
+    d = dims @x
     --s = unsafeCoerce a
 
 product 
@@ -110,7 +107,7 @@ product
   => KnownDims y
   => T (x +: m) -> T (m :+ y) -> T (x ++ y)
 product t u
-    | I# m <- fromIntegral $ dimVal' @m
+    | I# m <- fromIntegral $ fromDim' @m
     , I# n <- fromIntegral $ totalDim' @x
     , I# k <- fromIntegral $ totalDim' @y
     , nk <- n *# k
@@ -162,8 +159,8 @@ transpose
   -> T '[m, n] --(m :+ n :+ x)
 transpose t = case elemSize0 t of
   0# -> broadcast (ix# 0# t)
-  nm | I# m <- fromIntegral $ dimVal' @m
-     , I# n <- fromIntegral $ dimVal' @n
+  nm | I# m <- fromIntegral $ fromDim' @m
+     , I# n <- fromIntegral $ fromDim' @n
      -> let f ( I# i,  I# j )
               | isTrue# (i ==# m) = f ( 0 , I# (j +# 1#) ) -- skip to next col
               | otherwise         = (# ( I# (i +# 1#), I# j ), ix# (i *# n +# j) t #) --col-major indexing

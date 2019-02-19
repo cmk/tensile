@@ -1,0 +1,476 @@
+{-# LANGUAGE AllowAmbiguousTypes    #-}
+{-# LANGUAGE CPP                    #-}
+{-# LANGUAGE FlexibleInstances      #-}
+{-# LANGUAGE FunctionalDependencies #-}
+{-# LANGUAGE InstanceSigs           #-}
+{-# LANGUAGE LambdaCase           #-}
+
+{-# LANGUAGE MagicHash              #-}
+{-# LANGUAGE MultiParamTypeClasses  #-}
+{-# LANGUAGE PatternSynonyms        #-}
+{-# LANGUAGE UndecidableInstances   #-} 
+{-# LANGUAGE ViewPatterns           #-}
+module Numeric.Tensile.Dimensions.Dim.Class (
+  Dim(),
+  pattern Dim,
+  KnownDim(..),
+  fromDim',
+  dimEv,
+  compareDim',
+  sameDim',
+  addDim',
+  subDim',
+  mulDim',
+  expDim',
+  reifyDim,
+  reifyDim',
+  unsafeReifyDim
+) where
+
+import Data.Proxy
+import Data.Kind (Type)
+import Data.Type.Bool
+import Data.Type.Equality
+import GHC.Exts (Constraint, Proxy#, proxy#)
+import GHC.TypeLits
+import Numeric.Type.Evidence
+import Unsafe.Coerce (unsafeCoerce)
+
+import Numeric.Tensile.Dimensions.Types (Reflects(..), type (<))
+
+
+-- | Singleton type to store type-level dimension value.
+-- Dimensions are restricted to strictly positive naturals.
+newtype Dim (d :: Nat) = DimSing Word deriving (Eq, Ord)
+
+instance Show (Dim d) where
+    show (DimSing w) = "Dim " ++ show w
+    showsPrec p (DimSing w)
+      = showParen (p >= 10)
+      $ showString "Dim " . showsPrec p w
+
+
+-- | Similar to `natVal` from `GHC.TypeLits`, but returns `Word`.
+fromDim' :: Dim d -> Word
+fromDim' (DimSing w) = w
+{-# INLINE fromDim' #-}
+
+dimEv :: Dim d -> Evidence (KnownDim d)
+dimEv d = reifyDim' d E
+{-# INLINE dimEv #-}
+
+--   Match against this pattern to bring a `KnownDim` instance into scope.
+pattern Dim :: forall d. KnownDim d => Dim d
+pattern Dim <- (dimEv -> E)
+  where
+    Dim = dim @d
+-- Starting from GHC 8.2, compiler supports specifying lists of complete
+-- pattern synonyms.
+#if __GLASGOW_HASKELL__ >= 802
+{-# COMPLETE Dim #-}
+#endif
+
+-------------------------------------------------------------------------------
+-- Arithmetic
+-------------------------------------------------------------------------------
+
+-- | We either get evidence that this function
+--   was instantiated with the same type-level numbers, or Nothing.
+--
+--   Note, this function works on @Nat@-indexed dimensions only,
+--   because @Dim (XN x)@ does not have runtime evidence to infer @x@
+--   and `KnownDim x` does not imply `KnownDim (XN x)`.
+sameDim' :: forall (x :: Nat) (y :: Nat)
+         . Dim x -> Dim y -> Maybe (Evidence (x ~ y))
+sameDim' (DimSing a) (DimSing b)
+  | a == b    = Just (unsafeCoerce (E @(x ~ x)))
+  | otherwise = Nothing
+{-# INLINE sameDim' #-}
+
+-- | Ordering of dimension values.
+compareDim' :: Dim a -> Dim b -> Ordering
+compareDim' (DimSing a) (DimSing b) = compare a b
+{-# INLINE compareDim' #-}
+
+addDim' :: Dim a -> Dim b -> Dim (a + b)
+addDim' (DimSing a) (DimSing b) = unsafeCoerce (a + b)
+{-# INLINE addDim' #-}
+
+subDim' :: a < b => Dim a -> Dim b -> Dim (a - b)
+subDim' (DimSing a) (DimSing b) = unsafeCoerce (a - b)
+{-# INLINE subDim' #-}
+
+mulDim' :: Dim a -> Dim b -> Dim (a * b)
+mulDim' (DimSing a) (DimSing b) = unsafeCoerce (a * b)
+{-# INLINE mulDim' #-}
+
+expDim' :: Dim a -> Dim b -> Dim (a ^ b)
+expDim' (DimSing a) (DimSing b) = unsafeCoerce (a ^ b)
+{-# INLINE expDim' #-}
+
+-------------------------------------------------------------------------------
+-- Value Reification
+-------------------------------------------------------------------------------
+
+instance KnownDim d => Reflects d (Dim d) where
+  reflect _ = dim
+
+reifyDim :: forall r. Word -> (forall d. KnownDim d => Dim d -> r) -> Maybe r
+reifyDim w k = if w == 0 then Nothing else Just r
+  where r = unsafeReifyDim w $ \p -> k (reflect p) 
+
+unsafeReifyDim :: forall r. Word -> (forall d. KnownDim d => Proxy d -> r) -> r
+unsafeReifyDim w k = unsafeCoerce (WithSomeDim k :: WithSomeDim r) w Proxy
+
+newtype WithSomeDim r = WithSomeDim (forall d. KnownDim d => Proxy d -> r)
+
+reifyDim' :: forall d r. Dim d -> (KnownDim d => r) -> r
+reifyDim' d k = unsafeCoerce (WithKnownDim k :: WithKnownDim d r) d
+
+newtype WithKnownDim d r = WithKnownDim (KnownDim d => r)
+
+-------------------------------------------------------------------------------
+-- Type Reflection
+-------------------------------------------------------------------------------
+
+-- TODO dont export dim itself?
+-- | This class provides the `Dim` associated with a type-level natural,
+class KnownDim d where
+    -- | Get value of type-level dim at runtime.
+    --
+    --   Note, this function is supposed to be used with @TypeApplications@,
+    --   and the @KnownDim@ class has varying kind of the parameter;
+    --   thus, the function has two type paremeters (kind and type of @n@).
+    --   For example, you can type:
+    --
+    --   >>>:set -XTypeApplications
+    --   >>>:set -XDataKinds
+    --   >>>:t dim @3
+    --   dim @3 :: Dim 3
+    --
+    --   >>>:set -XTypeOperators
+    --   >>>:t dim @(13 - 6)
+    --   dim @(13 - 6) :: Dim 7
+    dim :: Dim d
+
+instance {-# OVERLAPPABLE #-} (KnownNat d, 1 <= d) => KnownDim d where
+    {-# INLINE dim #-}
+    dim = DimSing (fromInteger (natVal' (proxy# :: Proxy# d)))
+
+instance {-# OVERLAPPING #-} KnownDim 1  where
+  { {-# INLINE dim #-}; dim = DimSing 1 }
+instance {-# OVERLAPPING #-} KnownDim 2  where
+  { {-# INLINE dim #-}; dim = DimSing 2 }
+instance {-# OVERLAPPING #-} KnownDim 3  where
+  { {-# INLINE dim #-}; dim = DimSing 3 }
+instance {-# OVERLAPPING #-} KnownDim 4  where
+  { {-# INLINE dim #-}; dim = DimSing 4 }
+instance {-# OVERLAPPING #-} KnownDim 5  where
+  { {-# INLINE dim #-}; dim = DimSing 5 }
+instance {-# OVERLAPPING #-} KnownDim 6  where
+  { {-# INLINE dim #-}; dim = DimSing 6 }
+instance {-# OVERLAPPING #-} KnownDim 7  where
+  { {-# INLINE dim #-}; dim = DimSing 7 }
+instance {-# OVERLAPPING #-} KnownDim 8  where
+  { {-# INLINE dim #-}; dim = DimSing 8 }
+instance {-# OVERLAPPING #-} KnownDim 9  where
+  { {-# INLINE dim #-}; dim = DimSing 9 }
+instance {-# OVERLAPPING #-} KnownDim 10 where
+  { {-# INLINE dim #-}; dim = DimSing 10 }
+instance {-# OVERLAPPING #-} KnownDim 11 where
+  { {-# INLINE dim #-}; dim = DimSing 11 }
+instance {-# OVERLAPPING #-} KnownDim 12 where
+  { {-# INLINE dim #-}; dim = DimSing 12 }
+instance {-# OVERLAPPING #-} KnownDim 13 where
+  { {-# INLINE dim #-}; dim = DimSing 13 }
+instance {-# OVERLAPPING #-} KnownDim 14 where
+  { {-# INLINE dim #-}; dim = DimSing 14 }
+instance {-# OVERLAPPING #-} KnownDim 15 where
+  { {-# INLINE dim #-}; dim = DimSing 15 }
+instance {-# OVERLAPPING #-} KnownDim 16 where
+  { {-# INLINE dim #-}; dim = DimSing 16 }
+instance {-# OVERLAPPING #-} KnownDim 17 where
+  { {-# INLINE dim #-}; dim = DimSing 17 }
+instance {-# OVERLAPPING #-} KnownDim 18 where
+  { {-# INLINE dim #-}; dim = DimSing 18 }
+instance {-# OVERLAPPING #-} KnownDim 19 where
+  { {-# INLINE dim #-}; dim = DimSing 19 }
+instance {-# OVERLAPPING #-} KnownDim 20 where
+  { {-# INLINE dim #-}; dim = DimSing 20 }
+
+
+
+
+
+{-
+compareDims' :: Dims as -> Dims bs -> Ordering
+compareDims' a b = compare (fromDims a) (fromDims b)
+{-# INLINE compareDims #-}
+
+compareDims :: forall as bs p q
+              . (Dimensions as, Dimensions bs)
+             => p as -> q bs -> Ordering
+compareDims _ _ = compareDims' (dims @as) (dims @bs)
+
+fromDims = fromDims
+compareDims
+sameDims
+totalDim
+
+-- data SomeDims = forall (ns :: [Nat]) . SomeDims (Dims ns)
+-- should be > 1
+
+
+someDimsVal :: [SomeDim] -> SomeDims
+someDimsVal = SomeDims . unsafeCoerce . fmap unsafeCoerce
+
+
+http://hackage.haskell.org/package/typelits-witnesses-0.3.0.3/docs/src/GHC.TypeLits.List.html#KnownNats
+
+{-# LANGUAGE ConstraintKinds      #-}
+{-# LANGUAGE FlexibleContexts     #-}
+{-# LANGUAGE GADTs                #-}
+{-# LANGUAGE KindSignatures       #-}
+{-# LANGUAGE LambdaCase           #-}
+{-# LANGUAGE PolyKinds            #-}
+{-# LANGUAGE RankNTypes           #-}
+{-# LANGUAGE ScopedTypeVariables  #-}
+{-# LANGUAGE StandaloneDeriving   #-}
+{-# LANGUAGE TypeFamilies         #-}
+{-# LANGUAGE TypeInType           #-}
+{-# LANGUAGE TypeOperators        #-}
+{-# LANGUAGE UndecidableInstances #-} 
+import           Data.Functor.Identity
+import           Data.Kind
+import           Data.Proxy
+import           Data.Reflection
+import           Data.Type.Equality
+import           GHC.TypeLits
+
+
+-- | @'KnownDims' ns@ is intended to represent that every 'Dim' in the
+-- type-level list 'ns' is itself a 'KnownDim' (meaning, you can use
+-- 'natVal' to get its corresponding 'Word').
+--
+-- In practice, just knowing that every item has a 'KnownDim' instance is
+-- not enough; it's nice, but unless you're able to "iterate" over every
+-- 'Dim' in the list, it's of limited use.  That's why this class also
+-- provides a constructor for @'Dims' ns@, so that you can produce
+-- a 'Dims' for every @'KnownDim' ns@, which you can iterate over to get
+-- @'Proxy' n@s for every 'n' in 'ns' along with the @'KnownDim' n@
+-- instances.
+--
+-- It also has an analogy to 'natVal', 'natsVal', which lets you get a list
+-- of the represented 'Word's for, say, @'Proxy' [1,2,3]@.
+--
+-- __Deprecated:__ Use 'SingI' from /singletons/ instead.
+class KnownDims (ns :: [Nat]) where
+    -- | __Deprecated:__ Use 'fromSing' from /singletons/ instead.
+    natsVal  :: p ns -> [Word]
+    -- | __Deprecated:__ Use 'sing' from /singletons/ instead.
+    natsList :: Dims ns
+
+instance KnownDims '[] where
+    natsVal  _ = []
+    natsList   = U
+
+instance (KnownDim n, KnownDims ns) => KnownDims (n ': ns) where
+    natsVal  _ = natVal (Proxy :: Proxy n) : natsVal (Proxy :: Proxy ns)
+    natsList   = Proxy :* natsList
+
+-- | Represents unknown type-level lists of type-level natural numbers.
+-- It's a 'Dims', but you don't know what the list contains at
+-- compile-time.
+--
+-- __Deprecated:__ Use 'SomeSing' from /singletons/ instead.
+data SomeDims :: Type where
+    SomeDims :: KnownDims ns => !(Dims ns) -> SomeDims
+
+-- | Same as SomeNat, but for Dimensions:
+--   Hide all information about Dimensions inside
+data SomeDims = forall (ns :: [Nat]) . SomeDims (Dims ns)
+
+
+-- | Singleton-esque type for "traversing" over type-level lists of 'Dim's.
+-- Essentially contains a (value-level) list of @'Proxy' n@s, but each 'n'
+-- has a 'KnownDim' instance for you to use.  At runtime (after type
+-- erasure), is more or less equivalent to a @['Word']@.
+--
+-- Typically generated using 'natsList'.
+--
+-- __Deprecated:__ Use 'Sing' from /singletons/ instead.
+data Dims :: [Nat] -> Type where
+    U   :: Dims '[]
+    (:*) :: (KnownDim n, KnownDims ns)
+          => !(Proxy n) -> !(Dims ns) -> Dims (n ': ns)
+
+infixr 5 :*
+deriving instance Show (Dims ns)
+
+-- | Utility function for traversing over all of the @'Proxy' n@s in
+-- a 'Dims', each with the corresponding 'KnownDim' instance available.
+-- Gives the the ability to "change" the represented natural number to
+-- a new one, in a 'SomeDim'.
+--
+-- Can be considered a form of a @Traversal' 'SomeDims' 'SomeDim'@.
+traverseDims
+    :: forall f ns. Applicative f
+    => (forall n. KnownDim n => Proxy n -> f SomeDim)
+    -> Dims ns
+    -> f SomeDims
+traverseDims f = go
+  where
+    go :: forall ms. Dims ms -> f SomeDims
+    go = \case
+      U      -> pure $ SomeDims U
+      n :* ns -> merge <$> f n <*> go ns
+    merge :: SomeDim -> SomeDims -> SomeDims
+    merge = \case
+      SomeDim n -> \case
+        SomeDims ns ->
+          SomeDims (n :* ns)
+
+-- | Like 'traverseDims', but literally actually a @Traversal'
+-- 'SomeDims' 'SomeDim'@, avoiding the Rank-2 types, so is usable with
+-- lens-library machinery.
+traverseDims'
+    :: forall f. Applicative f
+    => (SomeDim -> f SomeDim)
+    -> SomeDims
+    -> f SomeDims
+traverseDims' f = \case
+    SomeDims ns -> traverseDims (f . SomeDim) ns
+
+-- | Utility function for traversing over all of the @'Proxy' n@s in
+-- a 'Dims', each with the corresponding 'KnownDim' instance available.
+-- Results are ignored.
+traverseDims_
+    :: forall f a ns. Applicative f
+    => (forall n. KnownDim n => Proxy n -> f a)
+    -> Dims ns
+    -> f ()
+traverseDims_ f = go
+  where
+    go :: forall ms. Dims ms -> f ()
+    go = \case
+      U       -> pure ()
+      n :* ns -> f n *> go ns
+
+-- | The "eliminator" for 'Dims'.  You can think of this as
+-- a dependently typed analogy for a fold.
+--
+-- /Since 0.2.1.0/
+elimDims
+    :: forall p ns. ()
+    => p '[]
+    -> (forall m ms. (KnownDim m, KnownDims ms) => Proxy m -> p ms -> p (m ': ms))
+    -> Dims ns
+    -> p ns
+elimDims z s = \case
+    U      -> z
+    n :* ns -> s n (elimDims z s ns)
+
+
+-- | Utility function for \"mapping\" over each of the 'Dim's in the
+-- 'Dims'.
+mapDims
+    :: (forall n. KnownDim n => Proxy n -> SomeDim)
+    -> Dims ns
+    -> SomeDims
+mapDims f = runIdentity . traverseDims (Identity . f)
+
+-- | Like 'mapDims', but avoids the Rank-2 types, so can be used with
+-- '.' (function composition) and in other situations where 'mapDims'
+-- would cause problems.
+mapDims'
+    :: (SomeDim -> SomeDim)
+    -> SomeDims
+    -> SomeDims
+mapDims' f = runIdentity . traverseDims' (Identity . f)
+
+-- | List equivalent of 'someDimVal'.  Convert a list of integers into an
+-- unknown type-level list of naturals.  Will return 'Nothing' if any of
+-- the given 'Word's is negative.
+--
+-- __Deprecated:__ Use 'toSing' from /singletons/ instead.
+someDimsVal :: [Word] -> Maybe SomeDims
+someDimsVal []     = Just (SomeDims U)
+someDimsVal (n:ns) = do
+    SomeDim  m  <- someDimVal n
+    SomeDims ms <- someDimsVal ns
+    return $ SomeDims (m :* ms)
+
+-- | List equivalent of 'reifyDim'.  Given a list of integers, takes
+-- a function in an "environment" with a @'Dims' ns@ corresponding to
+-- the given list, where every @n@ in @ns@ has a 'KnownDim' instance.
+--
+-- Essentially a continuation-style version of 'SomeDims'.
+--
+-- Be aware that this also produces @'KnownDim' n@s where @n@ is negative,
+-- without complaining.  To be consistent, within the library, this
+-- /should/ be called @reifyDimsNat@; however, the naming choice is for
+-- consistency with 'reifyDim' from the /reflections/ package.  Use
+-- 'reifyDims'' for a "safe" version.
+--
+-- __Deprecated:__ Use 'withSomeSing' from /singletons/ instead.
+reifyDims :: [Word] -> (forall ns. KnownDims ns => Dims ns -> r) -> r
+reifyDims []     f = f U
+reifyDims (n:ns) f = reifyDim n $ \m ->
+                       reifyDims ns $ \ms ->
+                         f (m :* ms)
+
+-- | "Safe" version of 'reifyDims', which will only run the continuation if
+-- every 'Word' in the list is non-negative.  If not, then returns
+-- the given "default" value instead.
+--
+-- __Deprecated:__ Use 'withSomeSing' from /singletons/ instead.
+reifyDims'
+    :: [Word]
+    -> r
+    -> (forall ns. KnownDims ns => Dims ns -> r)
+    -> r
+reifyDims' ns d f =
+    case someDimsVal ns of
+      Just (SomeDims ms) -> f ms
+      Nothing            -> d
+
+-- | Like 'someDimsVal', but will also go ahead and produce 'KnownDim's
+-- whose integer values are negative.  It won't ever error on producing
+-- them, but extra care must be taken when using the produced 'SomeDim's.
+--
+-- __Deprecated:__ Use 'toSing' from /singletons/ instead.
+someDimsValNat :: [Word] -> SomeDims
+someDimsValNat ns = reifyDims ns SomeDims
+
+-- | Get evidence that the two 'KnownDims' lists are actually the "same"
+-- list of 'Dim's (that they were instantiated with the same numbers).
+--
+-- Essentialy runs 'sameDim' over the lists:
+--
+-- @
+-- case 'sameDims' ns ms of
+--   Just 'Refl' -> -- in this branch, GHC recognizes that the two ['Dim']s
+--                  -- are the same.
+--   Nothing   -> -- in this branch, they aren't
+-- @
+--
+-- __Deprecated:__ Use '%~' from /singletons/ instead.
+sameDims
+    :: Dims ns
+    -> Dims ms
+    -> Maybe (ns :~: ms)
+sameDims = \case
+    U      -> \case
+      U      -> Just Refl
+      _ :* _  -> Nothing
+    n :* ns -> \case
+      U      -> Nothing
+      m :* ms -> do
+        Refl <- sameDim n m
+        Refl <- sameDims ns ms
+        return Refl
+
+
+
+
+-}

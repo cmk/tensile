@@ -2,8 +2,7 @@ module Test.Numeric.Tensile.Operations.Linear.Predicate where
 
 import Numeric.Tensile.Tensor
 import Numeric.Tensile.Dimensions.Types
-import Numeric.Tensile.Dimensions.Index (_reversed')
-import Numeric.Tensile.Dimensions.Permutation (Perm(..), reversal, reversal')
+import Numeric.Tensile.Dimensions.Perm (Perm(..), reversal, reversal')
 import Numeric.Tensile.Operations.Linear.Unlifted (transpose, transpose')
 import Test.Numeric.Tensile.Tensor.Gen
 
@@ -46,7 +45,7 @@ reifyDims' d k = unsafeCoerce (MagicDims k :: MagicDims r) d Proxy
 pred_transposition' :: (Elt e, Eq e, V.Storable e) => Dims d -> Tensor d e -> Bool
 pred_transposition' d t = b
   where
-    w = listDims d
+    w = fromDims d
     s = product w
     b = withSomeDims (reverse w) $ \d' -> 
           withSomeDims w $ \d'' ->
@@ -56,7 +55,7 @@ pred_transposition' d t = b
 pred_transposition' :: forall d e. (Elt e, Eq e) => Dims d -> Tensor d e -> Bool
 pred_transposition' d t = t'' == t
   where
-    w = listDims d
+    w = fromDims d
     t' = reifyDims' (reverse w) $ \d -> transpose' (reflect d) (reversal' $ reflect d) t
     t'' = reifyDims' w $ \d ->transpose' (reflect d) (reversal' $ reflect d) $ t'
 
@@ -64,7 +63,7 @@ pred_transposition' d t = t'' == t
 pred_transposition' :: (Elt e, Eq e, V.Storable e) => Dims d -> Tensor d e -> Bool
 pred_transposition' d t = b
   where
-    w = listDims d
+    w = fromDims d
     s = product w
     b = withSomeDims (reverse w) $ \d' -> 
           withSomeDims w $ \d'' ->
@@ -96,8 +95,8 @@ prop_splitDims n xsys
   , (xs, ys) <- splitAt (fromIntegral n) xsys
   = case TL.splitAt dn dxsys of
       (dxs, dys) -> and
-        [ listDims dxs == xs
-        , listDims dys == ys
+        [ fromDims dxs == xs
+        , fromDims dys == ys
         -- , dxsys == TL.concat dxs dys
         ]
 
@@ -105,11 +104,11 @@ tensor :: (MonadGen m, Elt e) => Dims d -> (Range e -> m e) -> Range e -> m (Ten
 tensor d g r = Tensor <$> genVectorOf ran g r
   where ran = R.singleton $ fromIntegral (totalDim d)
 
-listDims :: Dims xs -> [Word]
-listDims = unsafeCoerce#
+fromDims :: Dims xs -> [Word]
+fromDims = unsafeCoerce#
 
-d233 = (dims @_ @'[2,3,3])
-d332 = (dims @_ @'[3,3,2])
+d233 = (dims @'[2,3,3])
+d332 = (dims @'[3,3,2])
 
 ttt :: Perm 3
 ttt = transposition @2 @3
@@ -124,8 +123,8 @@ w' = fill d233 $ minorToMajor d233 :: Vector Int -- row major
 re :: Perm (Rank '[2, 4])
 re = reversal
 
-d24 = (dims @_ @'[2, 4])
-d42 = (dims @_ @'[4, 2])
+d24 = (dims @'[2, 4])
+d42 = (dims @'[4, 2])
 
 t :: Tensor Int '[2, 4]
 t = fill d24 $ majorToMinor d24 -- col major
@@ -146,7 +145,7 @@ transpose t' == reshape t && transpose t == reshape t'
 re :: Perm (Rank '[3, 3, 3])
 re = reversal
 
-d333 = (dims @_ @'[3,3,3])
+d333 = (dims @'[3,3,3])
 
 t :: Tensor Int '[3, 3, 3] 
 t = fill d333 $ majorToMinor d333 -- col major
