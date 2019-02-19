@@ -2,13 +2,52 @@ module Test.Numeric.Tensile.Dimensions.Idxs.Predicate where
 
 import Numeric.Tensile.Dimensions
 
-pred_max_diffIdx :: forall (d :: [Nat]). Dims d -> Bool
-pred_max_diffIdx d = (fromIntegral $ 1 + diffIdxs d (maxBound' d) (minBound' d)) == (product . fromDims $ d)
+pred_max_diff_idxs :: forall ds. Dims ds -> Bool
+pred_max_diff_idxs ds = 
+  (fromIntegral $ 1 + diffIdxs ds (maxBound' ds) (minBound' ds)) == (product . fromDims $ ds)
 
+pred_sum_idxs :: forall ds. Dims ds -> Bool
+pred_sum_idxs ds = foldIdxs ds (\_ a -> a + 1) 0 == (product . fromDims $ ds)
+
+remapIdxsTest
+  :: forall ds r
+  . (forall ds'. Dims ds' -> Idxs ds' -> r)
+  -> Dims ds -> Idxs ds -> r
+remapIdxsTest f ds ix = 
+  unsafeReifyDims (Prelude.reverse $ fromDims ds) $ \ds' -> 
+    f ds' (toIdxs ds' . fromIdxs ds $ ix)
+
+pred_remap_idxs :: forall ds. Dims ds -> Bool
+pred_remap_idxs ds = check xs minorToMajor == check (Prelude.reverse xs) (remapIdxsTest minorToMajor)
+  where xs = fromDims ds
+
+        check :: [Word] -> (forall ds i. Integral i => Dims ds -> Idxs ds -> i) -> [Word]
+        check ds f = unsafeReifyDims ds $ \p -> foldIdxs (reflect p) (\i xs -> f (reflect p) i : xs) []
 
 {-
  -
 -- test -
+
+> foldIdxs (dims @'[]) (\_ a -> a + 1) 0
+1
+pred_remap_idxs :: forall ds. Dims ds -> Bool
+pred_remap_idxs ds = (traceShowId $ foldIdxs ds (normal ds) []) == (traceShowId $ foldIdxs ds (adjusted ds) [])
+  where normal ds is xs = minorToMajor ds is : xs
+        adjusted ds is xs = remapIdxsTest majorToMinor ds is : xs
+
+foldIdxs :: Dims ds -> (Idxs ds -> a -> a) -> a -> a
+foldIdxs U k = k U
+foldIdxs (Snoc ds d) k = foldIdxs ds k'
+  where k' is = go 0
+          where go i | i >= fromDim d = id
+                     | otherwise = go (i + 1) . k (is `snoc` Idx i)
+
+unsafeReifyDims [2,4] $ \p -> foldIdxs (reflect p) (\i xs -> majorToMinor (reflect p) i : xs) []
+unsafeReifyDims [2,4] $ \p -> foldIdxs (reflect p) (\i xs -> majorToMinor (reflect p) i : xs) []
+
+
+unsafeReifyDims [2,4] $ \p -> forMIdxs_ (reflect p) (print . majorToMinor (reflect p))
+
 
 
 pred_diffIdx d = reifySomeDims d f

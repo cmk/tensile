@@ -160,31 +160,20 @@ pattern Empty = U
 pattern (:+) :: forall (f :: Nat -> Type) ds
               . ()
              => forall (y :: Nat) (ys :: [Nat])
-              . (ds ~ (y ': ys)) => f y -> TypedList f ys -> TypedList f ds
+              . (ds ~ (y :+ ys)) => f y -> TypedList f ys -> TypedList f ds
 pattern (:+) d ds = Cons d ds
 infixr 5 :+
-
-
 
 -- | Constructing a type-indexed list
 pattern Cons :: forall (f :: Nat -> Type) (ds :: [Nat])
               . ()
              => forall (y :: Nat) (ys :: [Nat])
-              . (ds ~ (y ': ys)) => f y -> TypedList f ys -> TypedList f ds
+              . (ds ~ (y :+ ys)) => f y -> TypedList f ys -> TypedList f ds
 pattern Cons d ds <- (patTL @f @ds -> PatCons d ds)
   where
     Cons = Numeric.Tensile.Dimensions.Types.cons
 
-{-
--- | Constructing a type-indexed list from the other end
-pattern (*:) :: forall (f :: Nat -> Type) ds 
-              . ()
-             => forall (sy :: [Nat]) (y :: Nat)
-              . (ds ~ (sy +: y)) => TypedList f sy -> f y -> TypedList f ds
-pattern (*:) sx x = Snoc sx x
-infixl 5 *:
--}
-
+-- TODO make an (+:) infix version of this
 -- | Constructing a type-indexed list from the other end
 pattern Snoc :: forall (f :: Nat -> Type) (ds :: [Nat])
               . ()
