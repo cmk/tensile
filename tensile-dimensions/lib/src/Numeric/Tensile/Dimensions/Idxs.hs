@@ -43,6 +43,7 @@ import Numeric.Tensile.Dimensions.Types
 import qualified Data.Finite as F
 import qualified Math.Combinat.Permutations as P
 
+
 -- | Remaps the index argument to the index with the same 'Int' representation 
 -- under the permuted dimensions.
 remapIdxs 
@@ -93,7 +94,6 @@ forM_ :: (Foldable t, Monad m) => t a -> (a -> m b) -> m ()
 > :t foldM
 foldM
   :: (Foldable t, Monad m) => (b -> a -> m b) -> b -> t a -> m b
-
 -}
 
 -------------------------------------------------------------------------------

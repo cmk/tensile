@@ -153,6 +153,7 @@ pattern Cons
 pattern Cons d ds <- (patTL @f @ds -> PatCons d ds)
   where Cons = Numeric.Tensile.Dimensions.Types.cons
 
+-- TODO make an (+:) infix version of this
 -- | Constructing a type-indexed list from the other end
 pattern Snoc 
   :: forall ds f . ()
