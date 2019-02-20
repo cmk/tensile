@@ -24,11 +24,7 @@ pred_traverse_somedims ds = withSomeDims ds fromDims == traverseSomeDims ds
 
 {-
 
- 
-pred_traverse_dims :: Dims ds -> Bool
-pred_traverse_dims ds = evidenceReflect ds == ds 
-
-TODO: Add prop tests
+TODO: Add prop tests if we're keeping these functions
 > ds = dims @'[1,2,3]
 > traverseDims (pure . SomeDim) ds
 [SomeDim 1,SomeDim 2,SomeDim 3]
@@ -44,6 +40,5 @@ TODO: Add prop tests
 > sd = fromJust $ someDims [1,2,3]
 > traverseDims' pure sd
 [SomeDim 1,SomeDim 2,SomeDim 3]
-
 
 -}
