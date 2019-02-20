@@ -1,0 +1,60 @@
+name:           tensile-tensorflow
+version:        0.0.1
+synopsis:       A cross-platform library for deep learning.
+description:    Tensile is a lightweight neural network API that uses backpack for ML framework integration.
+category:       Machine Learning
+homepage:       https://github.com/cmk/tensile#readme
+bug-reports:    https://github.com/cmk/tensile/issues
+maintainer:     Chris McKinlay
+license:        BSD3
+build-type:     Simple
+cabal-version:  >= 2.0
+
+source-repository head
+  type: git
+  location: https://github.com/cmk/tensile
+
+
+library 
+    hs-source-dirs: 
+        lib/src
+    exposed-modules:
+        Numeric.Tensile.Tensor.Internal
+        Numeric.Tensile.Operations.Linear.Internal     
+        Numeric.Tensile.Operations.Quantization.Internal
+    build-depends:
+        base == 4.*,
+        tensile-dimensions == 0.0.*,
+        tensorflow,
+        vector,
+        vector-sized
+    default-extensions:
+        AllowAmbiguousTypes,
+        ConstraintKinds, 
+        FlexibleContexts,
+        RankNTypes,
+        ScopedTypeVariables,
+        TypeInType,
+        TypeApplications,
+        TypeFamilies,
+        TypeOperators 
+    default-language: Haskell2010
+
+library tensile-tensorflow-test
+    hs-source-dirs: 
+        lib/test
+    exposed-modules:
+        Test.Numeric.Tensile.Tensor.Gen.Internal    
+    build-depends:
+        base == 4.*,
+        hedgehog,
+        tensile-dimensions == 0.0.*,
+        tensile-tensorflow,
+        vector
+    default-extensions: 
+        ScopedTypeVariables,
+        TypeApplications,
+        TypeInType,
+        TypeOperators,
+        OverloadedLists
+    default-language: Haskell2010
