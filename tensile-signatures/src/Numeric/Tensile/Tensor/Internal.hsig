@@ -102,55 +102,47 @@ gt :: Ord TVal => T d -> T d -> B d
 
 gte :: Ord TVal => T d -> T d -> B d
 
-
-{-
-
--- 
--- sigmoid
-
-
 equal
   :: Elt e
   => Eq e
   => Tensor d e
   -> Tensor d e
-  -> Tensor BVal d
+  -> Tensor d BVal
 
 notEqual
   :: Elt e
   => Eq e
   => Tensor d e
   -> Tensor d e
-  -> Tensor BVal d
+  -> Tensor d BVal
 
 less
   :: Elt e
   => Ord e
   => Tensor d e
   -> Tensor d e
-  -> Tensor BVal d
+  -> Tensor d BVal
 
 lessEqual
   :: Elt e
   => Ord e
   => Tensor d e
   -> Tensor d e
-  -> Tensor BVal d
+  -> Tensor d BVal
 
 greater
   :: Elt e
   => Ord e
   => Tensor d e
   -> Tensor d e
-  -> Tensor BVal d
+  -> Tensor d BVal
 
 greaterEqual
   :: Elt e
   => Ord e
   => Tensor d e
   -> Tensor d e
-  -> Tensor BVal d
--}
+  -> Tensor d BVal
 
 maximum
   :: Elt e
@@ -195,7 +187,9 @@ fromSizedVector :: Elt e => Vector (Size d) e -> Tensor d e
 
 toSizedVector :: Elt e => Tensor d e -> Vector (Size d) e
 
-fill :: forall d e. Elt e => Dims d -> (Idxs d -> e) -> Tensor d e
+fill :: Elt e => Dims d -> (Idxs d -> e) -> Tensor d e
+
+constant :: Elt e => Dims d -> e -> Tensor d e
 
 pack0
   :: forall d e n. Elt e

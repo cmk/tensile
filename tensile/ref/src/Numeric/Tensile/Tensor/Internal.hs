@@ -198,16 +198,6 @@ minimum
   -> Tensor d e
 minimum = _lift2 min
 
-{-
-vector :: forall n . KnownDim n => KnownNat n => [HsReal] -> ExceptT String IO (Tensor '[n])
-vector rs
-  | genericLength rs == fromDim (dim :: Dim n) = asStatic <$> Dynamic.vectorEIO rs
-  | otherwise = ExceptT . pure $ Left "Vector dimension does not match length of list"
-
-unsafeVector :: (KnownDim n, KnownNat n) => [HsReal] -> IO (Tensor '[n])
-unsafeVector = fmap (either error id) . runExceptT . vector
--}
-
 reshape 
   :: forall d d' e. Elt e 
   => Reshapable d d'
@@ -220,7 +210,7 @@ fromList
   => [e]
   -> Maybe (Tensor d e)
 fromList v
-  | length v == fromIntegral (fromDim (dim :: Dim (Size d))) = Just $ Tensor $ S.fromListN (length v) v
+  | length v == fromIntegral (fromDim (dim @(Size d))) = Just $ Tensor $ S.fromListN (length v) v
   | otherwise = Nothing
 
 -- fromVector :: Elt e => Dims d -> Vector e -> Maybe (Tensor d e)
@@ -237,12 +227,15 @@ toSizedVector = coerce . S.convert . unTensor
   where coerce :: S.Vector e -> N.Vector n e
         coerce = unsafeCoerce
 
-fill :: forall d e. Elt e => Dims d -> (Idxs d -> e) -> Tensor d e
+fill :: Elt e => Dims d -> (Idxs d -> e) -> Tensor d e
 fill d f = Tensor $ S.create $ do
   mv <- M.new $ fromIntegral $ product $ fromDims d
   let act ix = M.write mv (minorToMajor d ix) $ f ix
   forMIdxs_ d act
   return mv
+
+constant :: Elt e => Dims d -> e -> Tensor d e
+constant d t = fill d $ const t
 
 -- TODO unsafe consider using sized vectors internally
 modifyIdxs :: forall d e. Storable e => Dims d -> S.Vector e -> (forall s. Idxs d -> M.MVector s e -> ST s ()) -> S.Vector e
