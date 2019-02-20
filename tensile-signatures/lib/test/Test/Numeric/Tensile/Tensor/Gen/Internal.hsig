@@ -1,0 +1,7 @@
+signature Test.Numeric.Tensile.Tensor.Gen.Internal (gen_tensor) where
+
+import Numeric.Tensile.Dimensions (Dims(..))
+import Numeric.Tensile.Tensor.Internal (Tensor(..), Elt(..))
+import Hedgehog (MonadGen(..))
+
+gen_tensor :: (Elt e, MonadGen m) => Dims d -> m e -> m (Tensor d e)

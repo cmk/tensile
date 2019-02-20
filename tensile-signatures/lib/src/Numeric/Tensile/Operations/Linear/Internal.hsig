@@ -1,0 +1,60 @@
+signature Numeric.Tensile.Operations.Linear.Internal (
+  transpose
+) where
+
+import Numeric.Tensile.Dimensions
+import Numeric.Tensile.Tensor.Internal (Elt(..),Tensor(..))
+
+transpose
+  :: Elt e 
+  => Permutable d d'
+  => Dims d -> Perm (Rank d) -> Tensor d e -> Tensor d' e
+
+{-
+matmul 
+  :: forall m x y. KnownDim m
+  => Dimensions x
+  => Dimensions y
+  => T (x +: m) -> T (m :+ y) -> T (x ++ y)
+
+-- want d' < d, 
+slice :: Idxs d -> Dims d' -> Tensor d e -> Tensor d' e
+
+stack ::  Dim n -> Vector n (Tensor (x ++ y) e) -> Tensor (x +: n :+ y) e
+unstack :: (KnownDims x, Elt e) => Dim n -> Tensor (x +: n :+ y) e -> Vector n (Tensor (x ++ y) e)
+
+
+
+matmulR
+  :: All KnownDim '[a, b, c]
+  => Dimensions x
+  => T (a :+ b :+ x)
+  -> T (b :+ c :+ x)
+  -> T (a :+ c :+ x)
+matmulR = undefined
+
+-- <#
+matmulL
+  :: All KnownDim '[a, b, c]
+  => Dimensions x
+  => T (x +: a +: b) 
+  -> T (x +: b +: c)
+  -> T (x +: a +: c)
+matmulL = undefined
+
+-- TODO use typesig to determine permutation
+transpose 
+  :: forall a x y. All KnownDim '[a, b]
+  => Dimensions x
+  => Dimensions y
+  => T (x ++ '[a,b] ++ y) -> T (x ++ '[b,a] ++ y) 
+
+-- TODO hopefully dont need to define shape '[] tensors as scalars? 
+trace
+  :: All KnownDim '[a, b, c]
+  => Dimensions x
+  => T (x +: a +: b) 
+  -> T x
+trace = undefined
+
+-}
