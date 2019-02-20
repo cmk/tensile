@@ -18,3 +18,4 @@ pred_transpose_idxs ds = check ds minorToMajor == check (T.unsafeReverse ds) (tr
 --TODO add arbitrary permutations
 --pred_permute_idxs :: forall ds. Dims ds -> Bool
 
+
