@@ -31,11 +31,11 @@ import qualified Data.Vector.Storable.Mutable as M
 
 
 
-transpose' 
+transpose 
   :: Elt e 
   => Permutable d d'
   => Dims d -> Perm (Rank d) -> Tensor d e -> Tensor d' e
-transpose' d p (Tensor v) = Tensor v'
+transpose d p (Tensor v) = Tensor v'
   where v' = modifyIdxs d v $ \i m -> 
                remapIdxs p d i $ \d' i' -> 
                  M.modify m (const $ v S.! fromIdxs d' (unsafePermute p i)) (fromIdxs d' i')

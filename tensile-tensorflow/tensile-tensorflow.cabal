@@ -17,7 +17,7 @@ source-repository head
 
 library 
     hs-source-dirs: 
-        lib/src
+        ref/src
     exposed-modules:
         Numeric.Tensile.Tensor.Internal
         Numeric.Tensile.Operations.Linear.Internal     
@@ -42,7 +42,7 @@ library
 
 library tensile-tensorflow-test
     hs-source-dirs: 
-        lib/test
+        ref/test
     exposed-modules:
         Test.Numeric.Tensile.Tensor.Gen.Internal    
     build-depends:

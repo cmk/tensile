@@ -34,7 +34,11 @@ import GHC.Enum
 import GHC.TypeLits (KnownNat(..))
 import Unsafe.Coerce (unsafeCoerce)
 
-import Numeric.Tensile.Dimensions
+import Numeric.Tensile.Dimensions.Dims
+import Numeric.Tensile.Dimensions.Idx.Types
+import Numeric.Tensile.Dimensions.Idxs.Types
+import Numeric.Tensile.Dimensions.Perm
+import Numeric.Tensile.Dimensions.Types
 
 import qualified Data.Finite as F
 import qualified Math.Combinat.Permutations as P

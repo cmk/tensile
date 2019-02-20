@@ -1,18 +1,16 @@
-module Numeric.Tensile.Operations.Linear.Unlifted (
-  module Numeric.Tensile.Operations.Linear.Unlifted,
-  module Numeric.Tensile.Operations.Linear.Internal
-) where
+module Numeric.Tensile.Operations.Linear.Unlifted where
 
 import Numeric.Tensile.Dimensions
-import Numeric.Tensile.Operations.Linear.Internal
 import Numeric.Tensile.Tensor
+
+import qualified Numeric.Tensile.Operations.Linear.Internal as I
 
 transpose
   :: forall d d' e. Elt e 
   => KnownDims d
   => Permutable d d'
   => Perm (Rank d) -> Tensor d e -> Tensor d' e
-transpose = transpose' (dims @d)
+transpose = I.transpose (dims @d)
 
 {-
 infixl 7 <#>
@@ -31,15 +29,15 @@ rev :: forall (d :: [Nat]). Dims d -> Dims (Reverse d)
 rev = unsafeCoerce . reverse . unsafeCoerce
 
 
-transpose''
+transpose'
   :: forall d e. Elt e 
   => Dims d -> Tensor d e -> Tensor (Reverse d) e
-transpose'' d  = unsafeCoerce . transpose' d (reversal' d) . unsafeCoerce
+transpose' d  = unsafeCoerce . transpose d (reversal' d) . unsafeCoerce
 
 
-transpose'' 
+transpose' 
   :: forall d e. Elt e 
   => Dims d -> Tensor d e -> Tensor (Reverse d) e
-transpose'' d = transpose' d p 
+transpose' d = transpose d p 
   where p = reversal' d
 -}
