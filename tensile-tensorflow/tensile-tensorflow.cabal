@@ -14,37 +14,10 @@ source-repository head
   type: git
   location: https://github.com/cmk/tensile
 
-library 
+library
     hs-source-dirs: 
-        lib/src
-        lib/test
-    exposed-modules:
-        -- Numeric.Tensile.Tensor
-        -- Numeric.Tensile.Operations.Linear.Unlifted
-        -- Test.Numeric.Tensile.Operations.Linear.Predicate
-        -- Test.Numeric.Tensile.Tensor.Gen
-    build-depends:
-        base == 4.*,
-        backprop,
-        hedgehog,
-        tensile-dimensions == 0.0.*,
-        reference,
-        vector,
-        vector-sized
-    default-extensions: 
-        ConstraintKinds, 
-        FlexibleContexts,
-        RankNTypes,
-        ScopedTypeVariables,
-        TypeInType,
-        TypeApplications,
-        TypeFamilies,
-        TypeOperators 
-    default-language: Haskell2010
-
-library reference
-    hs-source-dirs: 
-        ref
+        ref/src
+        ref/test
     exposed-modules:
         Numeric.Tensile.Tensor.Internal
         Numeric.Tensile.Operations.Linear.Internal     
@@ -52,8 +25,8 @@ library reference
         Test.Numeric.Tensile.Tensor.Gen.Internal 
     build-depends:
         base == 4.*,
-        hedgehog,
         tensile-dimensions == 0.0.*,
+        hedgehog,
         tensorflow,
         vector,
         vector-sized
@@ -68,4 +41,3 @@ library reference
         TypeFamilies,
         TypeOperators 
     default-language: Haskell2010
-
