@@ -6,8 +6,6 @@ packages:
     tensile/
   , tensile-dimensions/
   , tensile-signatures/
-  , tensile-tensorflow/
-
 
 allow-older: *
 allow-newer: *

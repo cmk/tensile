@@ -24,11 +24,19 @@ pred_traverse_somedims ds = withSomeDims ds fromDims == traverseSomeDims ds
 
 {-
 
- 
-pred_traverse_dims :: Dims ds -> Bool
-pred_traverse_dims ds = evidenceReflect ds == ds 
+prop_splitDims :: [Word] -> Bool
+prop_splitDims n xsys
+  | SomeDims dxsys <- someDimsVal xsys
+  , Dx dn <- someDimVal n -- TODO: why this causes non-exhaustive patterns in GHC 8.2?
+  , (xs, ys) <- splitAt (fromIntegral n) xsys
+  = case TL.splitAt dn dxsys of
+      (dxs, dys) -> and
+        [ fromDims dxs == xs
+        , fromDims dys == ys
+        -- , dxsys == TL.concat dxs dys
+        ]
 
-TODO: Add prop tests
+TODO: Add prop tests if we're keeping these functions
 > ds = dims @'[1,2,3]
 > traverseDims (pure . SomeDim) ds
 [SomeDim 1,SomeDim 2,SomeDim 3]
@@ -44,6 +52,5 @@ TODO: Add prop tests
 > sd = fromJust $ someDims [1,2,3]
 > traverseDims' pure sd
 [SomeDim 1,SomeDim 2,SomeDim 3]
-
 
 -}

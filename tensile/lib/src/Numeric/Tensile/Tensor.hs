@@ -24,5 +24,3 @@ size = product . shape
 fromScalar :: Elt e => e -> Tensor '[] e
 fromScalar = constant (dims @'[])
 
-constant :: Elt e => Dims d -> e -> Tensor d e
-constant d t = fill d $ const t

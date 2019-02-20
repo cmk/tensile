@@ -3,12 +3,9 @@ module Test.Numeric.Tensile.Operations.Linear.Predicate where
 import Numeric.Tensile.Tensor
 import Numeric.Tensile.Dimensions.Types
 import Numeric.Tensile.Dimensions.Perm (Perm(..), reversal, reversal')
-import Numeric.Tensile.Operations.Linear.Unlifted (transpose, transpose')
+import Numeric.Tensile.Operations.Linear.Unlifted (transpose, transpose)
 import Test.Numeric.Tensile.Tensor.Gen
 
-import Hedgehog
-import qualified Hedgehog.Gen as G
-import qualified Hedgehog.Range as R
 import qualified Data.Vector.Storable as V
 
 import Data.Monoid
@@ -49,15 +46,15 @@ pred_transposition' d t = b
     s = product w
     b = withSomeDims (reverse w) $ \d' -> 
           withSomeDims w $ \d'' ->
-                let t'' = transpose' d'' mempty . transpose' d' mempty $ t
+                let t'' = transpose d'' mempty . transpose d' mempty $ t
                 in  t'' == unsafeCoerce t
 
 pred_transposition' :: forall d e. (Elt e, Eq e) => Dims d -> Tensor d e -> Bool
 pred_transposition' d t = t'' == t
   where
     w = fromDims d
-    t' = reifyDims (reverse w) $ \d -> transpose' (reflect d) (reversal' $ reflect d) t
-    t'' = reifyDims w $ \d ->transpose' (reflect d) (reversal' $ reflect d) $ t'
+    t' = reifyDims (reverse w) $ \d -> transpose (reflect d) (reversal' $ reflect d) t
+    t'' = reifyDims w $ \d ->transpose (reflect d) (reversal' $ reflect d) $ t'
 
 
 pred_transposition' :: (Elt e, Eq e, V.Storable e) => Dims d -> Tensor d e -> Bool
@@ -67,7 +64,7 @@ pred_transposition' d t = b
     s = product w
     b = withSomeDims (reverse w) $ \d' -> 
           withSomeDims w $ \d'' ->
-                let t'' = toVector . transpose' d'' mempty . transpose' d' mempty $ t
+                let t'' = toVector . transpose d'' mempty . transpose d' mempty $ t
                 in  t'' == toVector t
 
 
@@ -76,10 +73,10 @@ pred_transposition' d t = undefined -- toVector t == toVector t'
   where --r :: Perm 3
         --r = reversal'
         f :: Tensor d e -> Tensor (Reverse d) e
-        f = unsafeCoerce $ transpose' d (reversal' d)
+        f = unsafeCoerce $ transpose d (reversal' d)
 
         g :: forall d. Tensor (Reverse d) e -> Tensor d e
-        g = transpose' (rev d) (reversal' (rev d))
+        g = transpose (rev d) (reversal' (rev d))
 
         t' = g . f $ t
 
