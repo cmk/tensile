@@ -23,14 +23,11 @@ library
         Numeric.Tensile.Operations.Linear.Unlifted
         Test.Numeric.Tensile.Operations.Linear.Predicate
         Test.Numeric.Tensile.Tensor.Gen
-    signatures:
-        Test.Numeric.Tensile.Tensor.Gen.Internal
     build-depends:
         base == 4.*,
-        backprop,
-        hedgehog,
         tensile-signatures == 0.0.*,
         tensile-dimensions == 0.0.*,
+        backprop,
         vector,
         vector-sized
     default-extensions: 

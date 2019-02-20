@@ -6,9 +6,6 @@ import Numeric.Tensile.Dimensions.Perm (Perm(..), reversal, reversal')
 import Numeric.Tensile.Operations.Linear.Unlifted (transpose, transpose)
 import Test.Numeric.Tensile.Tensor.Gen
 
-import Hedgehog
-import qualified Hedgehog.Gen as G
-import qualified Hedgehog.Range as R
 import qualified Data.Vector.Storable as V
 
 import Data.Monoid
