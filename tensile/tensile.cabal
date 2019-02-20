@@ -52,14 +52,17 @@ library local-signatures
 library reference
     hs-source-dirs: 
         ref/src
+        ref/test
     exposed-modules:
         Numeric.Tensile.Tensor.Internal
         Numeric.Tensile.Operations.Linear.Internal     
         Numeric.Tensile.Operations.Quantization.Internal
+        Test.Numeric.Tensile.Tensor.Gen.Internal   
     build-depends:
         base == 4.*,
-        finite-typelits,
         tensile-dimensions == 0.0.*,
+        hedgehog,
+        finite-typelits,
         vector,
         vector-sized
     default-extensions:
@@ -72,25 +75,6 @@ library reference
         TypeApplications,
         TypeFamilies,
         TypeOperators 
-    default-language: Haskell2010
-
-library reference-test
-    hs-source-dirs: 
-        ref/test
-    exposed-modules:
-        Test.Numeric.Tensile.Tensor.Gen.Internal    
-    build-depends:
-        base == 4.*,
-        hedgehog,
-        reference,
-        tensile-dimensions == 0.0.*,
-        vector
-    default-extensions: 
-        ScopedTypeVariables,
-        TypeApplications,
-        TypeInType,
-        TypeOperators,
-        OverloadedLists
     default-language: Haskell2010
 
 test-suite test
@@ -107,8 +91,7 @@ test-suite test
         hedgehog,
         tensile,
         tensile-dimensions == 0.0.*,
-        reference,
-        reference-test
+        reference
     default-extensions:
         ScopedTypeVariables,
         TypeApplications,
@@ -124,7 +107,6 @@ executable main
     build-depends:
         base == 4.*,
         reference,
-        reference-test,
         tensile,
         tensile-dimensions == 0.0.*,
         vector

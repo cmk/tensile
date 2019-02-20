@@ -22,11 +22,12 @@ library
         Numeric.Tensile.Tensor.Internal
         Numeric.Tensile.Operations.Linear.Internal     
         Numeric.Tensile.Operations.Quantization.Internal
-        Test.Numeric.Tensile.Tensor.Gen.Internal 
+        Test.Numeric.Tensile.Tensor.Gen.Internal   
     build-depends:
         base == 4.*,
         tensile-dimensions == 0.0.*,
         hedgehog,
+        finite-typelits,
         tensorflow,
         vector,
         vector-sized
