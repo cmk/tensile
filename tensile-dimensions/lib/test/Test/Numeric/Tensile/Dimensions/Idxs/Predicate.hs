@@ -2,13 +2,44 @@ module Test.Numeric.Tensile.Dimensions.Idxs.Predicate where
 
 import Numeric.Tensile.Dimensions
 
-pred_max_diffIdx :: forall (d :: [Nat]). Dims d -> Bool
-pred_max_diffIdx d = (fromIntegral $ 1 + diffIdxs d (maxBound' d) (minBound' d)) == (product . fromDims $ d)
+pred_max_diff_idxs :: forall ds. Dims ds -> Bool
+pred_max_diff_idxs ds = 
+  (fromIntegral $ 1 + diffIdxs ds (maxBound' ds) (minBound' ds)) == (product . fromDims $ ds)
+
+pred_sum_idxs :: forall ds. Dims ds -> Bool
+pred_sum_idxs ds = foldIdxs ds (\_ a -> a + 1) 0 == (product . fromDims $ ds)
+
+pred_transpose_idxs :: forall ds. Dims ds -> Bool
+pred_transpose_idxs ds = check ds minorToMajor == check (unsafeReverse ds) (transposeIdxs minorToMajor)
+  where check :: Dims ds -> (forall ds i. Integral i => Dims ds -> Idxs ds -> i) -> [Word]
+        check ds f = foldIdxs ds (\i xs -> f ds i : xs) []
+
 
 
 {-
  -
 -- test -
+
+> foldIdxs (dims @'[]) (\_ a -> a + 1) 0
+1
+pred_remap_idxs :: forall ds. Dims ds -> Bool
+pred_remap_idxs ds = (traceShowId $ foldIdxs ds (normal ds) []) == (traceShowId $ foldIdxs ds (adjusted ds) [])
+  where normal ds is xs = minorToMajor ds is : xs
+        adjusted ds is xs = remapIdxsTest majorToMinor ds is : xs
+
+foldIdxs :: Dims ds -> (Idxs ds -> a -> a) -> a -> a
+foldIdxs U k = k U
+foldIdxs (Snoc ds d) k = foldIdxs ds k'
+  where k' is = go 0
+          where go i | i >= fromDim d = id
+                     | otherwise = go (i + 1) . k (is `snoc` Idx i)
+
+unsafeReifyDims [2,4] $ \p -> foldIdxs (reflect p) (\i xs -> majorToMinor (reflect p) i : xs) []
+unsafeReifyDims [2,4] $ \p -> foldIdxs (reflect p) (\i xs -> majorToMinor (reflect p) i : xs) []
+
+
+unsafeReifyDims [2,4] $ \p -> forMIdxs_ (reflect p) (print . majorToMinor (reflect p))
+
 
 
 pred_diffIdx d = reifySomeDims d f
@@ -42,8 +73,8 @@ res == Just [(11,13),(12,16),(15,17)]
 
 reify d233 $ \p -> totalDim' $ reflect p
 
-reifySomeDims (reverse [2,3,3]) $ \p -> overDimIdx_ (reflect p) print
-> reifySomeDims (reverse [2,3,3]) $ \p -> overDimIdx_ (reflect p) print
+reifySomeDims (reverse [2,3,3]) $ \p -> forMIdxs_ (reflect p) print
+> reifySomeDims (reverse [2,3,3]) $ \p -> forMIdxs_ (reflect p) print
 Idxs [1,1,1]
 Idxs [2,1,1]
 Idxs [3,1,1]
@@ -63,7 +94,7 @@ Idxs [1,3,2]
 Idxs [2,3,2]
 Idxs [3,3,2]
 
-> reifySomeDims (reverse [2,3,3]) $ \p -> Numeric.Tensile.Operations.Linear.Internal.overDimIdx_ (reflect p) print
+> reifySomeDims (reverse [2,3,3]) $ \p -> Numeric.Tensile.Operations.Linear.Internal.forMIdxs_ (reflect p) print
 Idxs [1,1,1]
 Idxs [1,1,2]
 Idxs [1,2,1]
@@ -91,7 +122,7 @@ re = reversal
 a :: Idxs '[2, 3, 3]
 a = fromJust $ idxsFromWords [2, 1, 3]  
 
-> overDimIdx_ (dims @'[2,3,3]) print
+> forMIdxs_ (dims @'[2,3,3]) print
 Idxs [1,1,1]
 Idxs [2,1,1]
 Idxs [1,2,1]
@@ -111,7 +142,7 @@ Idxs [2,2,3]
 Idxs [1,3,3]
 Idxs [2,3,3]
 
-> overDimIdx_ (dims @'[2,3,3]) (\i -> remapIdxs re (dims @'[2,3,3]) i print)
+> forMIdxs_ (dims @'[2,3,3]) (\i -> remapIdxs re (dims @'[2,3,3]) i print)
 Idxs [1,1,1]
 Idxs [2,1,1]
 Idxs [3,1,1]
@@ -131,8 +162,8 @@ Idxs [1,3,2]
 Idxs [2,3,2]
 Idxs [3,3,2]
 
-overDimIdx_ f print
-overDimIdx_ f (\i -> remapIdxs re f i (\_ j -> print j))
+forMIdxs_ f print
+forMIdxs_ f (\i -> remapIdxs re f i (\_ j -> print j))
 
 
 

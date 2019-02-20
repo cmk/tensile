@@ -28,6 +28,7 @@ module Numeric.Tensile.Dimensions.Idxs (
 
 
 import Control.Arrow (first)
+import Control.Monad ((>=>))
 import GHC.Base
 import GHC.Enum
 import GHC.TypeLits (KnownNat(..))
@@ -43,9 +44,11 @@ import qualified Data.Finite as F
 import qualified Math.Combinat.Permutations as P
 
 
--- | Remaps the index argument to the index with the same 'Int' representation under the permuted dimensions.
+-- | Remaps the index argument to the index with the same 'Int' representation 
+-- under the permuted dimensions.
+-- @'foldIdxs' ds 'minorToMajor' [] == 'foldIdxs' ('unsafeReverse' ds) ('remapIdxs' 'reversal' 'minorToMajor') []@
 remapIdxs 
-  :: forall (ds :: [Nat]) r
+  :: forall ds r
    . Perm (Rank ds) 
   -> Dims ds 
   -> Idxs ds 
@@ -53,6 +56,14 @@ remapIdxs
   -> r
 remapIdxs (Perm p) ds ix f = 
   unsafeReifyDims (P.permuteList p $ fromDims ds) $ \ds' -> 
+    f ds' (toIdxs ds' . fromIdxs ds $ ix)
+
+transposeIdxs 
+  :: forall ds r
+  . (forall ds'. Dims ds' -> Idxs ds' -> r)
+  -> Dims ds -> Idxs ds -> r
+transposeIdxs f ds ix = 
+  unsafeReifyDims (Prelude.reverse $ fromDims ds) $ \ds' -> 
     f ds' (toIdxs ds' . fromIdxs ds $ ix)
 
 {-
@@ -79,45 +90,63 @@ lowerPerm
   -> Perm (Size ds)  -- ^ Index-level permutation
 lowerPerm d p f = D.foldDimIdx d (\i p' -> p' <> f d i p) (mempty :: Perm (Size ds))
 
+> :t forM_
+forM_ :: (Foldable t, Monad m) => t a -> (a -> m b) -> m ()
+> :t foldM
+foldM
+  :: (Foldable t, Monad m) => (b -> a -> m b) -> b -> t a -> m b
+
 -}
 
+-------------------------------------------------------------------------------
+-- Indexed folds.
+-------------------------------------------------------------------------------
 
-overDimIdx_ :: Monad m
-            => Dims ds               -- ^ Tensor dimensions
-            -> (Idxs ds -> m ())     -- ^ Function to call on each dimension
-            -> m ()
-overDimIdx_ U k = k U
-overDimIdx_ (Snoc ds d) k = overDimIdx_ ds k'
-  where
-    dw = fromDim d
-    k' is = go 0
-      where
-        go i
-          | i >= dw = return ()
-          | otherwise = k (is `snoc` Idx i) >> go (i+1)
+-- | Fold over all dimensions keeping track of index
+foldIdxs :: Dims ds -> (Idxs ds -> a -> a) -> a -> a
+foldIdxs U k = k U
+foldIdxs (Snoc ds d) k = foldIdxs ds k'
+  where k' is = go 0
+          where go i | i >= fromDim d = id
+                     | otherwise = go (i + 1) . k (is `snoc` Idx i)
+{-# INLINE foldIdxs #-}
+
+foldMIdxs :: Monad m => Dims ds -> (Idxs ds -> a -> m a) -> a -> m a
+foldMIdxs U k = k U
+foldMIdxs (Snoc ds d) k = foldMIdxs ds k'
+  where k' is = go 0
+          where go i | i >= fromDim d = return
+                     | otherwise = k (is `snoc` Idx i) >=> go (i + 1)
+{-# INLINE foldMIdxs #-}
+
+forMIdxs_ :: Monad m => Dims ds -> (Idxs ds -> m ()) -> m ()
+forMIdxs_ U k = k U
+forMIdxs_ (Snoc ds d) k = forMIdxs_ ds k'
+  where k' is = go 0
+          where go i | i >= fromDim d = return ()
+                     | otherwise = k (is `snoc` Idx i) >> go (i + 1)
+{-# INLINE forMIdxs_ #-}
+
+
+foldDimsPartIdx :: Idxs ds -> Idxs ds -> (Idxs ds -> a -> a) -> a -> a
+foldDimsPartIdx s e k = _foldDimsPartIdx (unsafeReverse s) (unsafeReverse e) k
 
 -- TODO reimplement bounds ord check 
-_foldDimPartIdx :: Idxs ds -- ^ Initial indices
-               -> Idxs ds -- ^ Final indices
-               -> (Idxs ds -> a -> a)
-                          -- ^ Function to call on each dimension
-               -> a       -- ^ initial value
-               -> a
-_foldDimPartIdx U U k = k U
-_foldDimPartIdx (start :* starts) (end :* ends) k
-  | iEnd >= iStart = _foldDimPartIdx starts ends (loop iStart)
-  | otherwise      = _foldDimPartIdx starts ends (looi iStart)
+_foldDimsPartIdx :: Idxs ds -> Idxs ds -> (Idxs ds -> a -> a) -> a -> a
+_foldDimsPartIdx U U k = k U
+_foldDimsPartIdx (start :+ starts) (end :+ ends) k
+  | iEnd >= iStart = _foldDimsPartIdx starts ends (loop iStart)
+  | otherwise      = _foldDimsPartIdx starts ends (looi iStart)
   where
     Idx iStart = start
     Idx iEnd   = end
     loop i is
       | i > iEnd = id
-      | otherwise = k (Idx i :* is) . loop (i+1) is
+      | otherwise = k (Idx i :+ is) . loop (i+1) is
     looi i is
       | i < iEnd = id
-      | otherwise = k (Idx i :* is) . looi (i-1) is
+      | otherwise = k (Idx i :+ is) . looi (i-1) is
 
-foldDimPartIdx s e k = foldDimPartIdx (unsafeReverse s) (unsafeReverse e) k
 {-
 -- TODO convert to row major
 overDimPartIdx_ :: Monad m
@@ -127,7 +156,7 @@ overDimPartIdx_ :: Monad m
                           -- ^ Function to call on each dimension
                -> m ()
 overDimPartIdx_ U U k = k U
-overDimPartIdx_ (start :* starts) (end :* ends) k
+overDimPartIdx_ (start :+ starts) (end :+ ends) k
   | iEnd >= iStart = overDimPartIdx_ starts ends loop'
   | otherwise      = overDimPartIdx_ starts ends looi'
   where
@@ -137,12 +166,12 @@ overDimPartIdx_ (start :* starts) (end :* ends) k
       where
         loop i
           | i > iEnd = return ()
-          | otherwise = k (Idx i :* is) >> loop (i+1)
+          | otherwise = k (Idx i :+ is) >> loop (i+1)
     looi' is = looi iStart
       where
         looi i
           | i < iEnd = return ()
-          | otherwise = k (Idx i :* is) >> looi (i-1)
+          | otherwise = k (Idx i :+ is) >> looi (i-1)
 
 -- TODO probably just delete this
 -- | Go over all dimensions keeping track of index and offset

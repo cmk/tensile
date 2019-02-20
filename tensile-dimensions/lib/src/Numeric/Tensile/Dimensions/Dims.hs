@@ -42,7 +42,7 @@ traverseDims k = go
     go :: forall ds. Dims ds -> f SomeDims
     go = \case
       U      -> pure []
-      d :* ds -> (:) <$> reifyDim d (k d) <*> go ds
+      d :+ ds -> (:) <$> reifyDim d (k d) <*> go ds
 
 -- | Like 'traverseDims', but with type @Traversal' 'SomeDims' 'SomeDim'@, 
 -- thus avoiding Rank-2 types. Usable with lens-library machinery.
@@ -82,7 +82,7 @@ foldDims
     -> p ns
 foldDims z s = \case
     U      -> z
-    n :* ns -> s n (foldDims z s ns)
+    n :+ ns -> s n (foldDims z s ns)
 -}
 
 

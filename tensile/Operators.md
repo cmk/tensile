@@ -323,9 +323,9 @@ stack1d0 a b = cat2d0
 stackT :: ∀ s0 s (n::Nat) t. KnownShape s => KnownShape s0 => KnownNat n => (KnownLen s0) => V n (T (s0 ++ s) t) -> Tensor (s0 ++ (n ': s)) t
 stackT v = vecToNP @(T (s0++s) t) @(Catable s0 s t)
              (\x -> (Catable (natSat @1) $ prodHomoS s0 s
-                                          $ prodHomoS s0 (natSat @1 :* s)
+                                          $ prodHomoS s0 (natSat @1 :+ s)
                                           $ knownAppend @s0 @s
-                                          $ knownSShape (s0 .+. natSat @1 :* s)
+                                          $ knownSShape (s0 .+. natSat @1 :+ s)
                                           $ reshape x))
              v $ (Concat (typeSShape @s0)  (typeSShape @s)) 
   where s = typeSShape @s; s0 = typeSShape @s0
