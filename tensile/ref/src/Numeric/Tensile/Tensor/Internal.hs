@@ -22,7 +22,6 @@ import qualified Data.Vector.Storable as S
 import qualified Data.Vector.Storable.Mutable as M
 
 
-
 -- TODO: move to application / test stanza
 type Elt = Storable
 type TVal = Float
