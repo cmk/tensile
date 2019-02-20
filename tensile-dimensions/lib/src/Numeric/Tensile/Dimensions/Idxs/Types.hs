@@ -26,8 +26,7 @@ module Numeric.Tensile.Dimensions.Idxs.Types where
  --(Nat, TypedList(..), Dims(..), Dim(..), KnownDim(..), KnownDims(..), Permutable, Size, Rank)
 import Numeric.Tensile.Dimensions.Dims
 import Numeric.Tensile.Dimensions.Idx.Types
-import Numeric.Tensile.Dimensions.Types
-
+import Numeric.Tensile.Dimensions.Types hiding (take)
 
 import Unsafe.Coerce (unsafeCoerce)
 

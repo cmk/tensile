@@ -38,15 +38,13 @@ import Numeric.Tensile.Dimensions.Dims
 import Numeric.Tensile.Dimensions.Idx.Types
 import Numeric.Tensile.Dimensions.Idxs.Types
 import Numeric.Tensile.Dimensions.Perm
-import Numeric.Tensile.Dimensions.Types
+import Numeric.Tensile.Dimensions.Types 
 
 import qualified Data.Finite as F
 import qualified Math.Combinat.Permutations as P
 
-
 -- | Remaps the index argument to the index with the same 'Int' representation 
 -- under the permuted dimensions.
--- @'foldIdxs' ds 'minorToMajor' [] == 'foldIdxs' ('unsafeReverse' ds) ('remapIdxs' 'reversal' 'minorToMajor') []@
 remapIdxs 
   :: forall ds r
    . Perm (Rank ds) 
