@@ -87,7 +87,7 @@ preinstall: &preinstall
         if test -e "$STACK_YAML"; then rm -f stack.yaml && ln -sv $STACK_YAML stack.yaml; else true; fi
         unset STACK_YAML
         # For stack builds
-        apt-get install -y build-essential libgmp3-dev g++ m4 zlib1g-dev p7zip git 
+        apt-get install -y build-essential libgmp3-dev g++ m4 zlib1g-dev p7zip git unzip
         # For tensorflow
         # curl https://nixos.org/nix/install | sh
         apt-get install -y libprotobuf-dev protobuf-compiler libsnappy-dev libncurses5-dev netbase
