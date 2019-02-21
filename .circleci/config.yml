@@ -89,6 +89,7 @@ preinstall: &preinstall
         # For stack builds
         apt-get install -y build-essential libgmp3-dev g++ m4 zlib1g-dev p7zip git 
         # For tensorflow
+        # curl https://nixos.org/nix/install | sh
         apt-get install -y libprotobuf-dev protobuf-compiler libsnappy-dev libncurses5-dev netbase
 
         # apt-get install -y \
@@ -218,6 +219,10 @@ jobs:
         - *preinstall
         - *restore
         - run: |
+            git clone https://github.com/cmk/haskell
+            cd haskell
+            git submodule update --init --recursive
+            cd ..
             bash -c "$PACKCHECK stack RESOLVER=lts-12"
         - *save
   stack-ghc-8.2:
