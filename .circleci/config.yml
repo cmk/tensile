@@ -89,25 +89,26 @@ preinstall: &preinstall
         # For stack builds
         apt-get install -y build-essential libgmp3-dev g++ m4 zlib1g-dev p7zip git 
         # For tensorflow
-        # apt-get install -y git libprotobuf-dev protobuf-compiler libsnappy-dev
-        apt-get install -y \
+        apt-get install -y libprotobuf-dev protobuf-compiler libsnappy-dev libncurses5-dev netbase
+
+        # apt-get install -y \
             # Required by snappy-frames dependency.
-            libsnappy-dev \
+            # libsnappy-dev \
             # Avoids /usr/bin/ld: cannot find -ltinfo
-            libncurses5-dev \
+            # libncurses5-dev \
             # Makes stack viable in the container
             # libgmp-dev \
             # libcurl3-dev \
             # Required for tcp connections by stack (See: https://github.com/tensorflow/haskell/issues/182)
-            netbase
+            # netbase
 
 
         echo "Downloading protoc..."
 
         # Installs protoc and the libraries.
-        curl -O -L https://github.com/google/protobuf/releases/download/v3.2.0/protoc-3.2.0-linux-x86_64.zip && \
-        unzip -d /usr/local protoc-3.2.0-linux-x86_64.zip bin/protoc && \
-        chmod 755 /usr/local/bin/protoc
+        # curl -O -L https://github.com/google/protobuf/releases/download/v3.2.0/protoc-3.2.0-linux-x86_64.zip && \
+        # unzip -d /usr/local protoc-3.2.0-linux-x86_64.zip bin/protoc && \
+        # chmod 755 /usr/local/bin/protoc
 
         echo "Downloading libtensorflow..."
 
