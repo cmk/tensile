@@ -86,12 +86,26 @@ preinstall: &preinstall
         if test -e "$STACK_YAML"; then rm -f stack.yaml && ln -sv $STACK_YAML stack.yaml; else true; fi
         unset STACK_YAML
         # For stack builds
-        apt-get install -y build-essential libgmp3-dev g++ m4 zlib1g-dev p7zip git libprotobuf-dev protobuf-compiler
-        # Get packcheck if needed
-        CURL=$(which curl)
-        PACKCHECK_URL=${PACKCHECK_GITHUB_URL}/${PACKCHECK_GITHUB_COMMIT}/packcheck.sh
-        if test ! -e "$PACKCHECK"; then $CURL -sL -o "$PACKCHECK" $PACKCHECK_URL; fi;
-        chmod +x $PACKCHECK
+        apt-get install -y build-essential libgmp3-dev g++ m4 zlib1g-dev p7zip
+        # For tensorflow
+        apt-get install -y git libprotobuf-dev protobuf-compiler libsnappy-dev
+        TMP_DIR=$(mktemp -d)
+
+        echo "Downloading libtensorflow..."
+        curl https://storage.googleapis.com/tensorflow/libtensorflow/libtensorflow-cpu-darwin-x86_64-1.9.0.tar.gz > "$TMP_DIR/libtensorflow.tar.gz"
+
+        echo "Extracting and copying libtensorflow..."
+        tar zxf "$TMP_DIR/libtensorflow.tar.gz" -C "$TMP_DIR"
+        sudo rsync -a "$TMP_DIR/lib/" /usr/local/lib
+        sudo rsync -a "$TMP_DIR/include/" /usr/local/include
+        rm -rf "$TMP_DIR"
+        sudo mv /usr/local/lib/libtensorflow.so /usr/local/lib/libtensorflow.dylib
+
+        sudo install_name_tool -id libtensorflow.dylib /usr/local/lib/libtensorflow.dylib
+
+        echo "Installing submodule dependencies"
+        git submodule update --init --recursive
+
 restore: &restore
   # Needs to happen after installing ca-certificates
   restore_cache:
