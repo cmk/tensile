@@ -75,7 +75,8 @@ preinstall: &preinstall
         # For ghc and cabal-install packages from haskell.org
         # gnupg is required for apt-key to work
         apt-get install -y gnupg
-        apt-key adv --keyserver keyserver.ubuntu.com  --recv-keys BA3CBA3FFE22B574
+        # apt-key adv --keyserver keyserver.ubuntu.com  --recv-keys BA3CBA3FFE22B574 #packcheck version
+        apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys 575159689BEFB442
         echo "deb http://downloads.haskell.org/debian stretch main" >> /etc/apt/sources.list
         apt-get update
         # required for packcheck
@@ -86,25 +87,54 @@ preinstall: &preinstall
         if test -e "$STACK_YAML"; then rm -f stack.yaml && ln -sv $STACK_YAML stack.yaml; else true; fi
         unset STACK_YAML
         # For stack builds
-        apt-get install -y build-essential libgmp3-dev g++ m4 zlib1g-dev p7zip
+        apt-get install -y build-essential libgmp3-dev g++ m4 zlib1g-dev p7zip git 
         # For tensorflow
-        apt-get install -y git libprotobuf-dev protobuf-compiler libsnappy-dev
-        TMP_DIR=$(mktemp -d)
+        # apt-get install -y git libprotobuf-dev protobuf-compiler libsnappy-dev
+        apt-get install -y \
+            # Required by snappy-frames dependency.
+            libsnappy-dev \
+            # Avoids /usr/bin/ld: cannot find -ltinfo
+            libncurses5-dev \
+            # Makes stack viable in the container
+            # libgmp-dev \
+            # libcurl3-dev \
+            # Required for tcp connections by stack (See: https://github.com/tensorflow/haskell/issues/182)
+            netbase
+
+
+        echo "Downloading protoc..."
+
+        # Installs protoc and the libraries.
+        curl -O -L https://github.com/google/protobuf/releases/download/v3.2.0/protoc-3.2.0-linux-x86_64.zip && \
+        unzip -d /usr/local protoc-3.2.0-linux-x86_64.zip bin/protoc && \
+        chmod 755 /usr/local/bin/protoc
 
         echo "Downloading libtensorflow..."
-        curl https://storage.googleapis.com/tensorflow/libtensorflow/libtensorflow-cpu-darwin-x86_64-1.9.0.tar.gz > "$TMP_DIR/libtensorflow.tar.gz"
 
-        echo "Extracting and copying libtensorflow..."
-        tar zxf "$TMP_DIR/libtensorflow.tar.gz" -C "$TMP_DIR"
-        rsync -a "$TMP_DIR/lib/" /usr/local/lib
-        rsync -a "$TMP_DIR/include/" /usr/local/include
-        rm -rf "$TMP_DIR"
-        # mv /usr/local/lib/libtensorflow.so /usr/local/lib/libtensorflow.dylib
+        curl -O https://storage.googleapis.com/tensorflow/libtensorflow/libtensorflow-cpu-linux-x86_64-1.9.0.tar.gz && \
+        tar zxf libtensorflow-cpu-linux-x86_64-1.9.0.tar.gz -C /usr/local && \
+        ldconfig
+
+
+        #  TMP_DIR=$(mktemp -d)
+
+        #  echo "Extracting and copying libtensorflow..."
+        #  curl https://storage.googleapis.com/tensorflow/libtensorflow/libtensorflow-cpu-darwin-x86_64-1.9.0.tar.gz > "$TMP_DIR/libtensorflow.tar.gz"
+
+        #  tar zxf "$TMP_DIR/libtensorflow.tar.gz" -C "$TMP_DIR"
+        #  rsync -a "$TMP_DIR/lib/" /usr/local/lib
+        #  rsync -a "$TMP_DIR/include/" /usr/local/include
+        #  rm -rf "$TMP_DIR"
+        #  # mv /usr/local/lib/libtensorflow.so /usr/local/lib/libtensorflow.dylib
 
         # install_name_tool -id libtensorflow.dylib /usr/local/lib/libtensorflow.dylib
 
         # echo "Installing submodule dependencies"
         # git submodule update --init --recursive
+
+        # Installs stack.
+        # curl -O -L https://github.com/commercialhaskell/stack/releases/download/v1.7.1/stack-1.7.1-linux-x86_64.tar.gz && \
+        # tar zxf stack-1.7.1-linux-x86_64.tar.gz -C /usr/local/bin stack-1.7.1-linux-x86_64/stack --strip 1 && \
 
 restore: &restore
   # Needs to happen after installing ca-certificates
