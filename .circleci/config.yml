@@ -222,7 +222,6 @@ jobs:
             git clone https://github.com/cmk/haskell
             cd haskell
             git submodule update --init --recursive
-            cd ..
             curl -O -L https://github.com/commercialhaskell/stack/releases/download/v1.7.1/stack-1.7.1-linux-x86_64.tar.gz && \
             tar zxf stack-1.7.1-linux-x86_64.tar.gz -C /usr/local/bin stack-1.7.1-linux-x86_64/stack --strip 1 && \
             # Installs protoc and the libraries.
