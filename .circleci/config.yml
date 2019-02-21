@@ -86,7 +86,7 @@ preinstall: &preinstall
         if test -e "$STACK_YAML"; then rm -f stack.yaml && ln -sv $STACK_YAML stack.yaml; else true; fi
         unset STACK_YAML
         # For stack builds
-        apt-get install -y build-essential libgmp3-dev g++ m4 zlib1g-dev p7zip git
+        apt-get install -y build-essential libgmp3-dev g++ m4 zlib1g-dev p7zip git protoc
         # Get packcheck if needed
         CURL=$(which curl)
         PACKCHECK_URL=${PACKCHECK_GITHUB_URL}/${PACKCHECK_GITHUB_COMMIT}/packcheck.sh
