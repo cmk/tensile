@@ -99,12 +99,12 @@ preinstall: &preinstall
         rsync -a "$TMP_DIR/lib/" /usr/local/lib
         rsync -a "$TMP_DIR/include/" /usr/local/include
         rm -rf "$TMP_DIR"
-        mv /usr/local/lib/libtensorflow.so /usr/local/lib/libtensorflow.dylib
+        # mv /usr/local/lib/libtensorflow.so /usr/local/lib/libtensorflow.dylib
 
-        install_name_tool -id libtensorflow.dylib /usr/local/lib/libtensorflow.dylib
+        # install_name_tool -id libtensorflow.dylib /usr/local/lib/libtensorflow.dylib
 
-        echo "Installing submodule dependencies"
-        git submodule update --init --recursive
+        # echo "Installing submodule dependencies"
+        # git submodule update --init --recursive
 
 restore: &restore
   # Needs to happen after installing ca-certificates
