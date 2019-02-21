@@ -94,7 +94,9 @@ forM_ :: (Foldable t, Monad m) => t a -> (a -> m b) -> m ()
 > :t foldM
 foldM
   :: (Foldable t, Monad m) => (b -> a -> m b) -> b -> t a -> m b
+
 -}
+
 
 -------------------------------------------------------------------------------
 -- Indexed folds.

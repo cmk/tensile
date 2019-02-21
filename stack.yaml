@@ -3,23 +3,17 @@ resolver: lts-12.25
 packages:
   - 'tensile-dimensions'
   - 'tensile-tensorflow'
-  - location:
-      git: https://github.com/cmk/haskell.git
-      commit: a62c1d0d07592a90154e5558b3d818789017a3ab
-    subdirs:
-      - tensorflow
-      - tensorflow-core-ops
-      - tensorflow-logging
-      - tensorflow-mnist
-      - tensorflow-mnist-input-data
-      - tensorflow-opgen
-      - tensorflow-ops
-      - tensorflow-proto
-      - tensorflow-records
-      - tensorflow-records-conduit
-      - tensorflow-test
-    extra-dep: true
 extra-deps:
+  - haskell/tensorflow
+  - haskell/tensorflow-core-ops
+  - haskell/tensorflow-logging
+  - haskell/tensorflow-mnist
+  - haskell/tensorflow-mnist-input-data
+  - haskell/tensorflow-opgen
+  - haskell/tensorflow-proto
+  - haskell/tensorflow-records
+  - haskell/tensorflow-records-conduit
+  - haskell/tensorflow-test
   - combinat-0.2.9.0
   - dimensions-1.0.1.1
   - proto-lens-protobuf-types-0.3.0.1
