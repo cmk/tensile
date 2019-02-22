@@ -104,7 +104,7 @@ foldM
 
 -- | Fold over all dimensions keeping track of index
 foldIdxs :: Dims ds -> (Idxs ds -> a -> a) -> a -> a
-foldIdxs U k = k U
+foldIdxs S k = k S
 foldIdxs (Snoc ds d) k = foldIdxs ds k'
   where k' is = go 0
           where go i | i >= fromDim d = id
@@ -112,7 +112,7 @@ foldIdxs (Snoc ds d) k = foldIdxs ds k'
 {-# INLINE foldIdxs #-}
 
 foldMIdxs :: Monad m => Dims ds -> (Idxs ds -> a -> m a) -> a -> m a
-foldMIdxs U k = k U
+foldMIdxs S k = k S
 foldMIdxs (Snoc ds d) k = foldMIdxs ds k'
   where k' is = go 0
           where go i | i >= fromDim d = return
@@ -120,7 +120,7 @@ foldMIdxs (Snoc ds d) k = foldMIdxs ds k'
 {-# INLINE foldMIdxs #-}
 
 forMIdxs_ :: Monad m => Dims ds -> (Idxs ds -> m ()) -> m ()
-forMIdxs_ U k = k U
+forMIdxs_ S k = k S
 forMIdxs_ (Snoc ds d) k = forMIdxs_ ds k'
   where k' is = go 0
           where go i | i >= fromDim d = return ()
@@ -133,7 +133,7 @@ foldDimsPartIdx s e k = _foldDimsPartIdx (unsafeReverse s) (unsafeReverse e) k
 
 -- TODO reimplement bounds ord check 
 _foldDimsPartIdx :: Idxs ds -> Idxs ds -> (Idxs ds -> a -> a) -> a -> a
-_foldDimsPartIdx U U k = k U
+_foldDimsPartIdx S S k = k S
 _foldDimsPartIdx (start :+ starts) (end :+ ends) k
   | iEnd >= iStart = _foldDimsPartIdx starts ends (loop iStart)
   | otherwise      = _foldDimsPartIdx starts ends (looi iStart)
@@ -155,7 +155,7 @@ overDimPartIdx_ :: Monad m
                -> (Idxs ds -> m ())
                           -- ^ Function to call on each dimension
                -> m ()
-overDimPartIdx_ U U k = k U
+overDimPartIdx_ S S k = k S
 overDimPartIdx_ (start :+ starts) (end :+ ends) k
   | iEnd >= iStart = overDimPartIdx_ starts ends loop'
   | otherwise      = overDimPartIdx_ starts ends looi'
@@ -181,7 +181,7 @@ overDim_ :: Monad m
          -> Int                      -- ^ Initial offset
          -> Int                      -- ^ Offset step
          -> m ()
-overDim_ U k offset _step = k U offset
+overDim_ U k offset _step = k S offset
 overDim_ (Snoc ds d) k offset step = overDim_ ds k' offset step -- (di * step)
   where
     dw = fromDim d

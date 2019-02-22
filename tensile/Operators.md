@@ -250,6 +250,12 @@ If num_or_size_splits is an integer type, then value is split along dimension ax
 If num_or_size_splits is not an integer type, it is presumed to be a Tensor size_splits, then splits value into len(size_splits) pieces. The shape of the i-th piece has the same size as the value except along dimension axis where the size is size_splits[i].
 
 
+
+
+
+
+
+
 slice:
 t = tf.constant([[[1, 1, 1], [2, 2, 2]],
                  [[3, 3, 3], [4, 4, 4]],
@@ -263,7 +269,11 @@ tf.slice(t, [1, 0, 0], [2, 1, 3])  # [[[3, 3, 3]],
 -- want d' < d, 
 slice :: Idxs d -> Dims d' -> Tensor d e -> Tensor d' e
 
-slice :: (TensorType t, OneOf '[Int32, Int64] index)	=> Tensor v'1 t	-> Tensor v'2 index	-> Tensor v'3 index	-> Tensor Build t	
+slice :: (TensorType t, OneOf '[Int32, Int64] index)	=> Tensor v'1 t	-> Tensor v'2 index	-> Tensor v'3 index	-> Tensor Build t
+
+Idxs d -> I '[Rank d]
+
+	
 -- | Take a slice at dimension n from i to j.
 slice :: forall i j s t n. KnownTyp t => KnownShape s => KnownNat j => KnownNat i => (i <= j, j <= At n s, KnownLen s) =>
          Axis n s -> Tensor s t -> Tensor (Take n s ++ ((j-i) ': Drop ('Succ n) s)) t
