@@ -142,6 +142,8 @@ instance KnownDims ds => Bounded (Idxs ds) where
     minBound = minBound' (dims @ds)
     {-# INLINE minBound #-}
 
+
+-- TODO add prop tests
 instance KnownDims ds => Enum (Idxs ds) where
 
     succ = go (dims @ds)
@@ -221,6 +223,7 @@ _diffIdxs (d :+ ds) (Idx i1 :+ is1) (Idx i2 :+ is2)
   = fromIntegral i1 - fromIntegral i2
   + fromIntegral (fromDim d) * _diffIdxs ds is1 is2
 
+--TODO this funtion seems broken
 -- | Step dimension index by an Int offset
 stepIdxs :: Dims ds -> Int -> Idxs ds -> Idxs ds
 stepIdxs d di i = _stepIdxs (unsafeReverse d) di (unsafeReverse i)

@@ -29,7 +29,11 @@ import qualified Data.Vector.Storable.Mutable as M
 --------------------------------------
 --
 
-
+transpose 
+  :: Elt e 
+  => Permutable d d'
+  => Dims d -> Perm (Rank d) -> Tensor d e -> Tensor d' e
+transpose = undefined
 {-
 transpose 
   :: Elt e 

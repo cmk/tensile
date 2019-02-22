@@ -7,6 +7,7 @@ module Numeric.Tensile.Tensor.Internal where
 import Control.Monad.ST (ST(..))
 import Data.Bits
 import Data.ByteString (ByteString())
+import Data.Complex
 import Data.Int
 import Data.Kind
 import Data.Proxy
@@ -20,17 +21,26 @@ import Data.Vector.Sized (Vector)
 import TensorFlow.Types
 
 import qualified Data.Finite as F
+import qualified Data.Vector as V
 import qualified Data.Vector.Sized as N
 import qualified Data.Vector.Storable as S
 import qualified Data.Vector.Storable.Mutable as M
 import qualified TensorFlow.Tensor as T
 import qualified TensorFlow.Build as T
+import qualified TensorFlow.GenOps.Core as O
 import qualified TensorFlow.Ops as O
+import qualified TensorFlow.Session as Ss
 
-type Elt e = (TensorType e, e /= Int8, e /= Int16, e /= Word8,
-                         e /= Word16,
-                         e /= ByteString,
-                         e /= Bool)
+import Control.Monad.IO.Class (liftIO)
+
+printTensor :: I d -> IO ()
+printTensor t = Ss.runSession $ do
+  a <- T.render $ unTensor t
+  b <- Ss.run a
+  liftIO $ print $ V.toList b
+
+-- | Generally specialized as in 'TVal' or 'IVal'.
+type Elt e = OneOf '[Int32, Int64, Word32, Word64, Float, Double, Complex Float, Complex Double] e
 
 -- TODO: move to application / test stanza
 --type Elt = TensorType -- TODO deal with Variant and exclude ResourceHandle
@@ -51,7 +61,11 @@ type I d = Tensor d IVal
 -- | A boolean-valued tensor of shape 'd'. 
 type B d = Tensor d BVal
 
-instance (KnownDims d, Num e, Elt e) => Num (Tensor d e)  where
+--TODO implement
+instance (KnownDims d, Elt e, Eq e) => Eq (Tensor d e) where
+    (==) (Tensor a) (Tensor b) = undefined
+
+instance (KnownDims d, Num e, Elt e) => Num (Tensor d e) where
     (+) (Tensor v1) (Tensor v2) = Tensor $ (+) v1 v2
     {-# INLINE (+) #-}
     (-) (Tensor v1) (Tensor v2) = Tensor $ (-) v1 v2
@@ -154,77 +168,37 @@ instance (KnownDim (Size d), Elt e, Integral e) => Integral (Tensor d e) where
 -}
 
 
+eq :: Elt e => Eq e => Tensor d e -> Tensor d e -> Tensor d BVal
+eq (Tensor a) (Tensor b) = Tensor $ O.equal a b
+
+neq :: Elt e => Eq e => Tensor d e -> Tensor d e -> Tensor d BVal
+neq (Tensor a) (Tensor b) = Tensor $ O.notEqual a b
+
+lt :: Elt e => Ord e => Tensor d e -> Tensor d e -> Tensor d BVal
+--lt :: Ord TVal => T d -> T d -> B d
+lt (Tensor a) (Tensor b) = Tensor $ O.less a b
+
+lte :: Elt e => Ord e => Tensor d e -> Tensor d e -> Tensor d BVal
+lte (Tensor a) (Tensor b) = Tensor $ O.lessEqual a b
+
+gt :: Elt e => Ord e => Tensor d e -> Tensor d e -> Tensor d BVal
+gt (Tensor a) (Tensor b) = Tensor $ O.greater a b
+
+gte :: Elt e => Ord e => Tensor d e -> Tensor d e -> Tensor d BVal
+gte (Tensor a) (Tensor b) = Tensor $ O.greaterEqual a b
+
+maximum :: Elt e => Ord e => Tensor d e -> Tensor d e -> Tensor d e
+maximum (Tensor a) (Tensor b) = Tensor $ O.maximum a b
+
+minimum :: Elt e => Ord e => Tensor d e -> Tensor d e -> Tensor d e
+minimum (Tensor a) (Tensor b) = Tensor $ O.minimum a b
+
+fromList :: forall d e. Elt e => KnownDims d => [e] -> Maybe (Tensor d e)
+fromList v = if size (dims @d) == (fromIntegral $ length v) then Just $ f v else Nothing
+  where f = Tensor . O.constant (toShape (dims @d))
+
 {-
 
-
-
-equal
-  :: Elt e
-  => Eq t
-  => Tensor d e
-  -> Tensor d e
-  -> Tensor BVal d
-equal = _lift2 (==)
-
-notEqual
-  :: Elt e
-  => Eq t
-  => Tensor d e
-  -> Tensor d e
-  -> Tensor BVal d
-notEqual = _lift2 (/=)
-
--}
-
-{-
-eq :: T d -> T d -> B d
-eq = _lift2 (==)
-
-neq :: T d -> T d -> B d
-neq = _lift2 (/=)
-
-lt :: Ord TVal => T d -> T d -> B d
-lt = _lift2 (<)
-
-lte :: Ord TVal => T d -> T d -> B d
-lte = _lift2 (<=)
-
-gt :: Ord TVal => T d -> T d -> B d
-gt = _lift2 (>)
-
-gte :: Ord TVal => T d -> T d -> B d
-gte = _lift2 (>=)
-
-maximum
-  :: Elt e
-  => Ord e
-  => Tensor d e
-  -> Tensor d e
-  -> Tensor d e
-maximum = _lift2 max
-
-minimum
-  :: Elt e
-  => Ord e
-  => Tensor d e
-  -> Tensor d e
-  -> Tensor d e
-minimum = _lift2 min
-
-reshape 
-  :: forall d d' e. Elt e 
-  => Reshapable d d'
-  => Tensor d e -> Tensor d' e
-reshape = unsafeCoerce
-
-fromList
-  :: forall d e. Elt e
-  => KnownDim (Size d)
-  => [e]
-  -> Maybe (Tensor d e)
-fromList v
-  | length v == fromIntegral (fromDim (dim @(Size d))) = Just $ Tensor $ S.fromListN (length v) v
-  | otherwise = Nothing
 
 -- fromVector :: Elt e => Dims d -> Vector e -> Maybe (Tensor d e)
 -- fromVector d v = undefined
@@ -253,37 +227,88 @@ constant :: Elt e => Dims d -> e -> Tensor d e
 constant d t = fill d $ const t
 
 -}
+
 constant :: Elt e => Dims d -> e -> Tensor d e
-constant = undefined
+constant d = Tensor . O.constant (toShape d) . pure
+
+toShape :: Dims d -> Shape
+toShape = Shape . fmap fromIntegral . fromDims 
+
+toShape' :: Idxs d -> Shape
+toShape' = Shape . fmap fromIntegral . listIdxs 
+
+toShapeTensor :: Idxs d -> I '[Rank d]
+toShapeTensor i = Tensor . O.constant (toShape' i) $ l
+  where l = fmap fromIntegral . listIdxs $ i
+
+fill :: Elt e => Dims d -> (Idxs d -> e) -> Tensor d e
+fill d k = Tensor . O.constant (toShape d) $ l
+  where l = foldIdxs d (\i x -> k i : x) []
+        
+
 
 {-
 
-fill :: Elt e => Dims d -> (Int -> e) -> Vector e
-fill dims act = 
-  case dims of 
-    Reverse dims' -> fill' dims act
-   
-fill' :: Elt e => Dims d -> (Int -> e) -> Vector e
-fill' dims act = S.create $ do
-  v <- M.new (fromIntegral $ totalDim dims)
-  let f i = M.write v i $ act i
-  overDimOff_ dims f 0 1 -- either control the offset ourselves or fix type issues
-  return v
+printTensor $ fill (dims '[2,4]) (fromIntegral . fromEnum)
+printTensor $ fill (dims '[2,4]) (transposeIdxs minorToMajor)
 
-TODO add tests:
-> mod d idxs m = M.swap m 0 (fromIdxs d idxs)
-> v = S.fromList [1..12]
-> v
-[1.0,2.0,3.0,4.0,5.0,6.0,7.0,8.0,9.0,10.0,11.0,12.0]
-> modifyIdxs (dims @'[2, 2, 3]) v $ mod (dims @'[2, 2, 3])
-[12.0,1.0,2.0,3.0,4.0,5.0,6.0,7.0,8.0,9.0,10.0,11.0]
+foo :: Dims d -> (Idxs d -> TVal) -> IO ()
+foo d f = printTensor $ fill d f
 
-> modifyIdxs (dims @'[2, 2, 3]) v (\_ m -> M.set m 0)
-[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]
+> d = dims @'[2,4]
+> foo d (minorToMajor d)
+[7,6,5,4,3,2,1,0]
+> foo d (transposeIdxs $ majorToMinor d)
+[7,5,3,1,6,4,2,0]
+
+pred_sum_idxs :: forall ds. Dims ds -> Bool
+pred_sum_idxs ds = foldIdxs ds (\_ a -> a + 1) 0 == (product . fromDims $ ds)
 
 -}
 
 {-
+
+Splits a tensor into sub tensors.
+
+If num_or_size_splits is an integer type, then value is split along dimension axis into num_split smaller tensors. Requires that num_split evenly divides value.shape[axis].
+
+If num_or_size_splits is not an integer type, it is presumed to be a Tensor size_splits, then splits value into len(size_splits) pieces. The shape of the i-th piece has the same size as the value except along dimension axis where the size is size_splits[i].
+
+
+slice:
+t = tf.constant([[[1, 1, 1], [2, 2, 2]],
+                 [[3, 3, 3], [4, 4, 4]],
+                 [[5, 5, 5], [6, 6, 6]]]) 3 x 2 x 3
+tf.slice(t, [1, 0, 0], [1, 1, 3])  # [[[3, 3, 3]]]
+tf.slice(t, [1, 0, 0], [1, 2, 3])  # [[[3, 3, 3],
+                                   #   [4, 4, 4]]]
+tf.slice(t, [1, 0, 0], [2, 1, 3])  # [[[3, 3, 3]],
+                                   #  [[5, 5, 5]]]
+
+-- want d' < d, 
+slice :: Idxs d -> Dims d' -> Tensor d e -> Tensor d' e
+
+slice :: (TensorType t, OneOf '[Int32, Int64] index)	=> Tensor v'1 t	-> Tensor v'2 index	-> Tensor v'3 index	-> Tensor Build t
+
+Idxs d -> I '[Rank d]
+
+
+i = toEnum 6 :: Idxs '[3,2,3]
+j = toEnum 9 :: Idxs '[3,2,3]
+
+diffIdxs (dims @'[3,2,3]) i j
+
+stepIdx (dims @'[3,2,3]) 3 i
+i = 1 :+ 0 :+ 0 :+ U :: Idxs '[3,2,3]
+
+
+-}
+
+
+
+
+{-
+
 pack
   :: Elt e 
   => Vector n (Tensor (x ++ y) e) -> Tensor (x ++ n :+ y) e

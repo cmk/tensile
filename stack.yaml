@@ -1,7 +1,9 @@
 resolver: lts-12.25
 
 packages:
+  - 'tensile'
   - 'tensile-dimensions'
+  - 'tensile-signatures'
   - 'tensile-tensorflow'
 extra-deps:
   - haskell/tensorflow

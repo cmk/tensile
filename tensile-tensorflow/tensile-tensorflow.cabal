@@ -30,6 +30,7 @@ library
         hedgehog,
         finite-typelits,
         tensorflow,
+        tensorflow-core-ops,
         tensorflow-ops,
         vector,
         vector-sized

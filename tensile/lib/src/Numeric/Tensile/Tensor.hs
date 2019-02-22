@@ -7,8 +7,12 @@ import Data.Vector.Sized (Vector)
 import Numeric.Backprop (BVar(..))
 import Numeric.Tensile.Dimensions
 import Numeric.Tensile.Tensor.Internal
+import Unsafe.Coerce (unsafeCoerce)
 
 type T' s d = BVar s (T d)
+
+reshape :: forall d d' e. Elt e => Reshapable d d' => Tensor d e -> Tensor d' e
+reshape = unsafeCoerce
 
 -- | return the a runtime shape representing the dimensions of a tensor.
 shape :: forall d e. KnownDims d => Tensor d e -> [Word]
