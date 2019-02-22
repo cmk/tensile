@@ -13,5 +13,5 @@ gen_vector :: (Storable e, MonadGen m) => Range Int -> m e -> m (Vector e)
 gen_vector r g = V.fromList <$> G.list r g
 
 gen_tensor :: (Elt e, MonadGen m) => Dims d -> m e -> m (Tensor d e)
-gen_tensor d g = Tensor <$> gen_vector r g
-  where r = R.singleton $ fromIntegral (product $ fromDims d)
+gen_tensor d g = undefined -- Tensor <$> gen_vector r g
+  -- where r = R.singleton $ fromIntegral (product $ fromDims d)

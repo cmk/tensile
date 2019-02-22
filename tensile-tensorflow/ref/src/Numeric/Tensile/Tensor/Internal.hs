@@ -6,6 +6,7 @@ module Numeric.Tensile.Tensor.Internal where
 
 import Control.Monad.ST (ST(..))
 import Data.Bits
+import Data.ByteString (ByteString())
 import Data.Int
 import Data.Kind
 import Data.Proxy
@@ -16,21 +17,30 @@ import Unsafe.Coerce (unsafeCoerce)
 import Numeric.Tensile.Dimensions
 
 import Data.Vector.Sized (Vector)
+import TensorFlow.Types
+
 import qualified Data.Finite as F
 import qualified Data.Vector.Sized as N
 import qualified Data.Vector.Storable as S
 import qualified Data.Vector.Storable.Mutable as M
+import qualified TensorFlow.Tensor as T
+import qualified TensorFlow.Build as T
+import qualified TensorFlow.Ops as O
 
+type Elt e = (TensorType e, e /= Int8, e /= Int16, e /= Word8,
+                         e /= Word16,
+                         e /= ByteString,
+                         e /= Bool)
 
 -- TODO: move to application / test stanza
-type Elt = Storable
+--type Elt = TensorType -- TODO deal with Variant and exclude ResourceHandle
 type TVal = Float
-type IVal = Word
+type IVal = Int32
 type BVal = Bool
 
 --class Elt e
 --TODO update Show instance
-newtype Tensor (d :: [Nat]) (e :: Type) = Tensor { unTensor :: S.Vector e } deriving (Eq, Show)
+newtype Tensor (d :: [Nat]) (e :: Type) = Tensor { unTensor :: T.Tensor T.Build e }
 
 -- | A real or complex-valued tensor of shape 'd'. 
 type T d = Tensor d TVal
@@ -41,22 +51,23 @@ type I d = Tensor d IVal
 -- | A boolean-valued tensor of shape 'd'. 
 type B d = Tensor d BVal
 
-instance (KnownDim (Size d), Num e, Elt e) => Num (Tensor d e)  where
-    (+) = _lift2 (+)
+instance (KnownDims d, Num e, Elt e) => Num (Tensor d e)  where
+    (+) (Tensor v1) (Tensor v2) = Tensor $ (+) v1 v2
     {-# INLINE (+) #-}
-    (-) = _lift2 (-)
+    (-) (Tensor v1) (Tensor v2) = Tensor $ (-) v1 v2
     {-# INLINE (-) #-}
-    (*) = _lift2 (*)
+    (*) (Tensor v1) (Tensor v2) = Tensor $ (*) v1 v2
     {-# INLINE (*) #-}
-    negate = _lift negate
+    negate (Tensor v1) = Tensor $ negate v1
     {-# INLINE negate #-}
-    abs = _lift abs
+    abs (Tensor v1) = Tensor $ abs v1
     {-# INLINE abs #-}
-    signum = _lift signum
+    signum (Tensor v1) = Tensor $ signum v1
     {-# INLINE signum #-}
-    fromInteger = _replicate (fromIntegral . fromDim $ (dim :: Dim (Size d))) . fromInteger
+    fromInteger = constant (dims @d) . fromInteger
     {-# INLINE fromInteger #-}
 
+{-
 instance (KnownDim (Size d), Fractional e, Elt e) => Fractional (Tensor d e)  where
     (/) = _lift2 (/)
     {-# INLINE (/) #-}
@@ -119,6 +130,7 @@ instance (KnownDim (Size d), Elt e, Eq e, Bits e, Num e) => Bits (Tensor d e) wh
     bitSize _ = bitSize @e undefined
     isSigned _ = isSigned @e undefined
     popCount = popCountDefault
+-}
 
 {-
 
@@ -164,6 +176,7 @@ notEqual = _lift2 (/=)
 
 -}
 
+{-
 eq :: T d -> T d -> B d
 eq = _lift2 (==)
 
@@ -234,12 +247,14 @@ fill d f = Tensor $ S.create $ do
   forMIdxs_ d act
   return mv
 
+-- constant :: TensorType a => Shape -> [a] -> Tensor Build a
+
 constant :: Elt e => Dims d -> e -> Tensor d e
 constant d t = fill d $ const t
 
--- TODO unsafe consider using sized vectors internally
-modifyIdxs :: forall d e. Storable e => Dims d -> S.Vector e -> (forall s. Idxs d -> M.MVector s e -> ST s ()) -> S.Vector e
-modifyIdxs d v f = S.modify (\mv -> forMIdxs_ d (\i -> f i mv)) v
+-}
+constant :: Elt e => Dims d -> e -> Tensor d e
+constant = undefined
 
 {-
 
@@ -268,6 +283,7 @@ TODO add tests:
 
 -}
 
+{-
 pack
   :: Elt e 
   => Vector n (Tensor (x ++ y) e) -> Tensor (x ++ n :+ y) e
@@ -306,7 +322,7 @@ unpack0 t = N.generate f
               off = i' * size
               v = unTensor t 
           in v S.! (off + fromEnum ix)
-
+-}
 
 {-
 
@@ -348,18 +364,3 @@ unstack :: (KnownDims x, Elt e) => Dim n -> Tensor (x +: n :+ y) e -> Vector n (
 -}
 
 
---------------------------------------------------------------------------------
--- * Utility functions
---------------------------------------------------------------------------------
-
-_replicate :: Elt e => Int -> e -> Tensor d e
-_replicate i = Tensor . S.fromListN i . replicate i
-
-_lift :: (Elt a, Elt b) => (a -> b) -> Tensor d a -> Tensor d b
-_lift f (Tensor v) = Tensor $ S.map f v
-{-# INLINE _lift #-}
-
-_lift2 :: (Elt a, Elt b, Elt c) => (a -> b -> c)
-       -> Tensor d a -> Tensor d b -> Tensor d c
-_lift2 f (Tensor v1) (Tensor v2) = Tensor $ S.zipWith f v1 v2
-{-# INLINE _lift2 #-}

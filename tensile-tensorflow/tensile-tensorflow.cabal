@@ -26,9 +26,11 @@ library
     build-depends:
         base == 4.*,
         tensile-dimensions == 0.0.*,
+        bytestring,
         hedgehog,
         finite-typelits,
         tensorflow,
+        tensorflow-ops,
         vector,
         vector-sized
     default-extensions:
