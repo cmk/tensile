@@ -1,8 +1,9 @@
 module Test.Numeric.Tensile.Operations.Linear.Predicate where
 
 import Numeric.Tensile.Tensor
-import Numeric.Tensile.Dimensions.Types
-import Numeric.Tensile.Dimensions.Perm (Perm(..), reversal, reversal')
+import Numeric.Tensile.Dimensions
+--import Numeric.Tensile.Dimensions.Types
+--import Numeric.Tensile.Dimensions.Perm (Perm(..), reversal)
 import Numeric.Tensile.Operations.Linear.Unlifted (transpose, transpose)
 import Test.Numeric.Tensile.Tensor.Gen
 
@@ -15,16 +16,17 @@ pred_cubic_transpose :: forall e. (Elt e, Eq e) => Tensor '[3,3,3] e -> Bool
 pred_cubic_transpose t = t == (f . f) t
   where 
     f :: Tensor '[3,3,3] e -> Tensor '[3,3,3] e
-    f = transpose (reversal @'[3,3,3]) 
+    f = transpose $ reflectDims @'[3,3,3] reversal
         
 pred_prism_transpose :: forall e. (Elt e, Eq e) => Tensor '[5,4,3,2] e -> Bool
 pred_prism_transpose t = t == (g . f) t
   where 
     f :: Tensor '[5,4,3,2] e -> Tensor '[2,3,4,5] e
-    f = transpose (reversal @'[5,4,3,2]) 
+    f = transpose $ reflectDims @'[5,4,3,2] reversal
 
     g :: Tensor '[2,3,4,5] e -> Tensor '[5,4,3,2] e
-    g = transpose (reversal @'[2,3,4,5])
+    g = transpose $ reflectDims @'[2,3,4,5] reversal
+
 
 
 

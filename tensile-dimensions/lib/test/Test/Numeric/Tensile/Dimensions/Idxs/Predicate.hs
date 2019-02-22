@@ -2,6 +2,7 @@ module Test.Numeric.Tensile.Dimensions.Idxs.Predicate where
 
 import Numeric.Tensile.Dimensions
 import qualified Numeric.Tensile.Dimensions.Types as T
+import Unsafe.Coerce 
 
 pred_max_diff_idxs :: forall ds. Dims ds -> Bool
 pred_max_diff_idxs ds = 
@@ -10,10 +11,18 @@ pred_max_diff_idxs ds =
 pred_sum_idxs :: forall ds. Dims ds -> Bool
 pred_sum_idxs ds = foldIdxs ds (\_ a -> a + 1) 0 == (product . fromDims $ ds)
 
+check :: Dims ds -> (Dims ds -> Idxs ds -> Word) -> [Word]
+check ds f = foldIdxs ds (\i xs -> f ds i : xs) []
+
+pred_transpose_idxs' :: forall ds. Dims ds -> Bool
+pred_transpose_idxs' ds = 
+  check ds minorToMajor == check (T.unsafeReverse ds) (transposeIdxs minorToMajor)
+
 pred_transpose_idxs :: forall ds. Dims ds -> Bool
-pred_transpose_idxs ds = check ds minorToMajor == check (T.unsafeReverse ds) (transposeIdxs minorToMajor)
-  where check :: Dims ds -> (forall ds i. Integral i => Dims ds -> Idxs ds -> i) -> [Word]
-        check ds f = foldIdxs ds (\i xs -> f ds i : xs) []
+pred_transpose_idxs ds = 
+  check ds (withPerm (identity ds) minorToMajor) == check ds (withPerm (reversal ds) majorToMinor) &&
+  check ds (withPerm (identity ds) majorToMinor) == check ds (withPerm (reversal ds) minorToMajor)
+
 
 --TODO add arbitrary permutations
 --pred_permute_idxs :: forall ds. Dims ds -> Bool
@@ -27,4 +36,17 @@ pred_transpose_idxs ds = check ds minorToMajor == check (T.unsafeReverse ds) (tr
 [7,6,5,4,3,2,1,0]
 > foo d (transposeIdxs minorToMajor d)
 [7,6,5,4,3,2,1,0]
+
+withPerm :: Perm (Rank ds) -> (Dims ds -> Idxs ds -> r) -> Dims ds -> Idxs ds -> r
+withPerm p k d i = k (unsafePermute p d) (unsafePermute p i)
+
+> withPerm (reversal d) minorToMajor d i
+1
+> withPerm (reversal d) majorToMinor d i
+4
+> withPerm mempty majorToMinor d i
+1
+> withPerm mempty minorToMajor d i
+4
+
 -}

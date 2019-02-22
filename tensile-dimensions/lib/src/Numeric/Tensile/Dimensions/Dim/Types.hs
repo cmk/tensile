@@ -178,47 +178,38 @@ class KnownDim d where
 
 instance KnownDim d => Reflects d (Dim d) where reflect _ = dim
 
-instance {-# OVERLAPPABLE #-} (KnownNat d, 1 <= d) => KnownDim d where
-    {-# INLINE dim #-}
-    dim = DimSing (fromInteger (natVal' (proxy# :: Proxy# d)))
-
-instance {-# OVERLAPPING #-} KnownDim 1  where
-  { {-# INLINE dim #-}; dim = DimSing 1 }
-instance {-# OVERLAPPING #-} KnownDim 2  where
-  { {-# INLINE dim #-}; dim = DimSing 2 }
-instance {-# OVERLAPPING #-} KnownDim 3  where
-  { {-# INLINE dim #-}; dim = DimSing 3 }
-instance {-# OVERLAPPING #-} KnownDim 4  where
-  { {-# INLINE dim #-}; dim = DimSing 4 }
-instance {-# OVERLAPPING #-} KnownDim 5  where
-  { {-# INLINE dim #-}; dim = DimSing 5 }
-instance {-# OVERLAPPING #-} KnownDim 6  where
+instance  KnownDim 1  where { {-# INLINE dim #-}; dim = DimSing 1 }
+instance  KnownDim 2  where { {-# INLINE dim #-}; dim = DimSing 2 }
+instance  KnownDim 3  where { {-# INLINE dim #-}; dim = DimSing 3 }
+instance  KnownDim 4  where { {-# INLINE dim #-}; dim = DimSing 4 }
+instance  KnownDim 5  where { {-# INLINE dim #-}; dim = DimSing 5 }
+instance  KnownDim 6  where
   { {-# INLINE dim #-}; dim = DimSing 6 }
-instance {-# OVERLAPPING #-} KnownDim 7  where
+instance  KnownDim 7  where
   { {-# INLINE dim #-}; dim = DimSing 7 }
-instance {-# OVERLAPPING #-} KnownDim 8  where
+instance  KnownDim 8  where
   { {-# INLINE dim #-}; dim = DimSing 8 }
-instance {-# OVERLAPPING #-} KnownDim 9  where
+instance  KnownDim 9  where
   { {-# INLINE dim #-}; dim = DimSing 9 }
-instance {-# OVERLAPPING #-} KnownDim 10 where
+instance  KnownDim 10 where
   { {-# INLINE dim #-}; dim = DimSing 10 }
-instance {-# OVERLAPPING #-} KnownDim 11 where
+instance  KnownDim 11 where
   { {-# INLINE dim #-}; dim = DimSing 11 }
-instance {-# OVERLAPPING #-} KnownDim 12 where
+instance  KnownDim 12 where
   { {-# INLINE dim #-}; dim = DimSing 12 }
-instance {-# OVERLAPPING #-} KnownDim 13 where
+instance  KnownDim 13 where
   { {-# INLINE dim #-}; dim = DimSing 13 }
-instance {-# OVERLAPPING #-} KnownDim 14 where
+instance  KnownDim 14 where
   { {-# INLINE dim #-}; dim = DimSing 14 }
-instance {-# OVERLAPPING #-} KnownDim 15 where
+instance  KnownDim 15 where
   { {-# INLINE dim #-}; dim = DimSing 15 }
-instance {-# OVERLAPPING #-} KnownDim 16 where
+instance  KnownDim 16 where
   { {-# INLINE dim #-}; dim = DimSing 16 }
-instance {-# OVERLAPPING #-} KnownDim 17 where
+instance  KnownDim 17 where
   { {-# INLINE dim #-}; dim = DimSing 17 }
-instance {-# OVERLAPPING #-} KnownDim 18 where
+instance  KnownDim 18 where
   { {-# INLINE dim #-}; dim = DimSing 18 }
-instance {-# OVERLAPPING #-} KnownDim 19 where
+instance  KnownDim 19 where
   { {-# INLINE dim #-}; dim = DimSing 19 }
-instance {-# OVERLAPPING #-} KnownDim 20 where
+instance  KnownDim 20 where
   { {-# INLINE dim #-}; dim = DimSing 20 }

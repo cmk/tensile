@@ -24,8 +24,10 @@ module Numeric.Tensile.Dimensions.Idxs.Types where
 
 --import Numeric.KnownDims.Idxs (Idx(..), Idxs(..))
  --(Nat, TypedList(..), Dims(..), Dim(..), KnownDim(..), KnownDims(..), Permutable, Size, Rank)
+ --
 import Numeric.Tensile.Dimensions.Dims
 import Numeric.Tensile.Dimensions.Idx.Types
+import Numeric.Tensile.Dimensions.Perm
 import Numeric.Tensile.Dimensions.Types hiding (take)
 
 import Unsafe.Coerce (unsafeCoerce)
@@ -47,6 +49,10 @@ type Idxs (ds :: [Nat]) = TypedList Idx ds
 listIdxs :: Idxs ds -> [Word]
 listIdxs = unsafeCoerce
 {-# INLINE listIdxs #-}
+
+-- withPerm reversal majorToMinor d i = minorToMajor d i
+withPerm :: Perm (Rank ds) -> (forall ds'. Dims ds' -> Idxs ds' -> r) -> Dims ds -> Idxs ds -> r
+withPerm p k d i = k (unsafePermute p d) (unsafePermute p i)
 
 idxsFromWords :: forall ds . KnownDims ds => [Word] -> Maybe (Idxs ds)
 idxsFromWords = unsafeCoerce . go (fromDims (dims @ds))

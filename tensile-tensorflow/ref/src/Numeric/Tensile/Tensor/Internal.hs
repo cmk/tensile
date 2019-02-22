@@ -299,7 +299,7 @@ j = toEnum 9 :: Idxs '[3,2,3]
 diffIdxs (dims @'[3,2,3]) i j
 
 stepIdx (dims @'[3,2,3]) 3 i
-i = 1 :+ 0 :+ 0 :+ U :: Idxs '[3,2,3]
+i = 1 :+ 0 :+ 0 :+ S :: Idxs '[3,2,3]
 
 
 -}
@@ -333,7 +333,7 @@ pack0 v = Tensor res
             in forMIdxs_ d act
           return mv
 
-
+-- TODO use http://hackage.haskell.org/package/reflection-2.1.4/docs/Data-Reflection.html#t:reifyNat
 unpack0 
   :: forall d e n. Elt e
   => KnownDims d

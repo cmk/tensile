@@ -31,7 +31,8 @@ library
         backprop,
         vector,
         vector-sized
-    default-extensions: 
+    default-extensions:
+        AllowAmbiguousTypes, 
         ConstraintKinds, 
         FlexibleContexts,
         RankNTypes,
