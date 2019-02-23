@@ -149,11 +149,10 @@ instance KnownDim d => Enum (Idx d) where
     {-# INLINE enumFromThenTo #-}
 -}
 
-{-
-instance KnownDim n => Num (Idx n) where
+instance KnownDim d => Num (Idx d) where
 
 #ifdef UNSAFE_INDICES
-    (+) = unsafeCoerce# ((+) :: Word -> Word -> Word)
+    (+) = unsafeCoerce ((+) :: Word -> Word -> Word)
 #else
     (Idx a) + (Idx b)
         | r >= d || r < a || r < b
@@ -164,12 +163,12 @@ instance KnownDim n => Num (Idx n) where
         | otherwise = Idx r
       where
         r = a + b
-        d = unsafeCoerce# (dim @d)
+        d = unsafeCoerce (dim @d)
 #endif
     {-# INLINE (+) #-}
 
 #ifdef UNSAFE_INDICES
-    (-) = unsafeCoerce# ((-) :: Word -> Word -> Word)
+    (-) = unsafeCoerce ((-) :: Word -> Word -> Word)
 #else
     (Idx a) - (Idx b)
         | b > a
@@ -182,7 +181,7 @@ instance KnownDim n => Num (Idx n) where
     {-# INLINE (-) #-}
 
 #ifdef UNSAFE_INDICES
-    (*) = unsafeCoerce# ((*) :: Word -> Word -> Word)
+    (*) = unsafeCoerce ((*) :: Word -> Word -> Word)
 #else
     (Idx a) * (Idx b)
         | r >= d || r < a || r < b
@@ -193,7 +192,7 @@ instance KnownDim n => Num (Idx n) where
         | otherwise = Idx r
       where
         r = a * b
-        d = unsafeCoerce# (dim @d)
+        d = unsafeCoerce (dim @d)
 #endif
     {-# INLINE (*) #-}
 
@@ -206,7 +205,7 @@ instance KnownDim n => Num (Idx n) where
     {-# INLINE signum #-}
 
 #ifdef UNSAFE_INDICES
-    fromInteger = unsafeCoerce# (fromInteger :: Integer -> Word)
+    fromInteger = unsafeCoerce (fromInteger :: Integer -> Word)
 #else
     fromInteger i
       | i >= 0 && i < d = Idx $ fromInteger i
@@ -215,8 +214,7 @@ instance KnownDim n => Num (Idx n) where
                         ++ show d ++ "}: integer "
                         ++ show i ++ " is outside of index bounds."
       where
-        d = toInteger (unsafeCoerce# (dim @d) :: Word)
+        d = toInteger (unsafeCoerce (dim @d) :: Word)
 #endif
     {-# INLINE fromInteger #-}
--}
 

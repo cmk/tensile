@@ -5,12 +5,13 @@ module Main where
 
 import Numeric.Tensile.Tensor --(T(..), fromVector, shape)
 import Data.Bits
+import Data.Int
 
 import Numeric.Tensile.Dimensions.Types
 import Numeric.Tensile.Operations.Linear.Unlifted
 import Numeric.Tensile.Operations.Linear.Internal --TODO: remove
 
-u :: [Word]
+u :: [Int32]
 u = [1..10]
 
 v :: [Float]
@@ -25,6 +26,8 @@ w' = replicate 16 1.0
 println = putStr "\n"
 
 main :: IO ()
+main = return ()
+{-
 main = do
   case (fromList u :: Maybe (I '[2, 5])) of
     Nothing -> print "nope"
@@ -32,12 +35,11 @@ main = do
       print t
       print $ shape t
       print $ t + t
-      print $ t .&. t
-      print $ t `xor` t
-      print $ rotate t 1
+      --print $ t .&. t
+      --print $ t `xor` t
+      --print $ rotate t 1
       println
    
-{-
   case (fromList v :: Maybe (T '[2,4]), fromList v :: Maybe (T '[4,2])) of
     (Just t, Just t') -> do
       print t'

@@ -41,7 +41,7 @@ traverseDims k = go
   where
     go :: forall ds. Dims ds -> f SomeDims
     go = \case
-      U      -> pure []
+      S      -> pure []
       d :+ ds -> (:) <$> reifyDim d (k d) <*> go ds
 
 -- | Like 'traverseDims', but with type @Traversal' 'SomeDims' 'SomeDim'@, 
@@ -81,7 +81,7 @@ foldDims
     -> Dims ns
     -> p ns
 foldDims z s = \case
-    U      -> z
+    S      -> z
     n :+ ns -> s n (foldDims z s ns)
 -}
 

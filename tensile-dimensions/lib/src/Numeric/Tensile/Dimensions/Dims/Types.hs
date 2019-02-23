@@ -70,7 +70,7 @@ fromDims ds = elimDims ds fromDim --Numeric.Tensile.Dimensions.Types.map fromDim
 {-# INLINE fromDims #-}
 
 elimDims :: Dims ds -> (forall d. Dim d -> r) -> [r]
-elimDims U _ = []
+elimDims S _ = []
 elimDims (d :+ ds) f = f d : elimDims ds f
 
 -- | Product of all dimension sizes.
@@ -113,7 +113,7 @@ pattern Dims' <- (patKDims -> PatKDims)
 data PatKDims ds = (All KnownDim ds, KnownDims ds) => PatKDims
 
 patKDims :: Dims ns -> PatKDims ns
-patKDims U = PatKDims
+patKDims S = PatKDims
 patKDims (Dim :+ ns) = case patKDims ns of
   PatKDims -> PatKDims
 #if __GLASGOW_HASKELL__ >= 802
@@ -135,7 +135,7 @@ someDims = traverse someDim
 
 -- @'withSomeDims' ds 'fromDims' == runIdentity . traverse (\s -> Identity $ Numeric.Tensile.Dimensions.Dim.Types.withSomeDim s Numeric.Tensile.Dimensions.Dim.Types.fromDim) $ ds@ 
 withSomeDims :: SomeDims -> (forall ds. KnownDims ds => Dims ds -> r) -> r 
-withSomeDims []     f = f U
+withSomeDims []     f = f S
 withSomeDims (x:xs) f = withSomeDim x $ \d ->
                           withSomeDims xs $ \ds -> f (d :+ ds)
 {-# INLINE withSomeDims #-}
@@ -150,7 +150,7 @@ reifyDims d k = unsafeCoerce (WithKnownDims k :: WithKnownDims d r) d
 newtype WithKnownDims ds r = WithKnownDims (KnownDims ds => r)
 
 unsafeReifyDims :: [Word] -> (forall ds. KnownDims ds => Dims ds -> r) -> r
-unsafeReifyDims []     f = f U
+unsafeReifyDims []     f = f S
 unsafeReifyDims (x:xs) f = 
   unsafeReifyDim x $ \p ->
     unsafeReifyDims xs $ \ps -> f ((reflect p) :+ (reflect ps))
@@ -190,7 +190,7 @@ class KnownDims ds where
     dims :: Dims ds
 
 instance KnownDims ('[] :: [Nat]) where
-    dims = U
+    dims = S
     {-# INLINE dims #-}
 
 instance (KnownDim d, KnownDims ds) => KnownDims (d :+ ds :: [Nat]) where

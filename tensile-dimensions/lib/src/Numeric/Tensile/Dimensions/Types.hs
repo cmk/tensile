@@ -97,7 +97,7 @@ class KnownList ds where
   listRep :: ProxyList ds
 
 instance KnownList ('[] :: [Nat]) where
-  listRep = U
+  listRep = S
 
 instance KnownList ds => KnownList (d :+ ds) where
   listRep = Proxy @d :+ listRep @ds
@@ -130,12 +130,12 @@ pattern EvList <- (mkEVL -> E)
 
 -- | Zero-length type list; synonym to `U`.
 pattern Empty :: forall ds f . () => (ds ~ '[]) => TypedList f ds
-pattern Empty = U
+pattern Empty = S
 
 -- | Zero-length type list, used to represent scalar values.
-pattern U :: forall ds f . () => (ds ~ '[]) => TypedList f ds
-pattern U <- (patTL @f @ds -> PatCNil)
-  where U = unsafeCoerce []
+pattern S :: forall ds f . () => (ds ~ '[]) => TypedList f ds
+pattern S <- (patTL @f @ds -> PatCNil)
+  where S = unsafeCoerce []
 
 -- | Constructing a type-indexed list
 pattern (:+)
@@ -175,9 +175,9 @@ pattern Reverse sx <- (unreverseTL @f @ds -> PatReverse sx)
 #if __GLASGOW_HASKELL__ >= 802
 {-# COMPLETE ProxyList #-}
 {-# COMPLETE EvList #-}
-{-# COMPLETE U, (:+) #-}
-{-# COMPLETE U, Cons #-}
-{-# COMPLETE U, Snoc #-}
+{-# COMPLETE S, (:+) #-}
+{-# COMPLETE S, Cons #-}
+{-# COMPLETE S, Snoc #-}
 {-# COMPLETE Empty, (:+) #-}
 {-# COMPLETE Empty, Cons #-}
 {-# COMPLETE Empty, Snoc #-}
@@ -305,7 +305,7 @@ patTL (TypedList (x : ds))
 
 mkEVL :: forall (c :: Nat -> Constraint) (ds :: [Nat])
        . EvidenceList c ds -> Evidence (All c ds, KnownList ds)
-mkEVL U = E
+mkEVL S = E
 mkEVL (E' :+ evs) = case mkEVL evs of E -> E
 #if __GLASGOW_HASKELL__ >= 802
 #else
@@ -314,7 +314,7 @@ mkEVL _ = impossible
 
 _evList :: forall (c :: Nat -> Constraint) (ds :: [Nat])
         . All c ds => ProxyList ds -> EvidenceList c ds
-_evList U = U
+_evList S = S
 _evList (_ :+ ds) = case _evList ds of evs -> E' :+ evs
 #if __GLASGOW_HASKELL__ >= 802
 #else

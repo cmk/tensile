@@ -31,7 +31,8 @@ library
         backprop,
         vector,
         vector-sized
-    default-extensions: 
+    default-extensions:
+        AllowAmbiguousTypes, 
         ConstraintKinds, 
         FlexibleContexts,
         RankNTypes,
@@ -90,6 +91,7 @@ test-suite test
     build-depends:       
         base == 4.*,
         hedgehog,
+        -- hedgehog-classes,
         tensile,
         tensile-dimensions == 0.0.*,
         tensile-tensorflow == 0.0.*
