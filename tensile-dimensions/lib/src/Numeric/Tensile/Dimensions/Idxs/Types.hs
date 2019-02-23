@@ -41,17 +41,17 @@ import           GHC.Base
 import           GHC.Enum
 
 
--- | Type-level dimensional indexing with arbitrary Word values inside.
+-- | Type-level dimensional indexing with arbitrary Int values inside.
 --   Most of the operations on it require `KnownDims` constraint,
 --   because the @Idxs@ itself does not store info about dimension bounds.
 type Idxs (ds :: [Nat]) = TypedList Idx ds
 
-listIdxs :: Idxs ds -> [Word]
+listIdxs :: Idxs ds -> [Int]
 listIdxs = unsafeCoerce
 {-# INLINE listIdxs #-}
 
-idxsFromWords :: forall ds . KnownDims ds => [Word] -> Maybe (Idxs ds)
-idxsFromWords = unsafeCoerce . go (fromDims (dims @ds))
+idxsFromInts :: forall ds . KnownDims ds => [Int] -> Maybe (Idxs ds)
+idxsFromInts = unsafeCoerce . go (fromDims (dims @ds))
   where
     go [] [] = Just []
     go (d : ds) (i : is) | i >= 0 && i < d = (i:) <$> go ds is
@@ -60,7 +60,7 @@ idxsFromWords = unsafeCoerce . go (fromDims (dims @ds))
 majorToMinor :: forall ds i. Integral i => Dims ds -> Idxs ds -> i
 majorToMinor dims = fromIntegral . go 1 dims
   where
-    go :: forall ns . Word -> Dims ns -> Idxs ns -> Word
+    go :: forall ns . Int -> Dims ns -> Idxs ns -> Int
     go _ S S                     = 0
     go m (d :+ ds) (Idx i :+ is) = m * i + go (m * fromDim d) ds is
 
@@ -73,14 +73,14 @@ fromIdxs = minorToMajor
 toIdxs :: forall ds i. Integral i => Dims ds -> i -> Idxs ds
 toIdxs dsd i = go dsd $ fromIntegral i
   where
-    go :: forall ns . Dims ns -> Word -> Idxs ns
+    go :: forall ns . Dims ns -> Int -> Idxs ns
     go S 0 = S
     go S _ = error ("Idxs ") -- ++ show (fromDims dsd)) TODO: fix
     go (Snoc ds d) off = case divMod off (fromDim d) of
       (off', j) -> go ds off' `snoc` Idx j
 
 instance Eq (Idxs ds) where
-    (==) = unsafeCoerce# ((==) :: [Word] -> [Word] -> Bool)
+    (==) = unsafeCoerce# ((==) :: [Int] -> [Int] -> Bool)
     {-# INLINE (==) #-}
 
 -- TODO check if ok to not reverse this
@@ -109,25 +109,6 @@ instance Show (Idxs ds) where
     showsPrec p ds
       = showParen (p >= 10)
       $ showString "Idxs " . showsPrec p (listIdxs ds)
-
-
--- | With this instance we can slightly reduce indexing expressions, e.g.
---
---   > x ! (1 :+ 2 :+ 4) == x ! (1 :+ 2 :+ 4 :+ S)
---
-instance KnownDim n => Num (Idxs '[n]) where
-    (a:+S) + (b:+S) = (a+b) :+ S
-    {-# INLINE (+) #-}
-    (a:+S) - (b:+S) = (a-b) :+ S
-    {-# INLINE (-) #-}
-    (a:+S) * (b:+S) = (a*b) :+ S
-    {-# INLINE (*) #-}
-    signum (a:+S)   = signum a :+ S
-    {-# INLINE signum #-}
-    abs (a:+S)      = abs a :+ S
-    {-# INLINE abs #-}
-    fromInteger i   = fromInteger i :+ S
-    {-# INLINE fromInteger #-}
 
 maxBound' :: forall ds . Dims ds -> Idxs ds
 maxBound' S         = S
@@ -168,7 +149,7 @@ instance KnownDims ds => Enum (Idxs ds) where
     toEnum i = go dsd $ fromIntegral i
       where
         dsd = dims @ds
-        go :: forall ns . Dims ns -> Word -> Idxs ns
+        go :: forall ns . Dims ns -> Int -> Idxs ns
         go S 0 = S
         go S _ = error ("Idxs ") -- ++ show (fromDims dsd)) TODO fix
         go (Snoc ds d) off = case divMod off (fromDim d) of
@@ -207,18 +188,60 @@ instance KnownDims ds => Enum (Idxs ds) where
                             else diffIdxs ds y x `div` dn
     {-# INLINE enumFromThenTo #-}
 
+{-
+-- | With this instance we can slightly reduce indexing expressions, e.g.
+--
+--   > x ! (1 :+ 2 :+ 4) == x ! (1 :+ 2 :+ 4 :+ S)
+--
+instance KnownDim n => Num (Idxs '[n]) where
+    (a:+S) + (b:+S) = (a+b) :+ S
+    {-# INLINE (+) #-}
+    (a:+S) - (b:+S) = (a-b) :+ S
+    {-# INLINE (-) #-}
+    (a:+S) * (b:+S) = (a*b) :+ S
+    {-# INLINE (*) #-}
+    signum (a:+S)   = signum a :+ S
+    {-# INLINE signum #-}
+    abs (a:+S)      = abs a :+ S
+    {-# INLINE abs #-}
+    fromInteger i   = fromInteger i :+ S
+    {-# INLINE fromInteger #-}
+-}
 
+-- | With this instance we can slightly reduce indexing expressions, e.g.
+--
+--   > x ! (1 :+ 2 :+ 4) == x ! (1 :+ 2 :+ 4 :+ S)
+--
+instance KnownDims d => Num (Idxs d) where
+
+    (+) = liftIdxs2 (+)
+    {-# INLINE (+) #-}
+
+    (-) = liftIdxs2 (-)
+    {-# INLINE (-) #-}
+
+    (*) = liftIdxs2 (*)
+    {-# INLINE (*) #-}
+
+    signum _ = fromInteger 1
+    {-# INLINE signum #-}
+
+    abs = liftIdxs abs
+    {-# INLINE abs #-}
+
+    fromInteger = toEnum . fromIntegral
+    {-# INLINE fromInteger #-}
 
 --------------------------------------------------------------------------------
 
-liftIdxs :: forall d. KnownDims d => (Word -> Word) -> Idxs d -> Idxs d
-liftIdxs f = toEnum . fromIntegral . flip mod s . f . fromIntegral . fromEnum
+liftIdxs :: forall d. KnownDims d => (Int -> Int) -> Idxs d -> Idxs d
+liftIdxs f = toEnum . flip mod s . f . fromEnum
   where s = reflectDims @d size
 
-liftIdxs2 :: forall d. KnownDims d => (Word -> Word -> Word) -> Idxs d -> Idxs d -> Idxs d
-liftIdxs2 f = on k $ fromIntegral . fromEnum
+liftIdxs2 :: forall d. KnownDims d => (Int -> Int -> Int) -> Idxs d -> Idxs d -> Idxs d
+liftIdxs2 f = on k fromEnum
   where s = reflectDims @d size
-        k i j = toEnum . fromIntegral . flip mod s $ f i j
+        k i j = toEnum . flip mod s $ f i j
 
 -- diffIdxs =? fromEnum $ reflectDims $ liftIdxs2 (-)
 diffIdxs :: Dims ds -> Idxs ds -> Idxs ds -> Int

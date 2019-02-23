@@ -16,7 +16,7 @@ evidenceReflect ds = withEvidence (withDims ds) (reflectDims id)
 pred_evidence_reflect :: Dims ds -> Bool
 pred_evidence_reflect ds = evidenceReflect ds == ds 
 
-traverseSomeDims :: SomeDims -> [Word]
+traverseSomeDims :: SomeDims -> [Int]
 traverseSomeDims = runIdentity . traverse (\s -> Identity $ withSomeDim s fromDim) 
 
 pred_traverse_somedims :: SomeDims -> Bool
@@ -24,7 +24,7 @@ pred_traverse_somedims ds = withSomeDims ds fromDims == traverseSomeDims ds
 
 {-
 
-prop_splitDims :: [Word] -> Bool
+prop_splitDims :: [Int] -> Bool
 prop_splitDims n xsys
   | SomeDims dxsys <- someDimsVal xsys
   , Dx dn <- someDimVal n -- TODO: why this causes non-exhaustive patterns in GHC 8.2?

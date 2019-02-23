@@ -295,6 +295,8 @@ fromList v = if size (dims @d) == (fromIntegral $ length v) then Just $ f v else
   where f = Tensor . O.constant (toShape (dims @d))
 
 
+i = 0 :+ 1 :+ 2 :+ S :: Idxs '[1,2,3]
+j = 0 :+ 1 :+ 1 :+ S :: Idxs '[1,2,3]
 
 -- fromVector :: Elt e => Dims d -> Vector e -> Maybe (Tensor d e)
 -- fromVector d v = undefined

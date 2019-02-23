@@ -56,7 +56,7 @@ import Numeric.Tensile.Dimensions.Types
 type Dims (ds :: [Nat]) = TypedList Dim ds
 
 instance Eq (Dims ds) where
-    (==) = unsafeCoerce ((==) :: [Word] -> [Word] -> Bool)
+    (==) = unsafeCoerce ((==) :: [Int] -> [Int] -> Bool)
     {-# INLINE (==) #-}
 
 instance Show (Dims ds) where
@@ -64,8 +64,8 @@ instance Show (Dims ds) where
     showsPrec p ds = showParen (p >= 10)
       $ showString "Dims " . showsPrec p (fromDims ds)
 
--- | Similar to `natVal` from `GHC.TypeLits`, but returns `Word`.
-fromDims :: Dims ds -> [Word]
+-- | Similar to `natVal` from `GHC.TypeLits`, but returns `Int`.
+fromDims :: Dims ds -> [Int]
 fromDims ds = elimDims ds fromDim --Numeric.Tensile.Dimensions.Types.map fromDim
 {-# INLINE fromDims #-}
 
@@ -74,7 +74,7 @@ elimDims S _ = []
 elimDims (d :+ ds) f = f d : elimDims ds f
 
 -- | Product of all dimension sizes.
-size :: Dims ds -> Word
+size :: Dims ds -> Int
 size = product . fromDims
 {-# INLINE size #-}
 
@@ -129,7 +129,7 @@ patKDims _ = impossible
 
 type SomeDims = [SomeDim]
 
-someDims :: [Word] -> Maybe SomeDims
+someDims :: [Int] -> Maybe SomeDims
 someDims = traverse someDim
 {-# INLINE someDims #-}
 
@@ -149,7 +149,7 @@ reifyDims d k = unsafeCoerce (WithKnownDims k :: WithKnownDims d r) d
 
 newtype WithKnownDims ds r = WithKnownDims (KnownDims ds => r)
 
-unsafeReifyDims :: [Word] -> (forall ds. KnownDims ds => Dims ds -> r) -> r
+unsafeReifyDims :: [Int] -> (forall ds. KnownDims ds => Dims ds -> r) -> r
 unsafeReifyDims []     f = f S
 unsafeReifyDims (x:xs) f = 
   unsafeReifyDim x $ \p ->

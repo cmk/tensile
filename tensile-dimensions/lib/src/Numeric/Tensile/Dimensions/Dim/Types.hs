@@ -44,7 +44,7 @@ import Numeric.Tensile.Dimensions.Types (Reflects(..), type (<))
 
 -- | Singleton type to store type-level dimension value.
 -- Dimensions are restricted to strictly positive naturals.
-newtype Dim (d :: Nat) = DimSing Word deriving (Eq, Ord)
+newtype Dim (d :: Nat) = DimSing Int deriving (Eq, Ord)
 
 instance Show (Dim d) where
     show (DimSing w) = "Dim " ++ show w
@@ -52,8 +52,8 @@ instance Show (Dim d) where
       = showParen (p >= 10)
       $ showString "Dim " . showsPrec p w
 
--- | Similar to `natVal` from `GHC.TypeLits`, but returns `Word`.
-fromDim :: Dim d -> Word
+-- | Similar to `natVal` from `GHC.TypeLits`, but returns `Int`.
+fromDim :: Dim d -> Int
 fromDim (DimSing w) = w
 {-# INLINE fromDim #-}
 
@@ -119,9 +119,9 @@ instance Show SomeDim where
       = showParen (p >= 10)
       $ showString "SomeDim " . showsPrec p (fromDim d)
 
-someDim :: Word -> Maybe SomeDim
-someDim w = if w == 0 then Nothing else Just sd
-  where sd = unsafeReifyDim w $ \p -> SomeDim (reflect p)
+someDim :: Integral i => i -> Maybe SomeDim
+someDim i = if i <= 0 then Nothing else Just sd
+  where sd = unsafeReifyDim (fromIntegral i) $ \p -> SomeDim (reflect p)
 
 withSomeDim :: SomeDim -> (forall d. KnownDim d => Dim d -> r) -> r
 withSomeDim (SomeDim d) f = f d
@@ -135,7 +135,7 @@ reifyDim d k = unsafeCoerce (WithKnownDim k :: WithKnownDim d r) d
 
 newtype WithKnownDim d r = WithKnownDim (KnownDim d => r)
 
-unsafeReifyDim :: forall r. Word -> (forall d. KnownDim d => Proxy d -> r) -> r
+unsafeReifyDim :: forall r. Int -> (forall d. KnownDim d => Proxy d -> r) -> r
 unsafeReifyDim w k = unsafeCoerce (WithSomeDim k :: WithSomeDim r) w Proxy
 
 newtype WithSomeDim r = WithSomeDim (forall d. KnownDim d => Proxy d -> r)
