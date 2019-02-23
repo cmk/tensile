@@ -13,12 +13,12 @@ gf :: Gen Float
 gf = G.float $ R.linearFracFrom 0 (-100) 100
 
 prop_transpose_involution1 :: Property
-prop_transpose_involution1 = property $
+prop_transpose_involution1 = property $ do
   t <- forAll $ gen_tensor (dims @'[3,3,3]) gf
   assert $ pred_transpose_involution1 t
 
 prop_transpose_involution2 :: Property
-prop_transpose_involution2 = property $ 
+prop_transpose_involution2 = property $ do
   t <- forAll $ gen_tensor (dims @'[5,4,3,2]) gf
   assert $ pred_transpose_involution2 t
 

@@ -14,6 +14,7 @@ import qualified TensorFlow.GenOps.Core as O
 import qualified TensorFlow.Ops as O (constant, vector)
 
 
+
 transpose 
   :: Elt e 
   => Permutable d d'
@@ -34,16 +35,35 @@ transpose d (Perm p) (Tensor t) = Tensor $ (flip O.transpose) (f w) t
 -}
 
 (<#>) 
+  :: forall a b c x y z. ()
+  => KnownDim a
+  => KnownDim b
+  => KnownDim c
+  => KnownDims x
+  => KnownDims y
+  => x ~ '[a,b]
+  => y ~ '[b,c]
+  => z ~ '[a,c]  
+  => T x -> T y -> T z
+(<#>) x y = reflectDims2 @x @y (\d1 d2 -> product' d1 d2 x y)
+--Tensor $ O.matMul a b
+
+
+
+product' :: Dims x -> Dims y -> T x -> T y -> T z
+product' x y (Tensor a) (Tensor b) = Tensor $ O.matMul a b
+
+
+{-
+
+
+
+
+(<#>) 
   :: forall m x y. KnownDim m
   => KnownDims x
   => KnownDims y
   => T (x +: m) -> T (m :+ y) -> T (x ++ y)
-(<#>) (Tensor a) (Tensor b) = Tensor $ O.matMul a b
-
-
-
-
-{-
 
 (<#) 
   :: All KnownDim '[a, b, c]

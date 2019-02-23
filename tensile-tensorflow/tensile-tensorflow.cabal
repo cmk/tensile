@@ -33,6 +33,7 @@ library
         tensorflow,
         tensorflow-core-ops,
         tensorflow-ops,
+        transformers,
         vector,
         vector-sized
     default-extensions:

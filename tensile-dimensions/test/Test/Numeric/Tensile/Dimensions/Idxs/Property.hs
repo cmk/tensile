@@ -15,13 +15,18 @@ dims_large = R.constant 0 100
 dims_small :: Range Word
 dims_small = R.constant 0 5
 
+prop_size_idxs :: Property
+prop_size_idxs = property $ do
+    d <- forAll $ gen_dims_small dims_small
+    assert $ withSomeDims d pred_size_idxs
+
 prop_max_diff_idxs :: Property
 prop_max_diff_idxs = property $ 
   assert . (\d -> withSomeDims d pred_max_diff_idxs) =<< forAll (gen_dims dims_large)
 
-prop_sum_idxs :: Property
-prop_sum_idxs = property $ 
-  assert . (\d -> withSomeDims d pred_sum_idxs) =<< forAll (gen_dims_small dims_small)
+prop_modulus_idxs :: Property
+prop_modulus_idxs = property $ 
+  assert . (\d -> withSomeDims d pred_modulus_idxs) =<< forAll (gen_dims_small dims_small)
 
 prop_transpose_idxs :: Property
 prop_transpose_idxs = property $ 

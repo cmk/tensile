@@ -70,9 +70,20 @@ transposeIdxs f ds ix =
   unsafeReifyDims (Prelude.reverse $ fromDims ds) $ \ds' -> 
     f ds' (toIdxs ds' . fromIdxs ds $ ix)
 
+-- | Create a new 'Dims' based on the actual value of the 'Idxs'.
+idxsToDims :: Idxs d -> (forall d'. Dims d' -> r) -> r
+idxsToDims i = unsafeReifyDims $ (+1) <$> listIdxs i 
+
 {-
   unsafeReifyDims' (P.permuteList p $ fromDims ds) $ \ds' -> 
     f (reflect ds') (toIdxs (reflect ds') . fromIdxs ds $ ix)
+
+> i = 0 :+ 1 :+ 2 :+ S :: Idxs '[1,2,3]
+> i
+Idxs [0,1,2]
+> idxsToDims i print
+Dims [1,2,3]
+> j = 0 :+ 1 :+ 1 :+ S :: Idxs '[1,2,3]
 
 remapIdxs' 
   :: forall (ds :: [Nat]) (ds' :: [Nat]) r. Permutable ds ds'
@@ -93,12 +104,6 @@ lowerPerm
   -> (Dims ds -> Idxs ds -> Perm (Rank ds) -> Perm (Size ds)) -- ^ Index filter
   -> Perm (Size ds)  -- ^ Index-level permutation
 lowerPerm d p f = D.foldDimIdx d (\i p' -> p' <> f d i p) (mempty :: Perm (Size ds))
-
-> :t forM_
-forM_ :: (Foldable t, Monad m) => t a -> (a -> m b) -> m ()
-> :t foldM
-foldM
-  :: (Foldable t, Monad m) => (b -> a -> m b) -> b -> t a -> m b
 
 -}
 

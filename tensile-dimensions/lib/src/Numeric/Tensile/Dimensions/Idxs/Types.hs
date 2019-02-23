@@ -25,6 +25,7 @@ module Numeric.Tensile.Dimensions.Idxs.Types where
 --import Numeric.KnownDims.Idxs (Idx(..), Idxs(..))
  --(Nat, TypedList(..), Dims(..), Dim(..), KnownDim(..), KnownDims(..), Permutable, Size, Rank)
  --
+import Data.Function (on)
 import Numeric.Tensile.Dimensions.Dims
 import Numeric.Tensile.Dimensions.Idx.Types
 import Numeric.Tensile.Dimensions.Types hiding (take)
@@ -210,8 +211,16 @@ instance KnownDims ds => Enum (Idxs ds) where
 
 --------------------------------------------------------------------------------
 
+liftIdxs :: forall d. KnownDims d => (Word -> Word) -> Idxs d -> Idxs d
+liftIdxs f = toEnum . fromIntegral . flip mod s . f . fromIntegral . fromEnum
+  where s = reflectDims @d size
 
+liftIdxs2 :: forall d. KnownDims d => (Word -> Word -> Word) -> Idxs d -> Idxs d -> Idxs d
+liftIdxs2 f = on k $ fromIntegral . fromEnum
+  where s = reflectDims @d size
+        k i j = toEnum . fromIntegral . flip mod s $ f i j
 
+-- diffIdxs =? fromEnum $ reflectDims $ liftIdxs2 (-)
 diffIdxs :: Dims ds -> Idxs ds -> Idxs ds -> Int
 diffIdxs d i j = _diffIdxs (unsafeReverse d) (unsafeReverse i) (unsafeReverse j)
 {-# INLINE diffIdxs #-}

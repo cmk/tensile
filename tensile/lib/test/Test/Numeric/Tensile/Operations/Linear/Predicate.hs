@@ -11,14 +11,14 @@ import qualified Data.Vector.Storable as V
 import qualified Numeric.Tensile.Operations.Linear.Unlifted as U
 
 -- pred_transpose_involution1
-pred_cubic_transpose :: forall e. (Elt e, Eq e) => Tensor '[3,3,3] e -> Bool
-pred_cubic_transpose t = t == (f . f) t
+pred_transpose_involution1 :: forall e. (Elt e, Eq e) => Tensor '[3,3,3] e -> Bool
+pred_transpose_involution1 t = t == (f . f) t
   where 
     f :: Tensor '[3,3,3] e -> Tensor '[3,3,3] e
     f = U.transpose $ reflectDims @'[3,3,3] reversal
         
-pred_prism_transpose :: forall e. (Elt e, Eq e) => Tensor '[5,4,3,2] e -> Bool
-pred_prism_transpose t = t == (g . f) t
+pred_transpose_involution2 :: forall e. (Elt e, Eq e) => Tensor '[5,4,3,2] e -> Bool
+pred_transpose_involution2 t = t == (g . f) t
   where 
     f :: Tensor '[5,4,3,2] e -> Tensor '[2,3,4,5] e
     f = U.transpose $ reflectDims @'[5,4,3,2] reversal

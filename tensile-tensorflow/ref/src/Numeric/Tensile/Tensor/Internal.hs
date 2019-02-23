@@ -4,7 +4,6 @@
 
 module Numeric.Tensile.Tensor.Internal where
 
-import Control.Monad.ST (ST(..))
 import Data.Bits
 import Data.ByteString (ByteString())
 import Data.Complex
@@ -33,7 +32,7 @@ import qualified TensorFlow.Ops as O
 import qualified TensorFlow.Session as Ss
 
 import Control.Monad.IO.Class (liftIO)
-
+import Control.Monad.Trans.Reader
 
 
 {-
@@ -70,6 +69,8 @@ type Elt e = OneOf '[Int32, Int64, Word32, Word64, Float, Double, Complex Float,
 type TVal = Float
 type IVal = Int32
 type BVal = Bool
+
+type Dynamic d = Reader (Dims d)
 
 
 newtype Tensor (d :: [Nat]) (e :: Type) = Tensor { unTensor :: T.Tensor T.Build e }
@@ -224,20 +225,70 @@ maximum (Tensor a) (Tensor b) = Tensor $ O.maximum a b
 minimum :: Elt e => Ord e => Tensor d e -> Tensor d e -> Tensor d e
 minimum (Tensor a) (Tensor b) = Tensor $ O.minimum a b
 
-fromList' :: forall d e. Elt e => KnownDims d => [e] -> Maybe (Tensor d e)
-fromList' l = reflectDims @d $ \d -> fromList d l
-
-fromList :: forall d e. Elt e => Dims d -> [e] -> Maybe (Tensor d e)
-fromList d l = if size d == (fromIntegral $ length l) then Just $ f l else Nothing
-  where f = Tensor . O.constant (toShape d)
-
 toList :: TensorDataType V.Vector a => Tensor d a -> [a]
 toList t = unsafePerformIO $ Ss.runSession $ do
   a <- T.render $ unTensor t
   b <- Ss.run a
   return $ V.toList b
 
+fromList :: forall d e. Elt e => Dims d -> [e] -> Maybe (Tensor d e)
+fromList d l = if size d == (fromIntegral $ length l) then Just $ f l else Nothing
+  where f = Tensor . O.constant (toShape d)
+
+fromList'' :: forall d e. Elt e => Dynamic d ([e] -> Maybe (Tensor d e))
+fromList'' = reader fromList
+
+fromList' :: forall d e. Elt e => KnownDims d => [e] -> Maybe (Tensor d e)
+fromList' = withDyn @d fromList''
+
+
+-- reflectDims @d $ \d -> runReader fromList'' d $ l
+
+
+liftDyn :: (Dims d -> r) -> Dynamic d r
+liftDyn f = reader f
+
+withDyn :: forall d r. KnownDims d => Dynamic d r -> r
+withDyn dyn = reflectDims @d $ runReader dyn
+
 {-
+ - http://hackage.haskell.org/package/contravariant-1.5/docs/Data-Functor-Contravariant.html
+ -
+=> f (Dims d) 
+
+TODO:
+ - do lowerPerm and withDyn have anything in common? (e.g. operator constraints 'lowering' to Predicate (Dims d)). both are functors?
+ - type-level Predicate for '[Nat] ? Equivalence '[Nat] ~ ('[Nat],'[Nat]) ~> Bool   Could also include >1 req?
+ -
+ -
+withDyn :: forall d r. KnownDims d => Predicate (Dims d) -> Dynamic d r -> Maybe r
+
+withDyn2 
+  :: forall x y r. (KnownDims x, KnownDims y) 
+  => Predicate (Dims x,) 
+  => Predicate (Dims y) 
+  -> Dynamic d r -> Maybe r
+
+
+divided :: Divisible f => f a -> f b -> f (a, b) Source#
+divided = divide id
+
+
+Predicate (Tensor d e)
+Equivalence (Tensor d e)
+Predicate (Dims d)
+Equivalence (Dims d)
+
+divided :: Divisible f => f a -> f b -> f (a, b)
+
+note in general we have 
+
+Dims x -> Bool
+Dims x -> Dims y -> Bool
+
+
+
+type Dynamic d = Reader (Dims d)
 
 fromList :: forall d e. Elt e => KnownDims d => [e] -> Maybe (Tensor d e)
 fromList v = if size (dims @d) == (fromIntegral $ length v) then Just $ f v else Nothing
