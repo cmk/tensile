@@ -54,7 +54,7 @@ instance Show (Dim d) where
 
 -- | Similar to `natVal` from `GHC.TypeLits`, but returns `Int`.
 fromDim :: Dim d -> Int
-fromDim (DimSing w) = w
+fromDim (DimSing i) = i
 {-# INLINE fromDim #-}
 
 -- | Obtain evidence that both values were instantiated with the same 'Nat's.

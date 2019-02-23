@@ -50,12 +50,26 @@ listIdxs :: Idxs ds -> [Int]
 listIdxs = unsafeCoerce
 {-# INLINE listIdxs #-}
 
-idxsFromInts :: forall ds . KnownDims ds => [Int] -> Maybe (Idxs ds)
-idxsFromInts = unsafeCoerce . go (fromDims (dims @ds))
+{-
+    toEnum i = go dsd $ fromIntegral i
+      where
+        dsd = dims @ds
+        go :: forall ns . Dims ns -> Int -> Idxs ns
+        go S 0 = S
+        go S _ = error ("Idxs ") -- ++ show (fromDims dsd)) TODO fix
+        go (Snoc ds d) off = case divMod off (fromDim d) of
+          (off', j) -> go ds off' `snoc` Idx j
+-}
+
+{-
+idxsFromInts :: forall ds . KnownDims ds => [Int] -> Idxs ds
+idxsFromInts = go (dims @ds)
   where
-    go [] [] = Just []
-    go (d : ds) (i : is) | i >= 0 && i < d = (i:) <$> go ds is
-    go _ _   = Nothing
+    go S [] = S
+    go (d :+ ds) (i : is) = (reifyDim d (idx i) :+) <$> go ds is   -- | i >= 0 && i < d = (i:) <$> go ds is
+-}
+
+
 
 majorToMinor :: forall ds i. Integral i => Dims ds -> Idxs ds -> i
 majorToMinor dims = fromIntegral . go 1 dims
@@ -70,12 +84,15 @@ minorToMajor d i = majorToMinor (unsafeReverse d) (unsafeReverse i)
 fromIdxs :: forall ds i. Integral i => Dims ds -> Idxs ds -> i
 fromIdxs = minorToMajor
 
-toIdxs :: forall ds i. Integral i => Dims ds -> i -> Idxs ds
-toIdxs dsd i = go dsd $ fromIntegral i
+idxs :: forall d i. KnownDims d => Integral i => i -> Idxs d
+idxs = reflectDims @d toIdxs
+
+toIdxs :: forall d i. Integral i => Dims d -> i -> Idxs d
+toIdxs d = go d . flip mod (size d) . fromIntegral
   where
-    go :: forall ns . Dims ns -> Int -> Idxs ns
-    go S 0 = S
-    go S _ = error ("Idxs ") -- ++ show (fromDims dsd)) TODO: fix
+    go :: forall d . Dims d -> Int -> Idxs d
+    go S _ = S
+    --go S _ = S error ("Idxs ") -- ++ show (fromDims dsd)) TODO: fix
     go (Snoc ds d) off = case divMod off (fromDim d) of
       (off', j) -> go ds off' `snoc` Idx j
 
@@ -188,34 +205,17 @@ instance KnownDims ds => Enum (Idxs ds) where
                             else diffIdxs ds y x `div` dn
     {-# INLINE enumFromThenTo #-}
 
-{-
--- | With this instance we can slightly reduce indexing expressions, e.g.
---
---   > x ! (1 :+ 2 :+ 4) == x ! (1 :+ 2 :+ 4 :+ S)
---
-instance KnownDim n => Num (Idxs '[n]) where
-    (a:+S) + (b:+S) = (a+b) :+ S
-    {-# INLINE (+) #-}
-    (a:+S) - (b:+S) = (a-b) :+ S
-    {-# INLINE (-) #-}
-    (a:+S) * (b:+S) = (a*b) :+ S
-    {-# INLINE (*) #-}
-    signum (a:+S)   = signum a :+ S
-    {-# INLINE signum #-}
-    abs (a:+S)      = abs a :+ S
-    {-# INLINE abs #-}
-    fromInteger i   = fromInteger i :+ S
-    {-# INLINE fromInteger #-}
--}
+instance KnownDims d => Semigroup (Idxs d) where
+    (<>) = liftIdxs2 (+)
+    {-# INLINE (<>) #-}
 
--- | With this instance we can slightly reduce indexing expressions, e.g.
---
---   > x ! (1 :+ 2 :+ 4) == x ! (1 :+ 2 :+ 4 :+ S)
---
+instance KnownDims d => Monoid (Idxs d) where
+    mempty = toEnum 0
+    {-# INLINE mempty #-}
+
 instance KnownDims d => Num (Idxs d) where
 
     (+) = liftIdxs2 (+)
-    {-# INLINE (+) #-}
 
     (-) = liftIdxs2 (-)
     {-# INLINE (-) #-}
@@ -235,13 +235,11 @@ instance KnownDims d => Num (Idxs d) where
 --------------------------------------------------------------------------------
 
 liftIdxs :: forall d. KnownDims d => (Int -> Int) -> Idxs d -> Idxs d
-liftIdxs f = toEnum . flip mod s . f . fromEnum
-  where s = reflectDims @d size
+liftIdxs f = toEnum . flip mod (reflectDims @d size) . f . fromEnum
 
 liftIdxs2 :: forall d. KnownDims d => (Int -> Int -> Int) -> Idxs d -> Idxs d -> Idxs d
 liftIdxs2 f = on k fromEnum
-  where s = reflectDims @d size
-        k i j = toEnum . flip mod s $ f i j
+  where k i j = toEnum . flip mod (reflectDims @d size) $ f i j
 
 -- diffIdxs =? fromEnum $ reflectDims $ liftIdxs2 (-)
 diffIdxs :: Dims ds -> Idxs ds -> Idxs ds -> Int

@@ -73,7 +73,8 @@ elimDims :: Dims ds -> (forall d. Dim d -> r) -> [r]
 elimDims S _ = []
 elimDims (d :+ ds) f = f d : elimDims ds f
 
--- | Product of all dimension sizes.
+-- | Product of all dimension sizes. 
+-- Caution: numerical overflow will lead to undefined behavior.
 size :: Dims ds -> Int
 size = product . fromDims
 {-# INLINE size #-}
@@ -129,7 +130,7 @@ patKDims _ = impossible
 
 type SomeDims = [SomeDim]
 
-someDims :: [Int] -> Maybe SomeDims
+someDims :: Integral i => [i] -> Maybe SomeDims
 someDims = traverse someDim
 {-# INLINE someDims #-}
 

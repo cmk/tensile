@@ -10,7 +10,7 @@ import qualified Hedgehog.Gen as G
 import qualified Hedgehog.Range as R
 
 dims_large :: Range Word
-dims_large = R.constant 0 100
+dims_large = R.constant 0 20
 
 dims_small :: Range Word
 dims_small = R.constant 0 5
@@ -23,6 +23,10 @@ prop_size_idxs = property $ do
 prop_max_diff_idxs :: Property
 prop_max_diff_idxs = property $ 
   assert . (\d -> withSomeDims d pred_max_diff_idxs) =<< forAll (gen_dims dims_large)
+
+prop_max_diff_idxs2 :: Property
+prop_max_diff_idxs2 = property $ 
+  assert . (\d -> withSomeDims d pred_max_diff_idxs2) =<< forAll (gen_dims dims_large)
 
 prop_modulus_idxs :: Property
 prop_modulus_idxs = property $ 
