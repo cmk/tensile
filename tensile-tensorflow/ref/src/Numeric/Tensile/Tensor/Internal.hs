@@ -300,7 +300,9 @@ fromIntegral' = fromIntegral
 toList $ fill (dims @'[2,4]) (fromIntegral' . fromEnum)
 
 
-t1 = fill (dims @'[2,4]) (fromIntegral' . fromEnum)
+t1 = fill (dims @'[2,4]) $ const 1 . fromEnum
+t2 = fill (dims @'[4,2]) $ const 1 . fromEnum
+
 t2 = fill (dims @'[2,4]) ((+1) . fromIntegral' . fromEnum)
 
 f :: Elt e => Tensor '[2,4] e -> Tensor '[4,2] e

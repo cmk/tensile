@@ -4,36 +4,64 @@ import Numeric.Tensile.Tensor
 import Numeric.Tensile.Dimensions
 --import Numeric.Tensile.Dimensions.Types
 --import Numeric.Tensile.Dimensions.Perm (Perm(..), reversal)
-import Numeric.Tensile.Operations.Linear.Unlifted (transpose)
+import Numeric.Tensile.Operations.Linear.Internal 
 import Test.Numeric.Tensile.Tensor.Gen
 
 import qualified Data.Vector.Storable as V
+import qualified Numeric.Tensile.Operations.Linear.Unlifted as U
 
-import Data.Monoid
-import Unsafe.Coerce
-
+-- pred_transpose_involution1
 pred_cubic_transpose :: forall e. (Elt e, Eq e) => Tensor '[3,3,3] e -> Bool
 pred_cubic_transpose t = t == (f . f) t
   where 
     f :: Tensor '[3,3,3] e -> Tensor '[3,3,3] e
-    f = transpose $ reflectDims @'[3,3,3] reversal
+    f = U.transpose $ reflectDims @'[3,3,3] reversal
         
 pred_prism_transpose :: forall e. (Elt e, Eq e) => Tensor '[5,4,3,2] e -> Bool
 pred_prism_transpose t = t == (g . f) t
   where 
     f :: Tensor '[5,4,3,2] e -> Tensor '[2,3,4,5] e
-    f = transpose $ reflectDims @'[5,4,3,2] reversal
+    f = U.transpose $ reflectDims @'[5,4,3,2] reversal
 
     g :: Tensor '[2,3,4,5] e -> Tensor '[5,4,3,2] e
-    g = transpose $ reflectDims @'[2,3,4,5] reversal
+    g = U.transpose $ reflectDims @'[2,3,4,5] reversal
 
 
 
+-- (t * u)^T == u^T * t^T,
+pred_product_transpose :: T '[2,4] -> T '[4,2] -> Bool
+pred_product_transpose t u = f (t <#> u) == g u <#> h t
+  where
+    f :: T '[2,2] -> T '[2,2]
+    f = U.transpose $ reflectDims @'[2,2] reversal
+
+    g :: T '[4,2] -> T '[2,4]
+    g = U.transpose $ reflectDims @'[4,2] reversal
+
+    h :: T '[2,4] -> T '[4,2]
+    h = U.transpose $ reflectDims @'[2,4] reversal
 
 
+pred_product_transpose' :: T '[2,4] -> T '[4,2] -> Bool
+pred_product_transpose' t u = f (t <#> u) == g u <#> h t
+  where
+    f :: T '[2,2] -> T '[2,2]
+    f = transpose (dims @'[2,2]) $ reversal (dims @'[2,2])
+
+    g :: T '[4,2] -> T '[2,4]
+    g = transpose (dims @'[4,2]) $ reversal (dims @'[4,2]) 
+
+    h :: T '[2,4] -> T '[4,2]
+    h = transpose (dims @'[2,4]) $ reversal (dims @'[2,4]) 
 {- unit tests
  -
  -
+
+ p = liftA2 (<#>) t u
+p' = fmap f p
+ u' = fmap g u
+ t' = fmap h t
+q = liftA2 (<#>) u' t'
 
 TODO
 
