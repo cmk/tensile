@@ -4,7 +4,7 @@ import Numeric.Tensile.Tensor
 import Numeric.Tensile.Dimensions
 --import Numeric.Tensile.Dimensions.Types
 --import Numeric.Tensile.Dimensions.Perm (Perm(..), reversal)
-import Numeric.Tensile.Operations.Linear.Unlifted (transpose, transpose)
+import Numeric.Tensile.Operations.Linear.Unlifted (transpose)
 import Test.Numeric.Tensile.Tensor.Gen
 
 import qualified Data.Vector.Storable as V

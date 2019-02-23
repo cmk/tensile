@@ -43,6 +43,11 @@ import Numeric.Tensile.Dimensions.Types
 import qualified Data.Finite as F
 import qualified Math.Combinat.Permutations as P
 
+--TODO distinguish these 3 functions:
+
+-- withPerm reversal majorToMinor d i = minorToMajor d i
+withPerm :: Perm (Rank ds) -> (forall ds'. Dims ds' -> Idxs ds' -> r) -> Dims ds -> Idxs ds -> r
+withPerm p k d i = k (unsafePermute p d) (unsafePermute p i)
 
 -- | Remaps the index argument to the index with the same 'Int' representation 
 -- under the permuted dimensions.
@@ -51,7 +56,7 @@ remapIdxs
    . Perm (Rank ds) 
   -> Dims ds 
   -> Idxs ds 
-  -> (forall (ds' :: [Nat]). Dims ds' -> Idxs ds' -> r) 
+  -> (forall ds'. Dims ds' -> Idxs ds' -> r) 
   -> r
 remapIdxs (Perm p) ds ix f = 
   unsafeReifyDims (P.permuteList p $ fromDims ds) $ \ds' -> 

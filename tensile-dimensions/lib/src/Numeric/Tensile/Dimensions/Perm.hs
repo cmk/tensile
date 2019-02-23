@@ -20,15 +20,13 @@ instance Semigroup (Perm n) where
 instance KnownDim n => Monoid (Perm n) where
   mempty = Perm $ P.identity (fromIntegral $ reflectDim @n fromDim)
 
-cycles (Perm t) = P.permutationToDisjointCycles $ t
-
-identity :: forall ds. Dims ds -> Perm (Rank ds)
-identity = Perm . P.identity . fromIntegral . length . fromDims 
-
 -- TODO remark as unsafe or remove.
 --unsafePermute :: Permutable d d' => Perm (Rank d) -> TypedList f d -> TypedList f d'
 unsafePermute :: Perm (Rank d) -> TypedList f d -> TypedList f d'
 unsafePermute (Perm p) = unsafeCoerce . P.permuteList p . unsafeCoerce
+
+identity :: forall ds. Dims ds -> Perm (Rank ds)
+identity = Perm . P.identity . fromIntegral . length . fromDims 
 
 reversal :: forall ds. Dims ds -> Perm (Rank ds)
 reversal = Perm . P.reversePermutation . length . fromDims

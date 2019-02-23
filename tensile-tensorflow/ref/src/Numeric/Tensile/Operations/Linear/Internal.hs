@@ -9,41 +9,18 @@ import qualified Data.Finite as F
 import qualified Data.Vector.Sized as N
 import qualified Data.Vector.Storable as S
 import qualified Data.Vector.Storable.Mutable as M
-
--- import qualified Numeric.LinearAlgebra.HMatrix as Ma
-
-
-
--- f :: (Dims d' -> Perm n -> Perm n) -> Perm n -> Tensor d e -> Tensor d e'
--- f dim2Idx perm t = Tensor $ reifySomeDims (permuteDims perm (dims @d)) $ \p ->
---   modifyIdx (reflect p) (modify (permuteIdxs (dim2Idx (reflect p) perm) _)) (reflect p)) t -- basically make user derive the Idxs d' -> Idxs d'
-
--- dim2Idx :: Rank d ~ n => Dims d -> Perm n -> Perm n
--- takes a perm on dimensions and derives a perm in indices, eg
--- dim2Idx d p = lowerPerm' ...
--- --
--- otherwise consider using the raw index fold and lowerPerm???
--- could also create :  Perm d d'
-
-
---------------------------------------
---
+import qualified Math.Combinat.Permutations as P
+import qualified TensorFlow.GenOps.Core as O
+import qualified TensorFlow.Ops as O
 
 transpose 
   :: Elt e 
   => Permutable d d'
   => Dims d -> Perm (Rank d) -> Tensor d e -> Tensor d' e
-transpose = undefined
-{-
-transpose 
-  :: Elt e 
-  => Permutable d d'
-  => Dims d -> Perm (Rank d) -> Tensor d e -> Tensor d' e
-transpose d p (Tensor v) = Tensor v'
-  where v' = modifyIdxs d v $ \i m -> 
-               remapIdxs p d i $ \d' i' -> 
-                 M.modify m (const $ v S.! fromIdxs d' (unsafePermute p i)) (fromIdxs d' i')
--}
+transpose d (Perm p) (Tensor t) = Tensor $ (flip O.transpose) (O.vector w) t
+  where v = [0.. fromIntegral $ rank d] :: [IVal]
+        w = P.permuteList p v
+
 
 {-
 gen# 

@@ -19,6 +19,7 @@ import Numeric.Tensile.Dimensions
 
 import Data.Vector.Sized (Vector)
 import TensorFlow.Types
+import System.IO.Unsafe (unsafePerformIO)
 
 import qualified Data.Finite as F
 import qualified Data.Vector as V
@@ -33,12 +34,34 @@ import qualified TensorFlow.Session as Ss
 
 import Control.Monad.IO.Class (liftIO)
 
-printTensor :: I d -> IO ()
-printTensor t = Ss.runSession $ do
+
+
+{-
+fromTensor :: Elt e => Tensor d e -> [e]
+fromTensor t = unsafePerformIO $ Ss.runSession $ do
   a <- T.render $ unTensor t
   b <- Ss.run a
-  liftIO $ print $ V.toList b
+  return $ V.toList b
 
+:: OneOf '[Int32, Int64] tidx	 
+=> Tensor v'1 Bool	
+input
+
+-> Tensor v'2 tidx	
+reduction_indices
+
+-> Tensor Build Bool
+
+transpose 
+  :: Elt e 
+  => Permutable d d'
+  => Dims d -> Perm (Rank d) -> Tensor d e -> Tensor d' e
+transpose d (Perm p) (Tensor t) = Tensor $ (flip O.transpose) (O.vector w) t
+  where v = [1.. fromIntegral $ rank d] :: [IVal]
+        w = P.permuteList p v
+
+
+-}
 -- | Generally specialized as in 'TVal' or 'IVal'.
 type Elt e = OneOf '[Int32, Int64, Word32, Word64, Float, Double, Complex Float, Complex Double] e
 
@@ -48,8 +71,7 @@ type TVal = Float
 type IVal = Int32
 type BVal = Bool
 
---class Elt e
---TODO update Show instance
+
 newtype Tensor (d :: [Nat]) (e :: Type) = Tensor { unTensor :: T.Tensor T.Build e }
 
 -- | A real or complex-valued tensor of shape 'd'. 
@@ -61,9 +83,18 @@ type I d = Tensor d IVal
 -- | A boolean-valued tensor of shape 'd'. 
 type B d = Tensor d BVal
 
+--TODO update Show instance
+instance (Elt e, Show e) => Show (Tensor d e) where show _ = "No Show instance."
+
+
+
 --TODO implement
 instance (KnownDims d, Elt e, Eq e) => Eq (Tensor d e) where
-    (==) (Tensor a) (Tensor b) = undefined
+    (==) ta tb = all $ ta `eq` tb
+      where all :: B d -> Bool
+            all (Tensor b) = Prelude.head $ toList $ Tensor $ O.all b (O.vector ([] :: [IVal]))
+
+
 
 instance (KnownDims d, Num e, Elt e) => Num (Tensor d e) where
     (+) (Tensor v1) (Tensor v2) = Tensor $ (+) v1 v2
@@ -193,11 +224,25 @@ maximum (Tensor a) (Tensor b) = Tensor $ O.maximum a b
 minimum :: Elt e => Ord e => Tensor d e -> Tensor d e -> Tensor d e
 minimum (Tensor a) (Tensor b) = Tensor $ O.minimum a b
 
+fromList' :: forall d e. Elt e => KnownDims d => [e] -> Maybe (Tensor d e)
+fromList' l = reflectDims @d $ \d -> fromList d l
+
+fromList :: forall d e. Elt e => Dims d -> [e] -> Maybe (Tensor d e)
+fromList d l = if size d == (fromIntegral $ length l) then Just $ f l else Nothing
+  where f = Tensor . O.constant (toShape d)
+
+toList :: TensorDataType V.Vector a => Tensor d a -> [a]
+toList t = unsafePerformIO $ Ss.runSession $ do
+  a <- T.render $ unTensor t
+  b <- Ss.run a
+  return $ V.toList b
+
+{-
+
 fromList :: forall d e. Elt e => KnownDims d => [e] -> Maybe (Tensor d e)
 fromList v = if size (dims @d) == (fromIntegral $ length v) then Just $ f v else Nothing
   where f = Tensor . O.constant (toShape (dims @d))
 
-{-
 
 
 -- fromVector :: Elt e => Dims d -> Vector e -> Maybe (Tensor d e)
@@ -241,16 +286,29 @@ toShapeTensor :: Idxs d -> I '[Rank d]
 toShapeTensor i = Tensor . O.constant (toShape' i) $ l
   where l = fmap fromIntegral . listIdxs $ i
 
+-- TODO use more efficient density list approach
 fill :: Elt e => Dims d -> (Idxs d -> e) -> Tensor d e
-fill d k = Tensor . O.constant (toShape d) $ l
+fill d k = Tensor . O.constant (toShape d) $ Prelude.reverse l
   where l = foldIdxs d (\i x -> k i : x) []
         
 
-
 {-
 
-printTensor $ fill (dims '[2,4]) (fromIntegral . fromEnum)
-printTensor $ fill (dims '[2,4]) (transposeIdxs minorToMajor)
+fromIntegral' :: Int -> Int32
+fromIntegral' = fromIntegral
+
+toList $ fill (dims @'[2,4]) (fromIntegral' . fromEnum)
+
+
+t1 = fill (dims @'[2,4]) (fromIntegral' . fromEnum)
+t2 = fill (dims @'[2,4]) ((+1) . fromIntegral' . fromEnum)
+
+f :: Elt e => Tensor '[2,4] e -> Tensor '[4,2] e
+f = transpose (dims @'[2,4]) (reversal (dims @'[2,4]))
+
+t1' = f t1
+
+
 
 foo :: Dims d -> (Idxs d -> TVal) -> IO ()
 foo d f = printTensor $ fill d f

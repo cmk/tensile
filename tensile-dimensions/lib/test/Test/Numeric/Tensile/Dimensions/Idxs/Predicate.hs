@@ -28,25 +28,23 @@ pred_transpose_idxs ds =
 --pred_permute_idxs :: forall ds. Dims ds -> Bool
 
 {- TODO is this sketchy behavior?
-> foo d (majorToMinor d)
+> check d (majorToMinor)
 [7,5,3,1,6,4,2,0]
-> foo d (transposeIdxs majorToMinor d)
+> check d (transposeIdxs majorToMinor)
 [7,3,6,2,5,1,4,0]
-> foo d (minorToMajor d)
+> check d (minorToMajor)
 [7,6,5,4,3,2,1,0]
-> foo d (transposeIdxs minorToMajor d)
+> check d (transposeIdxs minorToMajor)
 [7,6,5,4,3,2,1,0]
 
-withPerm :: Perm (Rank ds) -> (Dims ds -> Idxs ds -> r) -> Dims ds -> Idxs ds -> r
-withPerm p k d i = k (unsafePermute p d) (unsafePermute p i)
+> check ds (withPerm (identity ds) majorToMinor)
+[7,5,3,1,6,4,2,0]
+> check ds (withPerm (reversal ds) majorToMinor)
+[7,6,5,4,3,2,1,0]
+> check ds (withPerm (identity ds) minorToMajor)
+[7,6,5,4,3,2,1,0]
+> check ds (withPerm (reversal ds) minorToMajor)
+[7,5,3,1,6,4,2,0]
 
-> withPerm (reversal d) minorToMajor d i
-1
-> withPerm (reversal d) majorToMinor d i
-4
-> withPerm mempty majorToMinor d i
-1
-> withPerm mempty minorToMajor d i
-4
 
 -}

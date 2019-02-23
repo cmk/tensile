@@ -27,6 +27,7 @@ library
         base == 4.*,
         tensile-dimensions == 0.0.*,
         bytestring,
+        combinat,
         hedgehog,
         finite-typelits,
         tensorflow,
