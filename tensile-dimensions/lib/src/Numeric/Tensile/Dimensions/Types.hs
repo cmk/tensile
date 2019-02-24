@@ -47,6 +47,7 @@ import Prelude -- hiding (take,drop,reverse,head,init,last)
 import qualified Data.Finite as F
 import qualified Prelude as P
 
+
 impossible :: a
 impossible = error "Numeric.Tensile: impossible"
 
@@ -69,6 +70,10 @@ rank (TypedList ds) = fromIntegral $ P.length ds
 -- TODO hide constructor
 -- | Type-indexed list
 newtype TypedList (f :: Nat -> Type) (ds :: [Nat]) = TypedList [Any] 
+
+listVals :: TypedList f d -> (forall d. f d -> r) -> [r]
+listVals S _ = []
+listVals (d :+ ds) f = f d : listVals ds f
 
 -- | A list of evidence for constraints.
 type EvidenceList (c :: Nat -> Constraint) ds = TypedList (Evidence' c) ds

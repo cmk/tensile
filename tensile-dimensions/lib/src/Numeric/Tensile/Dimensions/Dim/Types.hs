@@ -14,7 +14,7 @@ module Numeric.Tensile.Dimensions.Dim.Types (
   Dim(),
   SomeDim(..),
   KnownDim(..),
-  fromDim,
+  dimVal,
   reifyDim,
   reflectDim,
   reflectDim2,
@@ -24,10 +24,6 @@ module Numeric.Tensile.Dimensions.Dim.Types (
   someDim,
   withDim,
   withSomeDim,
-  addDim,
-  subDim,
-  mulDim,
-  expDim,
   pattern Dim
 ) where
 
@@ -52,10 +48,10 @@ instance Show (Dim d) where
       = showParen (p >= 10)
       $ showString "Dim " . showsPrec p w
 
--- | Similar to `natVal` from `GHC.TypeLits`, but returns `Word`.
-fromDim :: Dim d -> Word
-fromDim (DimSing w) = w
-{-# INLINE fromDim #-}
+-- | Similar to `natVal` from `GHC.TypeLits`, but returns strictly positive values.
+dimVal :: Num n => Dim d -> n
+dimVal (DimSing d) = fromIntegral d
+{-# INLINE dimVal #-}
 
 -- | Obtain evidence that both values were instantiated with the same 'Nat's.
 sameDim :: forall (x :: Nat) (y :: Nat)
@@ -70,6 +66,7 @@ compareDim :: Dim a -> Dim b -> Ordering
 compareDim (DimSing a) (DimSing b) = compare a b
 {-# INLINE compareDim #-}
 
+{- TODO remove
 addDim :: Dim a -> Dim b -> Dim (a + b)
 addDim (DimSing a) (DimSing b) = unsafeCoerce (a + b)
 {-# INLINE addDim #-}
@@ -89,6 +86,8 @@ expDim (DimSing a) (DimSing b) = unsafeCoerce (a ^ b)
 refineDim :: forall d. KnownDim d => (Dim d -> Bool) -> Maybe (Dim d)
 refineDim p = reflectDim $ \x -> if p x then Just x else Nothing
 {-# INLINE refineDim #-}
+-}
+
 
 --  Match against this pattern to bring a `KnownDim` instance into scope.
 pattern Dim :: forall d. KnownDim d => Dim d
@@ -108,20 +107,20 @@ pattern Dim <- (withDim -> E)
 data SomeDim where SomeDim :: KnownDim d => !(Dim d) -> SomeDim
 
 instance Eq SomeDim where
-    SomeDim a == SomeDim b = fromDim a == fromDim b
+    SomeDim a == SomeDim b = dimVal a == dimVal b
 
 instance Ord SomeDim where
     compare (SomeDim a) (SomeDim b) = compareDim a b
 
 instance Show SomeDim where
-    show (SomeDim d) = "SomeDim " ++ show (fromDim d)
+    show (SomeDim d) = "SomeDim " ++ show (dimVal d)
     showsPrec p (SomeDim d)
       = showParen (p >= 10)
-      $ showString "SomeDim " . showsPrec p (fromDim d)
+      $ showString "SomeDim " . showsPrec p (dimVal d)
 
-someDim :: Word -> Maybe SomeDim
-someDim w = if w == 0 then Nothing else Just sd
-  where sd = unsafeReifyDim w $ \p -> SomeDim (reflect p)
+someDim :: Integral i => i -> Maybe SomeDim
+someDim i = if i <= 0 then Nothing else Just sd
+  where sd = unsafeReifyDim (fromIntegral i) $ \p -> SomeDim (reflect p)
 
 withSomeDim :: SomeDim -> (forall d. KnownDim d => Dim d -> r) -> r
 withSomeDim (SomeDim d) f = f d

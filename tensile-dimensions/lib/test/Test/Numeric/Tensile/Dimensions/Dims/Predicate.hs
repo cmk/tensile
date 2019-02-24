@@ -17,22 +17,22 @@ pred_evidence_reflect :: Dims ds -> Bool
 pred_evidence_reflect ds = evidenceReflect ds == ds 
 
 traverseSomeDims :: SomeDims -> [Word]
-traverseSomeDims = runIdentity . traverse (\s -> Identity $ withSomeDim s fromDim) 
+traverseSomeDims = runIdentity . traverse (\s -> Identity $ withSomeDim s dimVal) 
 
 pred_traverse_somedims :: SomeDims -> Bool
-pred_traverse_somedims ds = withSomeDims ds fromDims == traverseSomeDims ds
+pred_traverse_somedims ds = withSomeDims ds listDims == traverseSomeDims ds
 
 {-
 
-prop_splitDims :: [Word] -> Bool
+prop_splitDims :: [Int] -> Bool
 prop_splitDims n xsys
   | SomeDims dxsys <- someDimsVal xsys
   , Dx dn <- someDimVal n -- TODO: why this causes non-exhaustive patterns in GHC 8.2?
   , (xs, ys) <- splitAt (fromIntegral n) xsys
   = case TL.splitAt dn dxsys of
       (dxs, dys) -> and
-        [ fromDims dxs == xs
-        , fromDims dys == ys
+        [ listDims dxs == xs
+        , listDims dys == ys
         -- , dxsys == TL.concat dxs dys
         ]
 

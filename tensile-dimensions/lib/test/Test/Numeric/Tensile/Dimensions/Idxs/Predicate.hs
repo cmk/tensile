@@ -2,30 +2,48 @@ module Test.Numeric.Tensile.Dimensions.Idxs.Predicate where
 
 import Numeric.Tensile.Dimensions
 import qualified Numeric.Tensile.Dimensions.Types as T
-import Unsafe.Coerce 
 
-pred_max_diff_idxs :: forall ds. Dims ds -> Bool
-pred_max_diff_idxs ds = 
-  (fromIntegral $ 1 + diffIdxs ds (maxBound' ds) (minBound' ds)) == (product . fromDims $ ds)
+import Debug.Trace
 
-pred_sum_idxs :: forall ds. Dims ds -> Bool
-pred_sum_idxs ds = foldIdxs ds (\_ a -> a + 1) 0 == (product . fromDims $ ds)
+-- | Property that the number of elements in the tensor is equal to the size
+--   of the tensor.
+pred_size_idxs :: forall d. Dims d -> Bool
+pred_size_idxs d = size d == foldIdxs d (\_ a -> a + 1) 0
 
-check :: Dims ds -> (Dims ds -> Idxs ds -> Word) -> [Word]
-check ds f = foldIdxs ds (\i xs -> f ds i : xs) []
+--  | Property that the number of elements in the tensor is one more than the
+--    difference between the largest index and the smallest index.
+pred_max_diff_idxs :: forall d. Dims d -> Bool
+pred_max_diff_idxs d = size d == s
+  where s = 1 + diffIdxs d (maxBound' d) (minBound' d)
 
-pred_transpose_idxs' :: forall ds. Dims ds -> Bool
-pred_transpose_idxs' ds = 
-  check ds minorToMajor == check (T.unsafeReverse ds) (transposeIdxs minorToMajor)
+--  | Property that the number of elements in the tensor is one more than the
+--    largest index.
+pred_max_diff_idxs2 :: forall d. Dims d -> Bool
+pred_max_diff_idxs2 d = size d == 1 + s
+  where s = fromIdxs d $ idxs d (-1)
 
-pred_transpose_idxs :: forall ds. Dims ds -> Bool
-pred_transpose_idxs ds = 
-  check ds (withPerm (identity ds) minorToMajor) == check ds (withPerm (reversal ds) majorToMinor) &&
-  check ds (withPerm (identity ds) majorToMinor) == check ds (withPerm (reversal ds) minorToMajor)
+-- | Property that rotating an index by the size of the space leaves it unchanged.
+pred_modulus_idxs :: Dims d -> Bool
+pred_modulus_idxs d = foldIdxs d k True
+  where k i b = b && liftIdxs d (+ size d) i == i
+
+check :: Dims d -> (Dims d -> Idxs d -> Word) -> [Word]
+check d f = foldIdxs d (\i xs -> f d i : xs) []
+
+-- | Property that minor-to-major (e.g. row-major) indexing on 'Dims d' is identical
+--   to major-to-minor (e.g. column-major) indexing on 'Dims (Reverse d)'.
+pred_transpose_idxs :: forall d. Dims d -> Bool
+pred_transpose_idxs d = 
+  check d (withPerm (identity d) minorToMajor) == check d (withPerm (reversal d) majorToMinor) &&
+  check d (withPerm (identity d) majorToMinor) == check d (withPerm (reversal d) minorToMajor)
+
+pred_transpose_idxs' :: forall d. Dims d -> Bool
+pred_transpose_idxs' d = 
+  check d minorToMajor == check (T.unsafeReverse d) (transposeIdxs minorToMajor)
 
 
 --TODO add arbitrary permutations
---pred_permute_idxs :: forall ds. Dims ds -> Bool
+--pred_permute_idxs :: forall d. Dims d -> Bool
 
 {- TODO is this sketchy behavior?
 > check d (majorToMinor)
@@ -37,13 +55,13 @@ pred_transpose_idxs ds =
 > check d (transposeIdxs minorToMajor)
 [7,6,5,4,3,2,1,0]
 
-> check ds (withPerm (identity ds) majorToMinor)
+> check d (withPerm (identity d) majorToMinor)
 [7,5,3,1,6,4,2,0]
-> check ds (withPerm (reversal ds) majorToMinor)
+> check d (withPerm (reversal d) majorToMinor)
 [7,6,5,4,3,2,1,0]
-> check ds (withPerm (identity ds) minorToMajor)
+> check d (withPerm (identity d) minorToMajor)
 [7,6,5,4,3,2,1,0]
-> check ds (withPerm (reversal ds) minorToMajor)
+> check d (withPerm (reversal d) minorToMajor)
 [7,5,3,1,6,4,2,0]
 
 

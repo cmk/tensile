@@ -18,7 +18,7 @@ instance Semigroup (Perm n) where
 
 -- TODO replace w/ KnownNat constraint
 instance KnownDim n => Monoid (Perm n) where
-  mempty = Perm $ P.identity (fromIntegral $ reflectDim @n fromDim)
+  mempty = Perm $ P.identity (fromIntegral $ reflectDim @n dimVal)
 
 -- TODO remark as unsafe or remove.
 --unsafePermute :: Permutable d d' => Perm (Rank d) -> TypedList f d -> TypedList f d'
@@ -26,16 +26,16 @@ unsafePermute :: Perm (Rank d) -> TypedList f d -> TypedList f d'
 unsafePermute (Perm p) = unsafeCoerce . P.permuteList p . unsafeCoerce
 
 identity :: forall ds. Dims ds -> Perm (Rank ds)
-identity = Perm . P.identity . fromIntegral . length . fromDims 
+identity = Perm . P.identity . fromIntegral . length . listDims 
 
 reversal :: forall ds. Dims ds -> Perm (Rank ds)
-reversal = Perm . P.reversePermutation . length . fromDims
+reversal = Perm . P.reversePermutation . length . listDims
 
 transposition :: forall n. KnownDim n => Word -> Word -> Maybe (Perm n)
 transposition i j = if i <= n' && j <= n' then Just p else Nothing
   where
     p = Perm $ P.transposition n (fromIntegral i, fromIntegral j)
-    n = fromIntegral $ reflectDim @n fromDim
+    n = fromIntegral $ reflectDim @n dimVal
     n' = fromIntegral n
 
 
@@ -53,9 +53,9 @@ transposition
   => Perm n
 transposition = Perm $ P.transposition n (i,j)
   where
-    n = fromIntegral $ fromDim @n 
-    i = fromIntegral $ fromDim @i 
-    j = fromIntegral $ fromDim @j 
+    n = fromIntegral $ dimVal @n 
+    i = fromIntegral $ dimVal @i 
+    j = fromIntegral $ dimVal @j 
 
 --ttt :: Perm 3
 --ttt = transposition @2 @3

@@ -16,7 +16,7 @@ reshape = unsafeCoerce
 
 -- | return the a runtime shape representing the dimensions of a tensor.
 shape :: forall d e. KnownDims d => Tensor d e -> [Word]
-shape _ = fromDims (dims @d)
+shape _ = listDims (dims @d)
 
 -- | Product of all dimension sizes @O(Length xs)@.
 size :: KnownDims d => Tensor d e -> Word

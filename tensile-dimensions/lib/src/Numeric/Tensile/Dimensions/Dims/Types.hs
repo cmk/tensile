@@ -60,26 +60,23 @@ instance Eq (Dims ds) where
     {-# INLINE (==) #-}
 
 instance Show (Dims ds) where
-    show ds = "Dims " ++ show (fromDims ds)
+    show ds = "Dims " ++ show (listDims ds)
     showsPrec p ds = showParen (p >= 10)
-      $ showString "Dims " . showsPrec p (fromDims ds)
+      $ showString "Dims " . showsPrec p (listDims ds)
 
 -- | Similar to `natVal` from `GHC.TypeLits`, but returns `Word`.
-fromDims :: Dims ds -> [Word]
-fromDims ds = elimDims ds fromDim --Numeric.Tensile.Dimensions.Types.map fromDim
-{-# INLINE fromDims #-}
+listDims :: Num n => Dims ds -> [n]
+listDims ds = listVals ds dimVal 
+{-# INLINE listDims #-}
 
-elimDims :: Dims ds -> (forall d. Dim d -> r) -> [r]
-elimDims S _ = []
-elimDims (d :+ ds) f = f d : elimDims ds f
-
--- | Product of all dimension sizes.
-size :: Dims ds -> Word
-size = product . fromDims
+-- | Product of all dimension sizes. 
+-- Caution: numerical overflow will lead to undefined behavior.
+size :: Num n => Dims ds -> n
+size = product . listDims
 {-# INLINE size #-}
 
 compareDims :: Dims as -> Dims bs -> Ordering
-compareDims as bs = compare (fromDims as) (fromDims bs)
+compareDims as bs = compare (listDims as) (listDims bs)
 {-# INLINE compareDims #-}
 
 refineDims :: forall ds. KnownDims ds => (Dims ds -> Bool) -> Maybe (Dims ds)
@@ -129,11 +126,11 @@ patKDims _ = impossible
 
 type SomeDims = [SomeDim]
 
-someDims :: [Word] -> Maybe SomeDims
+someDims :: Integral i => [i] -> Maybe SomeDims
 someDims = traverse someDim
 {-# INLINE someDims #-}
 
--- @'withSomeDims' ds 'fromDims' == runIdentity . traverse (\s -> Identity $ Numeric.Tensile.Dimensions.Dim.Types.withSomeDim s Numeric.Tensile.Dimensions.Dim.Types.fromDim) $ ds@ 
+-- @'withSomeDims' ds 'listDims' == runIdentity . traverse (\s -> Identity $ Numeric.Tensile.Dimensions.Dim.Types.withSomeDim s Numeric.Tensile.Dimensions.Dim.Types.dimVal) $ ds@ 
 withSomeDims :: SomeDims -> (forall ds. KnownDims ds => Dims ds -> r) -> r 
 withSomeDims []     f = f S
 withSomeDims (x:xs) f = withSomeDim x $ \d ->

@@ -29,6 +29,9 @@ import qualified Data.Finite as F
 import qualified Math.Combinat.Permutations as P
 
 
+import Data.Function (on)
+
+import Data.Proxy
 import GHC.TypeLits (KnownNat(..))
 import Control.Arrow           (first)
 import GHC.Base
@@ -37,98 +40,53 @@ import GHC.Enum
 import Numeric.Tensile.Dimensions.Dim.Types
 import Numeric.Tensile.Dimensions.Types as T
 
+--TODO hide constructor
+newtype Idx (d :: Nat) = Idx Int deriving (Eq, Ord)
 
-newtype Idx (d :: Nat) = Idx { unIdx :: Word } deriving (Eq, Ord)
+idx :: Integral i => Dim d -> i -> Idx d
+idx d = Idx . flip mod (dimVal d) . fromIntegral
 
-unsafeIdxFromWord :: forall d. KnownDim d => Word -> Idx d
-#ifdef UNSAFE_INDICES
-unsafeIdxFromWord = unsafeCoerce#
-#else
-unsafeIdxFromWord w
-  | w >= 0 && w < d = Idx w
-  | otherwise       = errorWithoutStackTrace
-                    $ "idxFromWord{Idx "
-                    ++ show d ++ "}: word "
-                    ++ show w ++ " is outside of index bounds."
-  where
-    d = unsafeCoerce# (dim @d)
-#endif
-{-# INLINE unsafeIdxFromWord #-}
+idxVal :: Num n => Idx d -> n
+idxVal (Idx i) = fromIntegral i
+{-# INLINE idxVal #-}
 
-idxFromWord :: forall d . KnownDim d => Word -> Maybe (Idx d)
-idxFromWord w
-  | w >= 0 && w < unsafeCoerce# (dim @d) = Just (Idx w)
-  | otherwise                               = Nothing
-{-# INLINE idxFromWord #-}
+liftIdx :: Dim d -> (Int -> Int) -> Idx d -> Idx d
+liftIdx d f = idx d . f . idxVal
 
-idxToWord :: Idx d -> Word
-idxToWord = unsafeCoerce#
-{-# INLINE idxToWord #-}
+liftIdx2 :: Dim d -> (Int -> Int -> Int) -> Idx d -> Idx d -> Idx d
+liftIdx2 d f = on k idxVal
+  where k i j = idx d $ f i j
 
-{-# RULES
-"fromIntegral/idxToWord"
-  fromIntegral = idxToWord
-  #-}
+idxFromFinite :: forall d. KnownDim d => F.Finite d -> Idx d
+idxFromFinite = reflectDim @d idx . F.getFinite
 
-idxFromFinite :: forall (d :: Nat). KnownDim d => F.Finite d -> Idx d
-idxFromFinite = unsafeIdxFromWord . fromIntegral . F.getFinite
-
-finiteFromIdx :: forall (d :: Nat). KnownNat d => Idx d -> F.Finite d
-finiteFromIdx = F.finite . fromIntegral . idxToWord 
+finiteFromIdx :: forall d. KnownNat d => Idx d -> F.Finite d
+finiteFromIdx = F.finite . toInteger . idxVal 
 
 instance Read (Idx d) where
     readsPrec d = fmap (first Idx) . readsPrec d
 
 instance Show (Idx d) where
-    showsPrec d = showsPrec d . unIdx
+    showsPrec d = showsPrec d . idxVal
 
 instance KnownDim d => Bounded (Idx d) where
-    minBound = Idx 0
+    minBound = reflectDim @d idx 0
     {-# INLINE minBound #-}
-    maxBound = Idx $ max 0 $ unsafeCoerce (dim @d) - 1
+    maxBound = reflectDim @d idx $ reflectDim @d dimVal - 1
     {-# INLINE maxBound #-}
 
 instance KnownDim d => Enum (Idx d) where
 
-#ifdef UNSAFE_INDICES
-    succ = unsafeCoerce ((+ 1) :: Word -> Word)
-#else
-    succ x@(Idx i)
-      | x /= maxBound = Idx (i + 1)
-      | otherwise = succError $ "Idx " ++ show (dim @d)
-#endif
+    succ = reflectDim @d liftIdx (+1)
     {-# INLINE succ #-}
 
-#ifdef UNSAFE_INDICES
-    pred = unsafeCoerce# ((+ (-1)) :: Word -> Word)
-#else
-    pred x@(Idx i)
-      | x /= minBound = Idx (i - 1)
-      | otherwise = predError $ "Idx " ++ show (dim @d)
-#endif
+    pred = reflectDim @d liftIdx (+(-1))
     {-# INLINE pred #-}
 
-#ifdef UNSAFE_INDICES
-    toEnum (I# i#) = unsafeCoerce# (W# (int2Word# i#))
-#else
-    toEnum i@(I# i#)
-        | i >= 0 && i < d' = unsafeCoerce# (W# (int2Word# i# ))
-        | otherwise        = toEnumError ("Idx " ++ show d) i (0, d)
-      where
-        d = unsafeCoerce# (dim @d) :: Word
-        d' = fromIntegral d
-#endif
+    toEnum = reflectDim @d idx
     {-# INLINE toEnum #-}
 
-#ifdef UNSAFE_INDICES
-    fromEnum (Idx (W# w#)) = I# (word2Int# w#)
-#else
-    fromEnum (Idx x@(W# w#))
-        | x <= maxIntWord = I# (word2Int# w#)
-        | otherwise       = fromEnumError ("Idx " ++ show (dim @d)) x
-        where
-          maxIntWord = W# (case maxInt of I# i -> int2Word# i)
-#endif
+    fromEnum = idxVal
     {-# INLINE fromEnum #-}
 
 {-
@@ -142,17 +100,51 @@ instance KnownDim d => Enum (Idx d) where
           GT -> unsafeCoerce# (enumFromThenTo n0 n1 1)
     {-# INLINE enumFromThen #-}
     enumFromTo
-      = unsafeCoerce# (enumFromTo :: Word -> Word -> [Word])
+      = unsafeCoerce# (enumFromTo :: Int -> Int -> [Int])
     {-# INLINE enumFromTo #-}
     enumFromThenTo
-      = unsafeCoerce# (enumFromThenTo :: Word -> Word -> Word -> [Word])
+      = unsafeCoerce# (enumFromThenTo :: Int -> Int -> Int -> [Int])
     {-# INLINE enumFromThenTo #-}
+-}
+
+{-
+class (Real a, Enum a) => Integral a where
+    quot :: a -> a -> a
+    rem :: a -> a -> a
+    div :: a -> a -> a
+    mod :: a -> a -> a
+    quotRem :: a -> a -> (a, a)
+    divMod :: a -> a -> (a, a)
+    toInteger :: a -> Integer
+    {-# MINIMAL quotRem, toInteger #-}
 -}
 
 instance KnownDim d => Num (Idx d) where
 
+    (+) = reflectDim @d liftIdx2 (+)
+    {-# INLINE (+) #-}
+
+    (-) = reflectDim @d liftIdx2 (-)
+    {-# INLINE (-) #-}
+
+    (*) = reflectDim @d liftIdx2 (*)
+    {-# INLINE (*) #-}
+
+    signum = reflectDim @d liftIdx signum
+    {-# INLINE signum #-}
+
+    abs = id 
+    {-# INLINE abs #-}
+
+    fromInteger = reflectDim @d idx
+    {-# INLINE fromInteger #-}
+
+
+{-
+instance KnownDim d => Num (Idx d) where
+
 #ifdef UNSAFE_INDICES
-    (+) = unsafeCoerce ((+) :: Word -> Word -> Word)
+    (+) = unsafeCoerce ((+) :: Int -> Int -> Int)
 #else
     (Idx a) + (Idx b)
         | r >= d || r < a || r < b
@@ -168,7 +160,7 @@ instance KnownDim d => Num (Idx d) where
     {-# INLINE (+) #-}
 
 #ifdef UNSAFE_INDICES
-    (-) = unsafeCoerce ((-) :: Word -> Word -> Word)
+    (-) = unsafeCoerce ((-) :: Int -> Int -> Int)
 #else
     (Idx a) - (Idx b)
         | b > a
@@ -181,7 +173,7 @@ instance KnownDim d => Num (Idx d) where
     {-# INLINE (-) #-}
 
 #ifdef UNSAFE_INDICES
-    (*) = unsafeCoerce ((*) :: Word -> Word -> Word)
+    (*) = unsafeCoerce ((*) :: Int -> Int -> Int)
 #else
     (Idx a) * (Idx b)
         | r >= d || r < a || r < b
@@ -205,7 +197,7 @@ instance KnownDim d => Num (Idx d) where
     {-# INLINE signum #-}
 
 #ifdef UNSAFE_INDICES
-    fromInteger = unsafeCoerce (fromInteger :: Integer -> Word)
+    fromInteger = unsafeCoerce (fromInteger :: Integer -> Int)
 #else
     fromInteger i
       | i >= 0 && i < d = Idx $ fromInteger i
@@ -214,7 +206,7 @@ instance KnownDim d => Num (Idx d) where
                         ++ show d ++ "}: integer "
                         ++ show i ++ " is outside of index bounds."
       where
-        d = toInteger (unsafeCoerce (dim @d) :: Word)
+        d = toInteger (unsafeCoerce (dim @d) :: Int)
 #endif
     {-# INLINE fromInteger #-}
-
+-}

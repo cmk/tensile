@@ -1,6 +1,6 @@
 module Test.Numeric.Tensile.Tensor.Gen.Internal (gen_tensor) where
 
-import Numeric.Tensile.Dimensions (Dims(..), KnownDims(..), dims, fromDims)
+import Numeric.Tensile.Dimensions (Dims(..), KnownDims(..), dims, listDims)
 import Numeric.Tensile.Tensor.Internal
 import Data.Vector.Storable (Vector(..),Storable(..))
 import qualified Data.Vector.Storable as V
@@ -14,4 +14,4 @@ gen_vector r g = V.fromList <$> G.list r g
 
 gen_tensor :: (Elt e, MonadGen m) => Dims d -> m e -> m (Tensor d e)
 gen_tensor d g = Tensor <$> gen_vector r g
-  where r = R.singleton $ fromIntegral (product $ fromDims d)
+  where r = R.singleton $ fromIntegral (product $ listDims d)

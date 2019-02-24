@@ -4,7 +4,6 @@
 
 module Numeric.Tensile.Tensor.Internal where
 
-import Control.Monad.ST (ST(..))
 import Data.Bits
 import Data.ByteString (ByteString())
 import Data.Complex
@@ -33,7 +32,7 @@ import qualified TensorFlow.Ops as O
 import qualified TensorFlow.Session as Ss
 
 import Control.Monad.IO.Class (liftIO)
-
+import Control.Monad.Trans.Reader
 
 
 {-
@@ -70,6 +69,8 @@ type Elt e = OneOf '[Int32, Int64, Word32, Word64, Float, Double, Complex Float,
 type TVal = Float
 type IVal = Int32
 type BVal = Bool
+
+type Dynamic d = Reader (Dims d)
 
 
 newtype Tensor (d :: [Nat]) (e :: Type) = Tensor { unTensor :: T.Tensor T.Build e }
@@ -118,7 +119,7 @@ instance (KnownDim (Size d), Fractional e, Elt e) => Fractional (Tensor d e)  wh
     {-# INLINE (/) #-}
     recip = _lift recip
     {-# INLINE recip #-}
-    fromRational = _replicate (fromIntegral . fromDim $ (dim :: Dim (Size d))) . fromRational
+    fromRational = _replicate (fromIntegral . dimVal $ (dim :: Dim (Size d))) . fromRational
     {-# INLINE fromRational #-}
 
 instance (KnownDim (Size d), Floating e, Elt e) => Floating (Tensor d e) where
@@ -169,7 +170,7 @@ instance (KnownDim (Size d), Elt e, Eq e, Bits e, Num e) => Bits (Tensor d e) wh
     complement = _lift complement
     shift t i = _lift (flip shift i) t
     rotate t i = _lift (flip rotate i) t
-    bit = _replicate (fromIntegral . fromDim $ (dim :: Dim (Size d))) . bit
+    bit = _replicate (fromIntegral . dimVal $ (dim :: Dim (Size d))) . bit
     testBit = testBitDefault
     bitSizeMaybe _ = bitSizeMaybe @e undefined
     bitSize _ = bitSize @e undefined
@@ -183,7 +184,7 @@ instance (KnownDim (Size d), Elt e, Real e) => Real (Tensor d e) where
   toRational = undefined --TODO find a reasonable sum-based implementation or scrap the typeclass
 
 instance (KnownDim (Size d), Elt e, Enum e) => Enum (Tensor d e) where
-  toEnum = Tensor . S.replicate (fromIntegral . fromDim $ (dim :: Dim (Size d))) . toEnum
+  toEnum = Tensor . S.replicate (fromIntegral . dimVal $ (dim :: Dim (Size d))) . toEnum
   {-# INLINE toEnum #-}
   fromEnum = undefined --TODO find a reasonable sum-based implementation or scrap the typeclass
 
@@ -224,26 +225,78 @@ maximum (Tensor a) (Tensor b) = Tensor $ O.maximum a b
 minimum :: Elt e => Ord e => Tensor d e -> Tensor d e -> Tensor d e
 minimum (Tensor a) (Tensor b) = Tensor $ O.minimum a b
 
-fromList' :: forall d e. Elt e => KnownDims d => [e] -> Maybe (Tensor d e)
-fromList' l = reflectDims @d $ \d -> fromList d l
-
-fromList :: forall d e. Elt e => Dims d -> [e] -> Maybe (Tensor d e)
-fromList d l = if size d == (fromIntegral $ length l) then Just $ f l else Nothing
-  where f = Tensor . O.constant (toShape d)
-
 toList :: TensorDataType V.Vector a => Tensor d a -> [a]
 toList t = unsafePerformIO $ Ss.runSession $ do
   a <- T.render $ unTensor t
   b <- Ss.run a
   return $ V.toList b
 
+fromList :: forall d e. Elt e => Dims d -> [e] -> Maybe (Tensor d e)
+fromList d l = if size d == (fromIntegral $ length l) then Just $ f l else Nothing
+  where f = Tensor . O.constant (toShape d)
+
+fromList'' :: forall d e. Elt e => Dynamic d ([e] -> Maybe (Tensor d e))
+fromList'' = reader fromList
+
+fromList' :: forall d e. Elt e => KnownDims d => [e] -> Maybe (Tensor d e)
+fromList' = withDyn @d fromList''
+
+
+-- reflectDims @d $ \d -> runReader fromList'' d $ l
+
+
+liftDyn :: (Dims d -> r) -> Dynamic d r
+liftDyn f = reader f
+
+withDyn :: forall d r. KnownDims d => Dynamic d r -> r
+withDyn dyn = reflectDims @d $ runReader dyn
+
 {-
+ - http://hackage.haskell.org/package/contravariant-1.5/docs/Data-Functor-Contravariant.html
+ -
+=> f (Dims d) 
+
+TODO:
+ - do lowerPerm and withDyn have anything in common? (e.g. operator constraints 'lowering' to Predicate (Dims d)). both are functors?
+ - type-level Predicate for '[Nat] ? Equivalence '[Nat] ~ ('[Nat],'[Nat]) ~> Bool   Could also include >1 req?
+ -
+ -
+withDyn :: forall d r. KnownDims d => Predicate (Dims d) -> Dynamic d r -> Maybe r
+
+withDyn2 
+  :: forall x y r. (KnownDims x, KnownDims y) 
+  => Predicate (Dims x,) 
+  => Predicate (Dims y) 
+  -> Dynamic d r -> Maybe r
+
+
+divided :: Divisible f => f a -> f b -> f (a, b) Source#
+divided = divide id
+
+
+Predicate (Tensor d e)
+Equivalence (Tensor d e)
+Predicate (Dims d)
+Equivalence (Dims d)
+
+divided :: Divisible f => f a -> f b -> f (a, b)
+
+note in general we have 
+
+Dims x -> Bool
+Dims x -> Dims y -> Bool
+
+
+
+type Dynamic d = Reader (Dims d)
 
 fromList :: forall d e. Elt e => KnownDims d => [e] -> Maybe (Tensor d e)
 fromList v = if size (dims @d) == (fromIntegral $ length v) then Just $ f v else Nothing
   where f = Tensor . O.constant (toShape (dims @d))
 
 
+i = 0 :+ 1 :+ 2 :+ S :: Idxs '[1,2,3]
+j = 0 :+ 1 :+ 1 :+ S :: Idxs '[1,2,3]
 
 -- fromVector :: Elt e => Dims d -> Vector e -> Maybe (Tensor d e)
 -- fromVector d v = undefined
@@ -261,7 +314,7 @@ toSizedVector = coerce . S.convert . unTensor
 
 fill :: Elt e => Dims d -> (Idxs d -> e) -> Tensor d e
 fill d f = Tensor $ S.create $ do
-  mv <- M.new $ fromIntegral $ product $ fromDims d
+  mv <- M.new $ fromIntegral $ product $ listDims d
   let act ix = M.write mv (minorToMajor d ix) $ f ix
   forMIdxs_ d act
   return mv
@@ -277,7 +330,7 @@ constant :: Elt e => Dims d -> e -> Tensor d e
 constant d = Tensor . O.constant (toShape d) . pure
 
 toShape :: Dims d -> Shape
-toShape = Shape . fmap fromIntegral . fromDims 
+toShape = Shape . fmap fromIntegral . listDims 
 
 toShape' :: Idxs d -> Shape
 toShape' = Shape . fmap fromIntegral . listIdxs 
@@ -300,7 +353,9 @@ fromIntegral' = fromIntegral
 toList $ fill (dims @'[2,4]) (fromIntegral' . fromEnum)
 
 
-t1 = fill (dims @'[2,4]) (fromIntegral' . fromEnum)
+t1 = fill (dims @'[2,4]) $ const 1 . fromEnum
+t2 = fill (dims @'[4,2]) $ const 1 . fromEnum
+
 t2 = fill (dims @'[2,4]) ((+1) . fromIntegral' . fromEnum)
 
 f :: Elt e => Tensor '[2,4] e -> Tensor '[4,2] e
@@ -320,7 +375,7 @@ foo d f = printTensor $ fill d f
 [7,5,3,1,6,4,2,0]
 
 pred_sum_idxs :: forall ds. Dims ds -> Bool
-pred_sum_idxs ds = foldIdxs ds (\_ a -> a + 1) 0 == (product . fromDims $ ds)
+pred_sum_idxs ds = foldIdxs ds (\_ a -> a + 1) 0 == (product . listDims $ ds)
 
 -}
 
@@ -379,8 +434,8 @@ pack0
   => Vector n (Tensor d e) -> Tensor (n :+ d) e
 pack0 v = Tensor res
   where d = dims @d
-        n = fromIntegral $ fromDim $ dim @n
-        size = product $ fromDims d
+        n = fromIntegral $ dimVal $ dim @n
+        size = product $ listDims d
         res = S.create $ do
           mv <- M.new $ fromIntegral $ size * n
           flip N.imapM_ v $ \i t -> 
@@ -399,7 +454,7 @@ unpack0
   => Tensor (n :+ d) e -> Vector n (Tensor d e)
 unpack0 t = N.generate f
   where d = dims @d
-        size = fromIntegral $ product $ fromDims d
+        size = fromIntegral $ product $ listDims d
         f i = fill d $ \ix -> 
           let i' = fromIntegral $ F.getFinite i
               off = i' * size
