@@ -26,6 +26,7 @@ module Numeric.Tensile.Dimensions.Idxs.Types where
  --(Nat, TypedList(..), Dims(..), Dim(..), KnownDim(..), KnownDims(..), Permutable, Size, Rank)
  --
 import Data.Function (on)
+import Data.Int (Int64)
 import Numeric.Tensile.Dimensions.Dims
 import Numeric.Tensile.Dimensions.Idx.Types
 import Numeric.Tensile.Dimensions.Types hiding (take)
@@ -41,12 +42,12 @@ import           GHC.Base
 import           GHC.Enum
 
 
--- | Type-level dimensional indexing with arbitrary Int values inside.
+-- | Type-level dimensional indexing with arbitrary Int64 values inside.
 --   Most of the operations on it require `KnownDims` constraint,
 --   because the @Idxs@ itself does not store info about dimension bounds.
 type Idxs (ds :: [Nat]) = TypedList Idx ds
 
-listIdxs :: Idxs ds -> [Int]
+listIdxs :: Idxs ds -> [Int64]
 listIdxs = unsafeCoerce
 {-# INLINE listIdxs #-}
 
@@ -54,7 +55,7 @@ listIdxs = unsafeCoerce
     toEnum i = go dsd $ fromIntegral i
       where
         dsd = dims @ds
-        go :: forall ns . Dims ns -> Int -> Idxs ns
+        go :: forall ns . Dims ns -> Int64 -> Idxs ns
         go S 0 = S
         go S _ = error ("Idxs ") -- ++ show (fromDims dsd)) TODO fix
         go (Snoc ds d) off = case divMod off (fromDim d) of
@@ -62,8 +63,8 @@ listIdxs = unsafeCoerce
 -}
 
 {-
-idxsFromInts :: forall ds . KnownDims ds => [Int] -> Idxs ds
-idxsFromInts = go (dims @ds)
+idxsFromInt64s :: forall ds . KnownDims ds => [Int64] -> Idxs ds
+idxsFromInt64s = go (dims @ds)
   where
     go S [] = S
     go (d :+ ds) (i : is) = (reifyDim d (idx i) :+) <$> go ds is   -- | i >= 0 && i < d = (i:) <$> go ds is
@@ -74,7 +75,7 @@ idxsFromInts = go (dims @ds)
 majorToMinor :: forall ds i. Integral i => Dims ds -> Idxs ds -> i
 majorToMinor dims = fromIntegral . go 1 dims
   where
-    go :: forall ns . Int -> Dims ns -> Idxs ns -> Int
+    go :: forall ns . Int64 -> Dims ns -> Idxs ns -> Int64
     go _ S S                     = 0
     go m (d :+ ds) (Idx i :+ is) = m * i + go (m * fromDim d) ds is
 
@@ -90,14 +91,14 @@ idxs = reflectDims @d toIdxs
 toIdxs :: forall d i. Integral i => Dims d -> i -> Idxs d
 toIdxs d = go d . flip mod (size d) . fromIntegral
   where
-    go :: forall d . Dims d -> Int -> Idxs d
+    go :: forall d . Dims d -> Int64 -> Idxs d
     go S _ = S
     --go S _ = S error ("Idxs ") -- ++ show (fromDims dsd)) TODO: fix
     go (Snoc ds d) off = case divMod off (fromDim d) of
       (off', j) -> go ds off' `snoc` Idx j
 
 instance Eq (Idxs ds) where
-    (==) = unsafeCoerce# ((==) :: [Int] -> [Int] -> Bool)
+    a == b = (listIdxs a) == (listIdxs b)
     {-# INLINE (==) #-}
 
 -- TODO check if ok to not reverse this
@@ -136,13 +137,15 @@ minBound' S         = S
 minBound' (_ :+ ds) = Idx 0 :+ minBound' ds
 
 instance KnownDims ds => Bounded (Idxs ds) where
+
     maxBound = maxBound' (dims @ds)
     {-# INLINE maxBound #-}
+
     minBound = minBound' (dims @ds)
     {-# INLINE minBound #-}
 
-
--- TODO add prop tests
+{-
+-- TODO remove as Int64s are likely too small 
 instance KnownDims ds => Enum (Idxs ds) where
 
     succ = go (dims @ds)
@@ -166,7 +169,7 @@ instance KnownDims ds => Enum (Idxs ds) where
     toEnum i = go dsd $ fromIntegral i
       where
         dsd = dims @ds
-        go :: forall ns . Dims ns -> Int -> Idxs ns
+        go :: forall ns . Dims ns -> Int64 -> Idxs ns
         go S 0 = S
         go S _ = error ("Idxs ") -- ++ show (fromDims dsd)) TODO fix
         go (Snoc ds d) off = case divMod off (fromDim d) of
@@ -204,13 +207,14 @@ instance KnownDims ds => Enum (Idxs ds) where
         n  = 1 + if dn == 0 then 0
                             else diffIdxs ds y x `div` dn
     {-# INLINE enumFromThenTo #-}
+-}
 
 instance KnownDims d => Semigroup (Idxs d) where
     (<>) = liftIdxs2 (+)
     {-# INLINE (<>) #-}
 
 instance KnownDims d => Monoid (Idxs d) where
-    mempty = toEnum 0
+    mempty = idxs 0
     {-# INLINE mempty #-}
 
 instance KnownDims d => Num (Idxs d) where
@@ -229,37 +233,37 @@ instance KnownDims d => Num (Idxs d) where
     abs = liftIdxs abs
     {-# INLINE abs #-}
 
-    fromInteger = toEnum . fromIntegral
+    fromInteger = idxs . fromIntegral
     {-# INLINE fromInteger #-}
 
 --------------------------------------------------------------------------------
 
-liftIdxs :: forall d. KnownDims d => (Int -> Int) -> Idxs d -> Idxs d
-liftIdxs f = toEnum . flip mod (reflectDims @d size) . f . fromEnum
+liftIdxs :: forall d. KnownDims d => (Int64 -> Int64) -> Idxs d -> Idxs d
+liftIdxs f = idxs . flip mod (reflectDims @d size) . f . reflectDims @d minorToMajor
 
-liftIdxs2 :: forall d. KnownDims d => (Int -> Int -> Int) -> Idxs d -> Idxs d -> Idxs d
-liftIdxs2 f = on k fromEnum
-  where k i j = toEnum . flip mod (reflectDims @d size) $ f i j
+liftIdxs2 :: forall d. KnownDims d => (Int64 -> Int64 -> Int64) -> Idxs d -> Idxs d -> Idxs d
+liftIdxs2 f = on k $ reflectDims @d minorToMajor
+  where k i j = idxs . flip mod (reflectDims @d size) $ f i j
 
 -- diffIdxs =? fromEnum $ reflectDims $ liftIdxs2 (-)
-diffIdxs :: Dims ds -> Idxs ds -> Idxs ds -> Int
+diffIdxs :: Dims ds -> Idxs ds -> Idxs ds -> Int64
 diffIdxs d i j = _diffIdxs (unsafeReverse d) (unsafeReverse i) (unsafeReverse j)
 {-# INLINE diffIdxs #-}
 
 -- | Offset difference of two indices @idx1 - idx2@
-_diffIdxs :: Dims ds -> Idxs ds -> Idxs ds -> Int
+_diffIdxs :: Dims ds -> Idxs ds -> Idxs ds -> Int64
 _diffIdxs S S S = 0
 _diffIdxs (d :+ ds) (Idx i1 :+ is1) (Idx i2 :+ is2)
   = fromIntegral i1 - fromIntegral i2
   + fromIntegral (fromDim d) * _diffIdxs ds is1 is2
 
 --TODO this funtion seems broken
--- | Step dimension index by an Int offset
-stepIdxs :: Dims ds -> Int -> Idxs ds -> Idxs ds
+-- | Step dimension index by an Int64 offset
+stepIdxs :: Dims ds -> Int64 -> Idxs ds -> Idxs ds
 stepIdxs d di i = _stepIdxs (unsafeReverse d) di (unsafeReverse i)
 {-# INLINE stepIdxs #-}
 
-_stepIdxs :: Dims ds -> Int -> Idxs ds -> Idxs ds
+_stepIdxs :: Dims ds -> Int64 -> Idxs ds -> Idxs ds
 _stepIdxs S _ S = S
 _stepIdxs (d :+ ds) di (Idx i :+ is)
       = case divMod (di + fromIntegral i) (fromIntegral (fromDim d)) of

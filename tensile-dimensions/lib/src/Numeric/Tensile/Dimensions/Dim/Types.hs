@@ -28,10 +28,12 @@ module Numeric.Tensile.Dimensions.Dim.Types (
   subDim,
   mulDim,
   expDim,
-  pattern Dim
+  pattern Dim,
+  type Int64
 ) where
 
 import Data.Proxy
+import Data.Int (Int64)
 import Data.Kind (Type)
 import Data.Type.Bool
 import Data.Type.Equality
@@ -44,7 +46,7 @@ import Numeric.Tensile.Dimensions.Types (Reflects(..), type (<))
 
 -- | Singleton type to store type-level dimension value.
 -- Dimensions are restricted to strictly positive naturals.
-newtype Dim (d :: Nat) = DimSing Int deriving (Eq, Ord)
+newtype Dim (d :: Nat) = DimSing Int64 deriving (Eq, Ord)
 
 instance Show (Dim d) where
     show (DimSing w) = "Dim " ++ show w
@@ -53,7 +55,7 @@ instance Show (Dim d) where
       $ showString "Dim " . showsPrec p w
 
 -- | Similar to `natVal` from `GHC.TypeLits`, but returns `Int`.
-fromDim :: Dim d -> Int
+fromDim :: Dim d -> Int64
 fromDim (DimSing i) = i
 {-# INLINE fromDim #-}
 
@@ -135,7 +137,7 @@ reifyDim d k = unsafeCoerce (WithKnownDim k :: WithKnownDim d r) d
 
 newtype WithKnownDim d r = WithKnownDim (KnownDim d => r)
 
-unsafeReifyDim :: forall r. Int -> (forall d. KnownDim d => Proxy d -> r) -> r
+unsafeReifyDim :: forall r. Int64 -> (forall d. KnownDim d => Proxy d -> r) -> r
 unsafeReifyDim w k = unsafeCoerce (WithSomeDim k :: WithSomeDim r) w Proxy
 
 newtype WithSomeDim r = WithSomeDim (forall d. KnownDim d => Proxy d -> r)

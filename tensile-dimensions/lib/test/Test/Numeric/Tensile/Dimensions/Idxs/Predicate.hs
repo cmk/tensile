@@ -6,18 +6,18 @@ import qualified Numeric.Tensile.Dimensions.Types as T
 import Debug.Trace
 
 -- | Property that the number of elements in the tensor is equal to the size
--- of the tensor.
+--   of the tensor.
 pred_size_idxs :: forall d. Dims d -> Bool
 pred_size_idxs d = size d == foldIdxs d (\_ a -> a + 1) 0
 
 --  | Property that the number of elements in the tensor is one more than the
---  difference between the largest index and the smallest index.
+--    difference between the largest index and the smallest index.
 pred_max_diff_idxs :: forall d. Dims d -> Bool
 pred_max_diff_idxs d = size d == s
   where s = fromIntegral $ 1 + diffIdxs d (maxBound' d) (minBound' d)
 
 --  | Property that the number of elements in the tensor is one more than the
---  difference between the largest index and the smallest index.
+--    largest index.
 pred_max_diff_idxs2 :: forall d. Dims d -> Bool
 pred_max_diff_idxs2 d = size d == 1 + s
   where s = fromIdxs d $ toIdxs d (-1)
@@ -25,13 +25,13 @@ pred_max_diff_idxs2 d = size d == 1 + s
 -- | Property that rotating an index by the size of the space leaves it unchanged.
 pred_modulus_idxs :: Dims d -> Bool
 pred_modulus_idxs d = foldIdxs d k True
-  where k i b = b && reifyDims d (liftIdxs (+(fromIntegral $ size d)) i == i)
+  where k i b = b && reifyDims d (liftIdxs (+ size d) i == i)
 
 check :: Dims d -> (Dims d -> Idxs d -> Word) -> [Word]
 check d f = foldIdxs d (\i xs -> f d i : xs) []
 
 -- | Property that minor-to-major (e.g. row-major) indexing on 'Dims d' is identical
--- to major-to-minor (e.g. column-major) indexing on 'Dims (Reverse d)'.
+--   to major-to-minor (e.g. column-major) indexing on 'Dims (Reverse d)'.
 pred_transpose_idxs :: forall d. Dims d -> Bool
 pred_transpose_idxs d = 
   check d (withPerm (identity d) minorToMajor) == check d (withPerm (reversal d) majorToMinor) &&
