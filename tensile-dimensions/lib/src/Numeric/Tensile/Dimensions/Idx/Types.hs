@@ -43,22 +43,22 @@ import Numeric.Tensile.Dimensions.Types as T
 --TODO hide constructor
 newtype Idx (d :: Nat) = Idx Int deriving (Eq, Ord)
 
-idx :: forall d i. KnownDim d => Integral i => i -> Idx d
-idx = Idx . flip mod (reflectDim @d dimVal) . fromIntegral
+idx :: Integral i => Dim d -> i -> Idx d
+idx d = Idx . flip mod (dimVal d) . fromIntegral
 
 idxVal :: Num n => Idx d -> n
 idxVal (Idx i) = fromIntegral i
 {-# INLINE idxVal #-}
 
-liftIdx ::  forall d. KnownDim d => (Int -> Int) -> Idx d -> Idx d
-liftIdx f = idx . f . idxVal
+liftIdx :: Dim d -> (Int -> Int) -> Idx d -> Idx d
+liftIdx d f = idx d . f . idxVal
 
-liftIdx2 :: forall d. KnownDim d => (Int -> Int -> Int) -> Idx d -> Idx d -> Idx d
-liftIdx2 f = on k idxVal
-  where k i j = idx $ f i j
+liftIdx2 :: Dim d -> (Int -> Int -> Int) -> Idx d -> Idx d -> Idx d
+liftIdx2 d f = on k idxVal
+  where k i j = idx d $ f i j
 
 idxFromFinite :: forall d. KnownDim d => F.Finite d -> Idx d
-idxFromFinite = idx . F.getFinite
+idxFromFinite = reflectDim @d idx . F.getFinite
 
 finiteFromIdx :: forall d. KnownNat d => Idx d -> F.Finite d
 finiteFromIdx = F.finite . toInteger . idxVal 
@@ -70,20 +70,20 @@ instance Show (Idx d) where
     showsPrec d = showsPrec d . idxVal
 
 instance KnownDim d => Bounded (Idx d) where
-    minBound = idx 0
+    minBound = reflectDim @d idx 0
     {-# INLINE minBound #-}
-    maxBound = idx $ reflectDim @d dimVal - 1
+    maxBound = reflectDim @d idx $ reflectDim @d dimVal - 1
     {-# INLINE maxBound #-}
 
 instance KnownDim d => Enum (Idx d) where
 
-    succ = liftIdx (+1)
+    succ = reflectDim @d liftIdx (+1)
     {-# INLINE succ #-}
 
-    pred = liftIdx (+(-1))
+    pred = reflectDim @d liftIdx (+(-1))
     {-# INLINE pred #-}
 
-    toEnum = idx
+    toEnum = reflectDim @d idx
     {-# INLINE toEnum #-}
 
     fromEnum = idxVal
@@ -121,22 +121,22 @@ class (Real a, Enum a) => Integral a where
 
 instance KnownDim d => Num (Idx d) where
 
-    (+) = liftIdx2 (+)
+    (+) = reflectDim @d liftIdx2 (+)
     {-# INLINE (+) #-}
 
-    (-) = liftIdx2 (-)
+    (-) = reflectDim @d liftIdx2 (-)
     {-# INLINE (-) #-}
 
-    (*) = liftIdx2 (*)
+    (*) = reflectDim @d liftIdx2 (*)
     {-# INLINE (*) #-}
 
-    signum = liftIdx signum
+    signum = reflectDim @d liftIdx signum
     {-# INLINE signum #-}
 
     abs = id 
     {-# INLINE abs #-}
 
-    fromInteger = idx
+    fromInteger = reflectDim @d idx
     {-# INLINE fromInteger #-}
 
 
@@ -210,5 +210,3 @@ instance KnownDim d => Num (Idx d) where
 #endif
     {-# INLINE fromInteger #-}
 -}
-
-
