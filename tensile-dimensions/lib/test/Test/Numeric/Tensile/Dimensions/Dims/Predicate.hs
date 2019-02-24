@@ -16,7 +16,7 @@ evidenceReflect ds = withEvidence (withDims ds) (reflectDims id)
 pred_evidence_reflect :: Dims ds -> Bool
 pred_evidence_reflect ds = evidenceReflect ds == ds 
 
-traverseSomeDims :: SomeDims -> [Int64]
+traverseSomeDims :: SomeDims -> [Word]
 traverseSomeDims = runIdentity . traverse (\s -> Identity $ withSomeDim s dimVal) 
 
 pred_traverse_somedims :: SomeDims -> Bool

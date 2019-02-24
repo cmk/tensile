@@ -10,7 +10,7 @@ import qualified Hedgehog.Gen as G
 import qualified Hedgehog.Range as R
 
 dims_large :: Range Word
-dims_large = R.constant 0 20
+dims_large = R.constant 0 10
 
 dims_small :: Range Word
 dims_small = R.constant 0 5

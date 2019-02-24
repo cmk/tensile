@@ -26,7 +26,6 @@ module Numeric.Tensile.Dimensions.Idxs.Types where
  --(Nat, TypedList(..), Dims(..), Dim(..), KnownDim(..), KnownDims(..), Permutable, Size, Rank)
  --
 import Data.Function (on)
-import Data.Int (Int64)
 import Numeric.Tensile.Dimensions.Dims
 import Numeric.Tensile.Dimensions.Idx.Types
 import Numeric.Tensile.Dimensions.Types hiding (take)
@@ -42,20 +41,21 @@ import           GHC.Base
 import           GHC.Enum
 
 
--- | Type-level dimensional indexing with arbitrary Int64 values inside.
+-- | Type-level dimensional indexing with arbitrary Int values inside.
 --   Most of the operations on it require `KnownDims` constraint,
 --   because the @Idxs@ itself does not store info about dimension bounds.
 type Idxs (ds :: [Nat]) = TypedList Idx ds
 
-listIdxs :: Idxs ds -> [Int64]
-listIdxs = unsafeCoerce
+listIdxs :: Num n => Idxs ds -> [n]
+listIdxs ds = listVals ds idxVal
 {-# INLINE listIdxs #-}
+
 
 {-
     toEnum i = go dsd $ fromIntegral i
       where
         dsd = dims @ds
-        go :: forall ns . Dims ns -> Int64 -> Idxs ns
+        go :: forall ns . Dims ns -> Int -> Idxs ns
         go S 0 = S
         go S _ = error ("Idxs ") -- ++ show (listDims dsd)) TODO fix
         go (Snoc ds d) off = case divMod off (dimVal d) of
@@ -63,16 +63,16 @@ listIdxs = unsafeCoerce
 -}
 
 {-
-idxsFromInt64s :: forall ds . KnownDims ds => [Int64] -> Idxs ds
-idxsFromInt64s = go (dims @ds)
+idxsFromInts :: forall ds . KnownDims ds => [Int] -> Idxs ds
+idxsFromInts = go (dims @ds)
   where
     go S [] = S
     go (d :+ ds) (i : is) = (reifyDim d (idx i) :+) <$> go ds is   -- | i >= 0 && i < d = (i:) <$> go ds is
 
 
 
-_Idxs = KnownDims d => Iso' Int64 (Idxs ds)
-_Idxs = iso toIdxs fromIdxs
+_Idxs = KnownDims d => Iso' Int (Idxs ds)
+_Idxs = iso idxs fromIdxs
 -}
 
 
@@ -80,7 +80,7 @@ _Idxs = iso toIdxs fromIdxs
 majorToMinor :: forall ds i. Integral i => Dims ds -> Idxs ds -> i
 majorToMinor dims = fromIntegral . go 1 dims
   where
-    go :: forall ns . Int64 -> Dims ns -> Idxs ns -> Int64
+    go :: forall ns . Int -> Dims ns -> Idxs ns -> Int
     go _ S S                     = 0
     go m (d :+ ds) (Idx i :+ is) = m * i + go (m * dimVal d) ds is
 
@@ -91,13 +91,10 @@ minorToMajor d i = majorToMinor (unsafeReverse d) (unsafeReverse i)
 fromIdxs :: forall ds i. Integral i => Dims ds -> Idxs ds -> i
 fromIdxs = minorToMajor
 
-idxs :: forall d i. KnownDims d => Integral i => i -> Idxs d
-idxs = reflectDims @d toIdxs
-
-toIdxs :: forall d i. Integral i => Dims d -> i -> Idxs d
-toIdxs d = go d . flip mod (size d) . fromIntegral
+idxs :: forall d i. Integral i => Dims d -> i -> Idxs d
+idxs d = go d . flip mod (size d) . fromIntegral
   where
-    go :: forall d . Dims d -> Int64 -> Idxs d
+    go :: forall d . Dims d -> Int -> Idxs d
     go S _ = S
     --go S _ = S error ("Idxs ") -- ++ show (listDims dsd)) TODO: fix
     go (Snoc ds d) off = case divMod off (dimVal d) of
@@ -105,32 +102,32 @@ toIdxs d = go d . flip mod (size d) . fromIntegral
 
 --------------------------------------------------------------------------------
 
-liftIdxs :: forall d. KnownDims d => (Int64 -> Int64) -> Idxs d -> Idxs d
-liftIdxs f = idxs . flip mod (reflectDims @d size) . f . reflectDims @d minorToMajor
+liftIdxs :: Dims d -> (Int -> Int) -> Idxs d -> Idxs d
+liftIdxs d f = idxs d . flip mod (size d) . f . minorToMajor d
 
-liftIdxs2 :: forall d. KnownDims d => (Int64 -> Int64 -> Int64) -> Idxs d -> Idxs d -> Idxs d
-liftIdxs2 f = on k $ reflectDims @d minorToMajor
-  where k i j = idxs . flip mod (reflectDims @d size) $ f i j
+liftIdxs2 :: Dims d -> (Int -> Int -> Int) -> Idxs d -> Idxs d -> Idxs d
+liftIdxs2 d f = on k $ minorToMajor d
+  where k i j = idxs d . flip mod (size d) $ f i j
 
 -- diffIdxs =? fromEnum $ reflectDims $ liftIdxs2 (-)
-diffIdxs :: Dims ds -> Idxs ds -> Idxs ds -> Int64
+diffIdxs :: Dims ds -> Idxs ds -> Idxs ds -> Int
 diffIdxs d i j = _diffIdxs (unsafeReverse d) (unsafeReverse i) (unsafeReverse j)
 {-# INLINE diffIdxs #-}
 
 -- | Offset difference of two indices @idx1 - idx2@
-_diffIdxs :: Dims ds -> Idxs ds -> Idxs ds -> Int64
+_diffIdxs :: Dims ds -> Idxs ds -> Idxs ds -> Int
 _diffIdxs S S S = 0
 _diffIdxs (d :+ ds) (Idx i1 :+ is1) (Idx i2 :+ is2)
   = fromIntegral i1 - fromIntegral i2
   + fromIntegral (dimVal d) * _diffIdxs ds is1 is2
 
 --TODO this funtion seems broken
--- | Step dimension index by an Int64 offset
-stepIdxs :: Dims ds -> Int64 -> Idxs ds -> Idxs ds
+-- | Step dimension index by an Int offset
+stepIdxs :: Dims ds -> Int -> Idxs ds -> Idxs ds
 stepIdxs d di i = _stepIdxs (unsafeReverse d) di (unsafeReverse i)
 {-# INLINE stepIdxs #-}
 
-_stepIdxs :: Dims ds -> Int64 -> Idxs ds -> Idxs ds
+_stepIdxs :: Dims ds -> Int -> Idxs ds -> Idxs ds
 _stepIdxs S _ S = S
 _stepIdxs (d :+ ds) di (Idx i :+ is)
       = case divMod (di + fromIntegral i) (fromIntegral (dimVal d)) of
@@ -180,8 +177,6 @@ instance KnownDims ds => Bounded (Idxs ds) where
     minBound = minBound' (dims @ds)
     {-# INLINE minBound #-}
 
-{-
--- TODO remove as Int64s are likely too small 
 instance KnownDims ds => Enum (Idxs ds) where
 
     succ = go (dims @ds)
@@ -202,20 +197,12 @@ instance KnownDims ds => Enum (Idxs ds) where
           | otherwise = Idx (i-1) :+ is
     {-# INLINE pred #-}
 
-    toEnum i = go dsd $ fromIntegral i
-      where
-        dsd = dims @ds
-        go :: forall ns . Dims ns -> Int64 -> Idxs ns
-        go S 0 = S
-        go S _ = error ("Idxs ") -- ++ show (listDims dsd)) TODO fix
-        go (Snoc ds d) off = case divMod off (dimVal d) of
-          (off', j) -> go ds off' `snoc` Idx j
+    toEnum = idxs (dims @ds)
     {-# INLINE toEnum #-}
-
 
     fromEnum = minorToMajor (dims @ds)
     {-# INLINE fromEnum #-}
-
+{-
     enumFrom x = take (diffIdxs (dims @ds) maxBound x + 1) $ iterate succ x
     {-# INLINE enumFrom #-}
 
@@ -246,30 +233,28 @@ instance KnownDims ds => Enum (Idxs ds) where
 -}
 
 instance KnownDims d => Semigroup (Idxs d) where
-    (<>) = liftIdxs2 (+)
+    (<>) = reflectDims @d liftIdxs2 (+)
     {-# INLINE (<>) #-}
 
 instance KnownDims d => Monoid (Idxs d) where
-    mempty = idxs 0
+    mempty = reflectDims @d idxs 0
     {-# INLINE mempty #-}
 
 instance KnownDims d => Num (Idxs d) where
 
-    (+) = liftIdxs2 (+)
+    (+) = reflectDims @d liftIdxs2 (+)
 
-    (-) = liftIdxs2 (-)
+    (-) = reflectDims @d liftIdxs2 (-)
     {-# INLINE (-) #-}
 
-    (*) = liftIdxs2 (*)
+    (*) = reflectDims @d liftIdxs2 (*)
     {-# INLINE (*) #-}
 
     signum _ = fromInteger 1
     {-# INLINE signum #-}
 
-    abs = liftIdxs abs
+    abs = reflectDims @d liftIdxs abs
     {-# INLINE abs #-}
 
-    fromInteger = idxs . fromIntegral
+    fromInteger = reflectDims @d idxs . fromIntegral
     {-# INLINE fromInteger #-}
-
-

@@ -60,7 +60,7 @@ remapIdxs
   -> r
 remapIdxs (Perm p) ds ix f = 
   unsafeReifyDims (P.permuteList p $ listDims ds) $ \ds' -> 
-    f ds' (toIdxs ds' . fromIdxs ds $ ix)
+    f ds' (idxs ds' . fromIdxs ds $ ix)
 
 transposeIdxs 
   :: forall ds r
@@ -68,7 +68,7 @@ transposeIdxs
   -> Dims ds -> Idxs ds -> r
 transposeIdxs f ds ix = 
   unsafeReifyDims (Prelude.reverse $ listDims ds) $ \ds' -> 
-    f ds' (toIdxs ds' . fromIdxs ds $ ix)
+    f ds' (idxs ds' . fromIdxs ds $ ix)
 
 -- | Create a new 'Dims' based on the actual value of the 'Idxs'.
 idxsToDims :: Idxs d -> (forall d'. Dims d' -> r) -> r

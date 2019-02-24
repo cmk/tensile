@@ -40,7 +40,6 @@
 module Numeric.Tensile.Dimensions.Dims.Types where
 
 import Data.Functor.Identity
-import Data.Int (Int64)
 import Data.Proxy
 import Unsafe.Coerce (unsafeCoerce)
 
@@ -57,7 +56,7 @@ import Numeric.Tensile.Dimensions.Types
 type Dims (ds :: [Nat]) = TypedList Dim ds
 
 instance Eq (Dims ds) where
-    (==) = unsafeCoerce ((==) :: [Int64] -> [Int64] -> Bool)
+    (==) = unsafeCoerce ((==) :: [Word] -> [Word] -> Bool)
     {-# INLINE (==) #-}
 
 instance Show (Dims ds) where
@@ -65,14 +64,14 @@ instance Show (Dims ds) where
     showsPrec p ds = showParen (p >= 10)
       $ showString "Dims " . showsPrec p (listDims ds)
 
--- | Similar to `natVal` from `GHC.TypeLits`, but returns `Int64`.
-listDims :: Dims ds -> [Int64]
-listDims ds = listVals ds dimVal --Numeric.Tensile.Dimensions.Types.map dimVal
+-- | Similar to `natVal` from `GHC.TypeLits`, but returns `Word`.
+listDims :: Num n => Dims ds -> [n]
+listDims ds = listVals ds dimVal 
 {-# INLINE listDims #-}
 
 -- | Product of all dimension sizes. 
 -- Caution: numerical overflow will lead to undefined behavior.
-size :: Dims ds -> Int64
+size :: Num n => Dims ds -> n
 size = product . listDims
 {-# INLINE size #-}
 
@@ -147,7 +146,7 @@ reifyDims d k = unsafeCoerce (WithKnownDims k :: WithKnownDims d r) d
 
 newtype WithKnownDims ds r = WithKnownDims (KnownDims ds => r)
 
-unsafeReifyDims :: [Int64] -> (forall ds. KnownDims ds => Dims ds -> r) -> r
+unsafeReifyDims :: [Word] -> (forall ds. KnownDims ds => Dims ds -> r) -> r
 unsafeReifyDims []     f = f S
 unsafeReifyDims (x:xs) f = 
   unsafeReifyDim x $ \p ->

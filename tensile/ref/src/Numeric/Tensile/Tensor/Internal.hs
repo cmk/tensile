@@ -280,13 +280,13 @@ pack0
   => Vector n (Tensor d e) -> Tensor (n :+ d) e
 pack0 v = Tensor res
   where d = dims @d
-        n = fromIntegral $ dimVal $ dim @n
+        n = dimVal $ dim @n
         size = product $ listDims d
         res = S.create $ do
-          mv <- M.new $ fromIntegral $ size * n
+          mv <- M.new $ size * n
           flip N.imapM_ v $ \i t -> 
-            let i' = idxToWord . idxFromFinite $ i
-                off = fromIntegral $ i' * size
+            let i' = idxVal . idxFromFinite $ i
+                off = i' * size
                 v' = unTensor t
                 act ix = M.write mv (off + fromEnum ix) $ v' S.! (fromEnum ix) -- could use a tensor op instead here
             in forMIdxs_ d act
@@ -315,7 +315,7 @@ see example http://jeankossaifi.com/blog/unfolding.html
 t :: Vector 4 (Tensor '[2,2] Word)
 t = N.generate $ \f -> 
   let d = dims @'[2,2]
-      i' = idxToWord . idxFromFinite $ f
+      i' = idxVal . idxFromFinite $ f
   in fill d (const i') 
 
 t' :: Tensor '[4,2,2] Word
@@ -329,7 +329,7 @@ generate :: forall n a. KnownNat n => (Finite n -> a) -> Vector n a
 t :: Data.Vector.Sized.Vector 4 (Tensor '[2,2] Word)
 t = generate $ \f -> 
   let d = dims @'[2,2]
-      i' = idxToWord . idxFromFinite $ f
+      i' = idxVal . idxFromFinite $ f
   in fill d (const i') 
 
 t' :: Tensor '[4,2,2] Word

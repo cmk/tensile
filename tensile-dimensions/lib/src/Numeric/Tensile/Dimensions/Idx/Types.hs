@@ -30,7 +30,6 @@ import qualified Math.Combinat.Permutations as P
 
 
 import Data.Function (on)
-import Data.Int (Int64)
 
 import Data.Proxy
 import GHC.TypeLits (KnownNat(..))
@@ -42,15 +41,19 @@ import Numeric.Tensile.Dimensions.Dim.Types
 import Numeric.Tensile.Dimensions.Types as T
 
 --TODO hide constructor
-newtype Idx (d :: Nat) = Idx { idxVal :: Int64 } deriving (Eq, Ord)
+newtype Idx (d :: Nat) = Idx Int deriving (Eq, Ord)
 
 idx :: forall d i. KnownDim d => Integral i => i -> Idx d
 idx = Idx . flip mod (reflectDim @d dimVal) . fromIntegral
 
-liftIdx ::  forall d. KnownDim d => (Int64 -> Int64) -> Idx d -> Idx d
+idxVal :: Num n => Idx d -> n
+idxVal (Idx i) = fromIntegral i
+{-# INLINE idxVal #-}
+
+liftIdx ::  forall d. KnownDim d => (Int -> Int) -> Idx d -> Idx d
 liftIdx f = idx . f . idxVal
 
-liftIdx2 :: forall d. KnownDim d => (Int64 -> Int64 -> Int64) -> Idx d -> Idx d -> Idx d
+liftIdx2 :: forall d. KnownDim d => (Int -> Int -> Int) -> Idx d -> Idx d -> Idx d
 liftIdx2 f = on k idxVal
   where k i j = idx $ f i j
 
@@ -83,7 +86,7 @@ instance KnownDim d => Enum (Idx d) where
     toEnum = idx
     {-# INLINE toEnum #-}
 
-    fromEnum = fromIntegral . idxVal
+    fromEnum = idxVal
     {-# INLINE fromEnum #-}
 
 {-
@@ -97,10 +100,10 @@ instance KnownDim d => Enum (Idx d) where
           GT -> unsafeCoerce# (enumFromThenTo n0 n1 1)
     {-# INLINE enumFromThen #-}
     enumFromTo
-      = unsafeCoerce# (enumFromTo :: Int64 -> Int64 -> [Int])
+      = unsafeCoerce# (enumFromTo :: Int -> Int -> [Int])
     {-# INLINE enumFromTo #-}
     enumFromThenTo
-      = unsafeCoerce# (enumFromThenTo :: Int64 -> Int64 -> Int64 -> [Int])
+      = unsafeCoerce# (enumFromThenTo :: Int -> Int -> Int -> [Int])
     {-# INLINE enumFromThenTo #-}
 -}
 
@@ -141,7 +144,7 @@ instance KnownDim d => Num (Idx d) where
 instance KnownDim d => Num (Idx d) where
 
 #ifdef UNSAFE_INDICES
-    (+) = unsafeCoerce ((+) :: Int64 -> Int64 -> Int64)
+    (+) = unsafeCoerce ((+) :: Int -> Int -> Int)
 #else
     (Idx a) + (Idx b)
         | r >= d || r < a || r < b
@@ -157,7 +160,7 @@ instance KnownDim d => Num (Idx d) where
     {-# INLINE (+) #-}
 
 #ifdef UNSAFE_INDICES
-    (-) = unsafeCoerce ((-) :: Int64 -> Int64 -> Int64)
+    (-) = unsafeCoerce ((-) :: Int -> Int -> Int)
 #else
     (Idx a) - (Idx b)
         | b > a
@@ -170,7 +173,7 @@ instance KnownDim d => Num (Idx d) where
     {-# INLINE (-) #-}
 
 #ifdef UNSAFE_INDICES
-    (*) = unsafeCoerce ((*) :: Int64 -> Int64 -> Int64)
+    (*) = unsafeCoerce ((*) :: Int -> Int -> Int)
 #else
     (Idx a) * (Idx b)
         | r >= d || r < a || r < b
@@ -194,7 +197,7 @@ instance KnownDim d => Num (Idx d) where
     {-# INLINE signum #-}
 
 #ifdef UNSAFE_INDICES
-    fromInteger = unsafeCoerce (fromInteger :: Integer -> Int64)
+    fromInteger = unsafeCoerce (fromInteger :: Integer -> Int)
 #else
     fromInteger i
       | i >= 0 && i < d = Idx $ fromInteger i
@@ -203,7 +206,7 @@ instance KnownDim d => Num (Idx d) where
                         ++ show d ++ "}: integer "
                         ++ show i ++ " is outside of index bounds."
       where
-        d = toInteger (unsafeCoerce (dim @d) :: Int64)
+        d = toInteger (unsafeCoerce (dim @d) :: Int)
 #endif
     {-# INLINE fromInteger #-}
 -}

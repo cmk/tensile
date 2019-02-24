@@ -24,16 +24,10 @@ module Numeric.Tensile.Dimensions.Dim.Types (
   someDim,
   withDim,
   withSomeDim,
-  addDim,
-  subDim,
-  mulDim,
-  expDim,
-  pattern Dim,
-  type Int64
+  pattern Dim
 ) where
 
 import Data.Proxy
-import Data.Int (Int64)
 import Data.Kind (Type)
 import Data.Type.Bool
 import Data.Type.Equality
@@ -46,7 +40,7 @@ import Numeric.Tensile.Dimensions.Types (Reflects(..), type (<))
 
 -- | Singleton type to store type-level dimension value.
 -- Dimensions are restricted to strictly positive naturals.
-newtype Dim (d :: Nat) = DimSing Int64 deriving (Eq, Ord)
+newtype Dim (d :: Nat) = DimSing Word deriving (Eq, Ord)
 
 instance Show (Dim d) where
     show (DimSing w) = "Dim " ++ show w
@@ -54,9 +48,9 @@ instance Show (Dim d) where
       = showParen (p >= 10)
       $ showString "Dim " . showsPrec p w
 
--- | Similar to `natVal` from `GHC.TypeLits`, but returns `Int`.
-dimVal :: Dim d -> Int64
-dimVal (DimSing i) = i
+-- | Similar to `natVal` from `GHC.TypeLits`, but returns strictly positive values.
+dimVal :: Num n => Dim d -> n
+dimVal (DimSing d) = fromIntegral d
 {-# INLINE dimVal #-}
 
 -- | Obtain evidence that both values were instantiated with the same 'Nat's.
@@ -72,6 +66,7 @@ compareDim :: Dim a -> Dim b -> Ordering
 compareDim (DimSing a) (DimSing b) = compare a b
 {-# INLINE compareDim #-}
 
+{- TODO remove
 addDim :: Dim a -> Dim b -> Dim (a + b)
 addDim (DimSing a) (DimSing b) = unsafeCoerce (a + b)
 {-# INLINE addDim #-}
@@ -91,6 +86,8 @@ expDim (DimSing a) (DimSing b) = unsafeCoerce (a ^ b)
 refineDim :: forall d. KnownDim d => (Dim d -> Bool) -> Maybe (Dim d)
 refineDim p = reflectDim $ \x -> if p x then Just x else Nothing
 {-# INLINE refineDim #-}
+-}
+
 
 --  Match against this pattern to bring a `KnownDim` instance into scope.
 pattern Dim :: forall d. KnownDim d => Dim d
@@ -137,7 +134,7 @@ reifyDim d k = unsafeCoerce (WithKnownDim k :: WithKnownDim d r) d
 
 newtype WithKnownDim d r = WithKnownDim (KnownDim d => r)
 
-unsafeReifyDim :: forall r. Int64 -> (forall d. KnownDim d => Proxy d -> r) -> r
+unsafeReifyDim :: forall r. Word -> (forall d. KnownDim d => Proxy d -> r) -> r
 unsafeReifyDim w k = unsafeCoerce (WithSomeDim k :: WithSomeDim r) w Proxy
 
 newtype WithSomeDim r = WithSomeDim (forall d. KnownDim d => Proxy d -> r)
