@@ -17,10 +17,10 @@ pred_evidence_reflect :: Dims ds -> Bool
 pred_evidence_reflect ds = evidenceReflect ds == ds 
 
 traverseSomeDims :: SomeDims -> [Int64]
-traverseSomeDims = runIdentity . traverse (\s -> Identity $ withSomeDim s fromDim) 
+traverseSomeDims = runIdentity . traverse (\s -> Identity $ withSomeDim s dimVal) 
 
 pred_traverse_somedims :: SomeDims -> Bool
-pred_traverse_somedims ds = withSomeDims ds fromDims == traverseSomeDims ds
+pred_traverse_somedims ds = withSomeDims ds listDims == traverseSomeDims ds
 
 {-
 
@@ -31,8 +31,8 @@ prop_splitDims n xsys
   , (xs, ys) <- splitAt (fromIntegral n) xsys
   = case TL.splitAt dn dxsys of
       (dxs, dys) -> and
-        [ fromDims dxs == xs
-        , fromDims dys == ys
+        [ listDims dxs == xs
+        , listDims dys == ys
         -- , dxsys == TL.concat dxs dys
         ]
 

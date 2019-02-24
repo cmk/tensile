@@ -119,7 +119,7 @@ instance (KnownDim (Size d), Fractional e, Elt e) => Fractional (Tensor d e)  wh
     {-# INLINE (/) #-}
     recip = _lift recip
     {-# INLINE recip #-}
-    fromRational = _replicate (fromIntegral . fromDim $ (dim :: Dim (Size d))) . fromRational
+    fromRational = _replicate (fromIntegral . dimVal $ (dim :: Dim (Size d))) . fromRational
     {-# INLINE fromRational #-}
 
 instance (KnownDim (Size d), Floating e, Elt e) => Floating (Tensor d e) where
@@ -170,7 +170,7 @@ instance (KnownDim (Size d), Elt e, Eq e, Bits e, Num e) => Bits (Tensor d e) wh
     complement = _lift complement
     shift t i = _lift (flip shift i) t
     rotate t i = _lift (flip rotate i) t
-    bit = _replicate (fromIntegral . fromDim $ (dim :: Dim (Size d))) . bit
+    bit = _replicate (fromIntegral . dimVal $ (dim :: Dim (Size d))) . bit
     testBit = testBitDefault
     bitSizeMaybe _ = bitSizeMaybe @e undefined
     bitSize _ = bitSize @e undefined
@@ -184,7 +184,7 @@ instance (KnownDim (Size d), Elt e, Real e) => Real (Tensor d e) where
   toRational = undefined --TODO find a reasonable sum-based implementation or scrap the typeclass
 
 instance (KnownDim (Size d), Elt e, Enum e) => Enum (Tensor d e) where
-  toEnum = Tensor . S.replicate (fromIntegral . fromDim $ (dim :: Dim (Size d))) . toEnum
+  toEnum = Tensor . S.replicate (fromIntegral . dimVal $ (dim :: Dim (Size d))) . toEnum
   {-# INLINE toEnum #-}
   fromEnum = undefined --TODO find a reasonable sum-based implementation or scrap the typeclass
 
@@ -314,7 +314,7 @@ toSizedVector = coerce . S.convert . unTensor
 
 fill :: Elt e => Dims d -> (Idxs d -> e) -> Tensor d e
 fill d f = Tensor $ S.create $ do
-  mv <- M.new $ fromIntegral $ product $ fromDims d
+  mv <- M.new $ fromIntegral $ product $ listDims d
   let act ix = M.write mv (minorToMajor d ix) $ f ix
   forMIdxs_ d act
   return mv
@@ -330,7 +330,7 @@ constant :: Elt e => Dims d -> e -> Tensor d e
 constant d = Tensor . O.constant (toShape d) . pure
 
 toShape :: Dims d -> Shape
-toShape = Shape . fmap fromIntegral . fromDims 
+toShape = Shape . fmap fromIntegral . listDims 
 
 toShape' :: Idxs d -> Shape
 toShape' = Shape . fmap fromIntegral . listIdxs 
@@ -375,7 +375,7 @@ foo d f = printTensor $ fill d f
 [7,5,3,1,6,4,2,0]
 
 pred_sum_idxs :: forall ds. Dims ds -> Bool
-pred_sum_idxs ds = foldIdxs ds (\_ a -> a + 1) 0 == (product . fromDims $ ds)
+pred_sum_idxs ds = foldIdxs ds (\_ a -> a + 1) 0 == (product . listDims $ ds)
 
 -}
 
@@ -434,8 +434,8 @@ pack0
   => Vector n (Tensor d e) -> Tensor (n :+ d) e
 pack0 v = Tensor res
   where d = dims @d
-        n = fromIntegral $ fromDim $ dim @n
-        size = product $ fromDims d
+        n = fromIntegral $ dimVal $ dim @n
+        size = product $ listDims d
         res = S.create $ do
           mv <- M.new $ fromIntegral $ size * n
           flip N.imapM_ v $ \i t -> 
@@ -454,7 +454,7 @@ unpack0
   => Tensor (n :+ d) e -> Vector n (Tensor d e)
 unpack0 t = N.generate f
   where d = dims @d
-        size = fromIntegral $ product $ fromDims d
+        size = fromIntegral $ product $ listDims d
         f i = fill d $ \ix -> 
           let i' = fromIntegral $ F.getFinite i
               off = i' * size

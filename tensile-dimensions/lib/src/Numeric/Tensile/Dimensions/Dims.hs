@@ -69,7 +69,7 @@ mapDims' f = runIdentity . traverseDims' (Identity . f)
 --withSomeDims d f = case someDims d of SomeDims d' -> f d'
 
 --foo :: KnownDims '[1,2] => [Word]
---foo = withDims fromDims
+--foo = withDims listDims
 
 {-
 -- | The "eliminator" for 'Dims'.  You can think of this as

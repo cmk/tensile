@@ -72,7 +72,7 @@ reifyDims d k = unsafeCoerce (MagicDims k :: MagicDims r) d Proxy
 pred_transposition' :: (Elt e, Eq e, V.Storable e) => Dims d -> Tensor d e -> Bool
 pred_transposition' d t = b
   where
-    w = fromDims d
+    w = listDims d
     s = product w
     b = withSomeDims (reverse w) $ \d' -> 
           withSomeDims w $ \d'' ->
@@ -82,7 +82,7 @@ pred_transposition' d t = b
 pred_transposition' :: forall d e. (Elt e, Eq e) => Dims d -> Tensor d e -> Bool
 pred_transposition' d t = t'' == t
   where
-    w = fromDims d
+    w = listDims d
     t' = reifyDims (reverse w) $ \d -> transpose (reflect d) (reversal' $ reflect d) t
     t'' = reifyDims w $ \d ->transpose (reflect d) (reversal' $ reflect d) $ t'
 
@@ -90,7 +90,7 @@ pred_transposition' d t = t'' == t
 pred_transposition' :: (Elt e, Eq e, V.Storable e) => Dims d -> Tensor d e -> Bool
 pred_transposition' d t = b
   where
-    w = fromDims d
+    w = listDims d
     s = product w
     b = withSomeDims (reverse w) $ \d' -> 
           withSomeDims w $ \d'' ->
@@ -122,8 +122,8 @@ prop_splitDims n xsys
   , (xs, ys) <- splitAt (fromIntegral n) xsys
   = case TL.splitAt dn dxsys of
       (dxs, dys) -> and
-        [ fromDims dxs == xs
-        , fromDims dys == ys
+        [ listDims dxs == xs
+        , listDims dys == ys
         -- , dxsys == TL.concat dxs dys
         ]
 
@@ -131,8 +131,8 @@ tensor :: (MonadGen m, Elt e) => Dims d -> (Range e -> m e) -> Range e -> m (Ten
 tensor d g r = Tensor <$> genVectorOf ran g r
   where ran = R.singleton $ fromIntegral (totalDim d)
 
-fromDims :: Dims xs -> [Word]
-fromDims = unsafeCoerce#
+listDims :: Dims xs -> [Word]
+listDims = unsafeCoerce#
 
 d233 = (dims @'[2,3,3])
 d332 = (dims @'[3,3,2])

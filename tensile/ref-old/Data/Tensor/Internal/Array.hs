@@ -7,7 +7,7 @@ import Data.Singletons.Prelude.List (Product)
 import Data.Word (Word8)
 import GHC.Base hiding (foldr)
 import GHC.TypeLits
-import Numeric.Dimensions --(Dimensions(..), KnownDim(..), fromDim)
+import Numeric.Dimensions --(Dimensions(..), KnownDim(..), dimVal)
 import Numeric.DataFrame.Internal.Array.Family.ArrayBase
 
 import Numeric.PrimBytes
@@ -167,7 +167,7 @@ fromElems off n ba = ArrayBase (# | (# off , n , ba #) #)
 --
 --   Normal indexing can be expressed in terms of `indexOffset#`:
 --
---   > i !. x = case (# fromDim (dim @as), fromEnum i #) of (# I# n, I# j #) -> indexOffset# (n *# j) n x
+--   > i !. x = case (# dimVal (dim @as), fromEnum i #) of (# I# n, I# j #) -> indexOffset# (n *# j) n x
 --
 indexOffset# 
   :: forall t as bs asbs. PrimBytes t
@@ -629,7 +629,7 @@ overDim_'# :: Dims (ds :: [k])
 overDim_'# U f = f U
 overDim_'# (d :+ ds) f = overDim_'# ds (loop 1)
   where
-    n = fromDim d
+    n = dimVal d
     loop i js off# s | i > n = (# s , off#  #)
                      | otherwise = case f (Idx i :+ js) off# s of
                          (# s', off1# #) -> loop (i+1) js off1# s'

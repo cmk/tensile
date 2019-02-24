@@ -42,34 +42,34 @@ import Numeric.Tensile.Dimensions.Dim.Types
 import Numeric.Tensile.Dimensions.Types as T
 
 --TODO hide constructor
-newtype Idx (d :: Nat) = Idx { unIdx :: Int64 } deriving (Eq, Ord)
+newtype Idx (d :: Nat) = Idx { idxVal :: Int64 } deriving (Eq, Ord)
 
 idx :: forall d i. KnownDim d => Integral i => i -> Idx d
-idx = Idx . flip mod (reflectDim @d fromDim) . fromIntegral
+idx = Idx . flip mod (reflectDim @d dimVal) . fromIntegral
 
 liftIdx ::  forall d. KnownDim d => (Int64 -> Int64) -> Idx d -> Idx d
-liftIdx f = idx . f . unIdx
+liftIdx f = idx . f . idxVal
 
 liftIdx2 :: forall d. KnownDim d => (Int64 -> Int64 -> Int64) -> Idx d -> Idx d -> Idx d
-liftIdx2 f = on k unIdx
+liftIdx2 f = on k idxVal
   where k i j = idx $ f i j
 
 idxFromFinite :: forall d. KnownDim d => F.Finite d -> Idx d
 idxFromFinite = idx . F.getFinite
 
 finiteFromIdx :: forall d. KnownNat d => Idx d -> F.Finite d
-finiteFromIdx = F.finite . toInteger . unIdx 
+finiteFromIdx = F.finite . toInteger . idxVal 
 
 instance Read (Idx d) where
     readsPrec d = fmap (first Idx) . readsPrec d
 
 instance Show (Idx d) where
-    showsPrec d = showsPrec d . unIdx
+    showsPrec d = showsPrec d . idxVal
 
 instance KnownDim d => Bounded (Idx d) where
-    minBound = Idx 0
+    minBound = idx 0
     {-# INLINE minBound #-}
-    maxBound = Idx $ reflectDim @d fromDim - 1
+    maxBound = idx $ reflectDim @d dimVal - 1
     {-# INLINE maxBound #-}
 
 instance KnownDim d => Enum (Idx d) where
@@ -77,13 +77,13 @@ instance KnownDim d => Enum (Idx d) where
     succ = liftIdx (+1)
     {-# INLINE succ #-}
 
-    pred = liftIdx (+ (-1))
+    pred = liftIdx (+(-1))
     {-# INLINE pred #-}
 
     toEnum = idx
     {-# INLINE toEnum #-}
 
-    fromEnum = fromIntegral . unIdx
+    fromEnum = fromIntegral . idxVal
     {-# INLINE fromEnum #-}
 
 {-

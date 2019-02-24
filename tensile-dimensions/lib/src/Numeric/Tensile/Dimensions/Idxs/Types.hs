@@ -57,8 +57,8 @@ listIdxs = unsafeCoerce
         dsd = dims @ds
         go :: forall ns . Dims ns -> Int64 -> Idxs ns
         go S 0 = S
-        go S _ = error ("Idxs ") -- ++ show (fromDims dsd)) TODO fix
-        go (Snoc ds d) off = case divMod off (fromDim d) of
+        go S _ = error ("Idxs ") -- ++ show (listDims dsd)) TODO fix
+        go (Snoc ds d) off = case divMod off (dimVal d) of
           (off', j) -> go ds off' `snoc` Idx j
 -}
 
@@ -68,6 +68,11 @@ idxsFromInt64s = go (dims @ds)
   where
     go S [] = S
     go (d :+ ds) (i : is) = (reifyDim d (idx i) :+) <$> go ds is   -- | i >= 0 && i < d = (i:) <$> go ds is
+
+
+
+_Idxs = KnownDims d => Iso' Int64 (Idxs ds)
+_Idxs = iso toIdxs fromIdxs
 -}
 
 
@@ -77,8 +82,9 @@ majorToMinor dims = fromIntegral . go 1 dims
   where
     go :: forall ns . Int64 -> Dims ns -> Idxs ns -> Int64
     go _ S S                     = 0
-    go m (d :+ ds) (Idx i :+ is) = m * i + go (m * fromDim d) ds is
+    go m (d :+ ds) (Idx i :+ is) = m * i + go (m * dimVal d) ds is
 
+-- TODO use withPerm instead
 minorToMajor :: forall ds i. Integral i => Dims ds -> Idxs ds -> i
 minorToMajor d i = majorToMinor (unsafeReverse d) (unsafeReverse i)
 
@@ -93,27 +99,57 @@ toIdxs d = go d . flip mod (size d) . fromIntegral
   where
     go :: forall d . Dims d -> Int64 -> Idxs d
     go S _ = S
-    --go S _ = S error ("Idxs ") -- ++ show (fromDims dsd)) TODO: fix
-    go (Snoc ds d) off = case divMod off (fromDim d) of
+    --go S _ = S error ("Idxs ") -- ++ show (listDims dsd)) TODO: fix
+    go (Snoc ds d) off = case divMod off (dimVal d) of
       (off', j) -> go ds off' `snoc` Idx j
+
+--------------------------------------------------------------------------------
+
+liftIdxs :: forall d. KnownDims d => (Int64 -> Int64) -> Idxs d -> Idxs d
+liftIdxs f = idxs . flip mod (reflectDims @d size) . f . reflectDims @d minorToMajor
+
+liftIdxs2 :: forall d. KnownDims d => (Int64 -> Int64 -> Int64) -> Idxs d -> Idxs d -> Idxs d
+liftIdxs2 f = on k $ reflectDims @d minorToMajor
+  where k i j = idxs . flip mod (reflectDims @d size) $ f i j
+
+-- diffIdxs =? fromEnum $ reflectDims $ liftIdxs2 (-)
+diffIdxs :: Dims ds -> Idxs ds -> Idxs ds -> Int64
+diffIdxs d i j = _diffIdxs (unsafeReverse d) (unsafeReverse i) (unsafeReverse j)
+{-# INLINE diffIdxs #-}
+
+-- | Offset difference of two indices @idx1 - idx2@
+_diffIdxs :: Dims ds -> Idxs ds -> Idxs ds -> Int64
+_diffIdxs S S S = 0
+_diffIdxs (d :+ ds) (Idx i1 :+ is1) (Idx i2 :+ is2)
+  = fromIntegral i1 - fromIntegral i2
+  + fromIntegral (dimVal d) * _diffIdxs ds is1 is2
+
+--TODO this funtion seems broken
+-- | Step dimension index by an Int64 offset
+stepIdxs :: Dims ds -> Int64 -> Idxs ds -> Idxs ds
+stepIdxs d di i = _stepIdxs (unsafeReverse d) di (unsafeReverse i)
+{-# INLINE stepIdxs #-}
+
+_stepIdxs :: Dims ds -> Int64 -> Idxs ds -> Idxs ds
+_stepIdxs S _ S = S
+_stepIdxs (d :+ ds) di (Idx i :+ is)
+      = case divMod (di + fromIntegral i) (fromIntegral (dimVal d)) of
+         (0  , i') -> Idx (fromIntegral i') :+ is
+         (di', i') -> Idx (fromIntegral i') :+ _stepIdxs ds di' is
+
+
+--------------------------------------------------------------------------------
+
 
 instance Eq (Idxs ds) where
     a == b = (listIdxs a) == (listIdxs b)
     {-# INLINE (==) #-}
 
--- TODO check if ok to not reverse this
---
+
 -- | Compare indices by their importance in lexicorgaphic order
 --   from the last dimension to the first dimension
 --   (the last dimension is the most significant one) @O(Length ds)@.
 --
---   Literally,
---
---   > compare a b = compare (reverse $ listIdxs a) (reverse $ listIdxs b)
---
---   This is the same @compare@ rule, as for `Dims`.
---   Another reason to reverse the list of indices is to have a consistent
---   behavior when calculating index offsets:
 --
 --   > sort == sortOn fromEnum
 --
@@ -130,7 +166,7 @@ instance Show (Idxs ds) where
 
 maxBound' :: forall ds . Dims ds -> Idxs ds
 maxBound' S         = S
-maxBound' (d :+ ds) = Idx (fromDim d - 1) :+ maxBound' ds
+maxBound' (d :+ ds) = Idx (dimVal d - 1) :+ maxBound' ds
 
 minBound' :: forall ds . Dims ds -> Idxs ds
 minBound' S         = S
@@ -151,18 +187,18 @@ instance KnownDims ds => Enum (Idxs ds) where
     succ = go (dims @ds)
       where
         go :: forall ns . Dims ns -> Idxs ns -> Idxs ns
-        go S S = succError $ "Idxs " -- ++ show (fromDims $ dims @ds) TODO fix
+        go S S = succError $ "Idxs " -- ++ show (listDims $ dims @ds) TODO fix
         go (d :+ ds) (Idx i :+ is)
-          | i == fromDim d = Idx 0 :+ go ds is
+          | i == dimVal d = Idx 0 :+ go ds is
           | otherwise     = Idx (i+1) :+ is
     {-# INLINE succ #-}
 
     pred = go (dims @ds)
       where
         go :: forall ns . Dims ns -> Idxs ns -> Idxs ns
-        go S S = predError $ "Idxs " -- ++ show (fromDims $ dims @ds) TODO fix
+        go S S = predError $ "Idxs " -- ++ show (listDims $ dims @ds) TODO fix
         go (d :+ ds) (Idx i :+ is)
-          | i == 0    = Idx (fromDim d) :+ go ds is
+          | i == 0    = Idx (dimVal d) :+ go ds is
           | otherwise = Idx (i-1) :+ is
     {-# INLINE pred #-}
 
@@ -171,8 +207,8 @@ instance KnownDims ds => Enum (Idxs ds) where
         dsd = dims @ds
         go :: forall ns . Dims ns -> Int64 -> Idxs ns
         go S 0 = S
-        go S _ = error ("Idxs ") -- ++ show (fromDims dsd)) TODO fix
-        go (Snoc ds d) off = case divMod off (fromDim d) of
+        go S _ = error ("Idxs ") -- ++ show (listDims dsd)) TODO fix
+        go (Snoc ds d) off = case divMod off (dimVal d) of
           (off', j) -> go ds off' `snoc` Idx j
     {-# INLINE toEnum #-}
 
@@ -236,36 +272,4 @@ instance KnownDims d => Num (Idxs d) where
     fromInteger = idxs . fromIntegral
     {-# INLINE fromInteger #-}
 
---------------------------------------------------------------------------------
 
-liftIdxs :: forall d. KnownDims d => (Int64 -> Int64) -> Idxs d -> Idxs d
-liftIdxs f = idxs . flip mod (reflectDims @d size) . f . reflectDims @d minorToMajor
-
-liftIdxs2 :: forall d. KnownDims d => (Int64 -> Int64 -> Int64) -> Idxs d -> Idxs d -> Idxs d
-liftIdxs2 f = on k $ reflectDims @d minorToMajor
-  where k i j = idxs . flip mod (reflectDims @d size) $ f i j
-
--- diffIdxs =? fromEnum $ reflectDims $ liftIdxs2 (-)
-diffIdxs :: Dims ds -> Idxs ds -> Idxs ds -> Int64
-diffIdxs d i j = _diffIdxs (unsafeReverse d) (unsafeReverse i) (unsafeReverse j)
-{-# INLINE diffIdxs #-}
-
--- | Offset difference of two indices @idx1 - idx2@
-_diffIdxs :: Dims ds -> Idxs ds -> Idxs ds -> Int64
-_diffIdxs S S S = 0
-_diffIdxs (d :+ ds) (Idx i1 :+ is1) (Idx i2 :+ is2)
-  = fromIntegral i1 - fromIntegral i2
-  + fromIntegral (fromDim d) * _diffIdxs ds is1 is2
-
---TODO this funtion seems broken
--- | Step dimension index by an Int64 offset
-stepIdxs :: Dims ds -> Int64 -> Idxs ds -> Idxs ds
-stepIdxs d di i = _stepIdxs (unsafeReverse d) di (unsafeReverse i)
-{-# INLINE stepIdxs #-}
-
-_stepIdxs :: Dims ds -> Int64 -> Idxs ds -> Idxs ds
-_stepIdxs S _ S = S
-_stepIdxs (d :+ ds) di (Idx i :+ is)
-      = case divMod (di + fromIntegral i) (fromIntegral (fromDim d)) of
-         (0  , i') -> Idx (fromIntegral i') :+ is
-         (di', i') -> Idx (fromIntegral i') :+ _stepIdxs ds di' is

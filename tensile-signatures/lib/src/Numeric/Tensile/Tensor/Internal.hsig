@@ -266,7 +266,7 @@ cat
   -> Dim (i::Nat)
   -> Tensor (ls ++ '[r0 + r1] ++ rs)
 cat a b d = fromRight (error "impossible: cat type should not allow this branch") $
-  asStatic <$> Dynamic.cat (asDynamic a) (asDynamic b) (fromIntegral $ fromDim d)
+  asStatic <$> Dynamic.cat (asDynamic a) (asDynamic b) (fromIntegral $ dimVal d)
 
 -- | convenience function, specifying a type-safe 'cat' operation.
 cat1d

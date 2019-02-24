@@ -61,27 +61,23 @@ instance Eq (Dims ds) where
     {-# INLINE (==) #-}
 
 instance Show (Dims ds) where
-    show ds = "Dims " ++ show (fromDims ds)
+    show ds = "Dims " ++ show (listDims ds)
     showsPrec p ds = showParen (p >= 10)
-      $ showString "Dims " . showsPrec p (fromDims ds)
+      $ showString "Dims " . showsPrec p (listDims ds)
 
 -- | Similar to `natVal` from `GHC.TypeLits`, but returns `Int64`.
-fromDims :: Dims ds -> [Int64]
-fromDims ds = elimDims ds fromDim --Numeric.Tensile.Dimensions.Types.map fromDim
-{-# INLINE fromDims #-}
-
-elimDims :: Dims ds -> (forall d. Dim d -> r) -> [r]
-elimDims S _ = []
-elimDims (d :+ ds) f = f d : elimDims ds f
+listDims :: Dims ds -> [Int64]
+listDims ds = listVals ds dimVal --Numeric.Tensile.Dimensions.Types.map dimVal
+{-# INLINE listDims #-}
 
 -- | Product of all dimension sizes. 
 -- Caution: numerical overflow will lead to undefined behavior.
 size :: Dims ds -> Int64
-size = product . fromDims
+size = product . listDims
 {-# INLINE size #-}
 
 compareDims :: Dims as -> Dims bs -> Ordering
-compareDims as bs = compare (fromDims as) (fromDims bs)
+compareDims as bs = compare (listDims as) (listDims bs)
 {-# INLINE compareDims #-}
 
 refineDims :: forall ds. KnownDims ds => (Dims ds -> Bool) -> Maybe (Dims ds)
@@ -135,7 +131,7 @@ someDims :: Integral i => [i] -> Maybe SomeDims
 someDims = traverse someDim
 {-# INLINE someDims #-}
 
--- @'withSomeDims' ds 'fromDims' == runIdentity . traverse (\s -> Identity $ Numeric.Tensile.Dimensions.Dim.Types.withSomeDim s Numeric.Tensile.Dimensions.Dim.Types.fromDim) $ ds@ 
+-- @'withSomeDims' ds 'listDims' == runIdentity . traverse (\s -> Identity $ Numeric.Tensile.Dimensions.Dim.Types.withSomeDim s Numeric.Tensile.Dimensions.Dim.Types.dimVal) $ ds@ 
 withSomeDims :: SomeDims -> (forall ds. KnownDims ds => Dims ds -> r) -> r 
 withSomeDims []     f = f S
 withSomeDims (x:xs) f = withSomeDim x $ \d ->

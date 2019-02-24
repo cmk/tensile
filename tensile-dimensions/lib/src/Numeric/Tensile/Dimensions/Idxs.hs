@@ -59,7 +59,7 @@ remapIdxs
   -> (forall ds'. Dims ds' -> Idxs ds' -> r) 
   -> r
 remapIdxs (Perm p) ds ix f = 
-  unsafeReifyDims (P.permuteList p $ fromDims ds) $ \ds' -> 
+  unsafeReifyDims (P.permuteList p $ listDims ds) $ \ds' -> 
     f ds' (toIdxs ds' . fromIdxs ds $ ix)
 
 transposeIdxs 
@@ -67,7 +67,7 @@ transposeIdxs
   . (forall ds'. Dims ds' -> Idxs ds' -> r)
   -> Dims ds -> Idxs ds -> r
 transposeIdxs f ds ix = 
-  unsafeReifyDims (Prelude.reverse $ fromDims ds) $ \ds' -> 
+  unsafeReifyDims (Prelude.reverse $ listDims ds) $ \ds' -> 
     f ds' (toIdxs ds' . fromIdxs ds $ ix)
 
 -- | Create a new 'Dims' based on the actual value of the 'Idxs'.
@@ -75,7 +75,7 @@ idxsToDims :: Idxs d -> (forall d'. Dims d' -> r) -> r
 idxsToDims i = unsafeReifyDims $ (+1) <$> listIdxs i 
 
 {-
-  unsafeReifyDims' (P.permuteList p $ fromDims ds) $ \ds' -> 
+  unsafeReifyDims' (P.permuteList p $ listDims ds) $ \ds' -> 
     f (reflect ds') (toIdxs (reflect ds') . fromIdxs ds $ ix)
 
 > i = 0 :+ 1 :+ 2 :+ S :: Idxs '[1,2,3]
@@ -117,7 +117,7 @@ foldIdxs :: Dims ds -> (Idxs ds -> a -> a) -> a -> a
 foldIdxs S k = k S
 foldIdxs (Snoc ds d) k = foldIdxs ds k'
   where k' is = go 0
-          where go i | i >= fromDim d = id
+          where go i | i >= dimVal d = id
                      | otherwise = go (i + 1) . k (is `snoc` Idx i)
 {-# INLINE foldIdxs #-}
 
@@ -125,7 +125,7 @@ foldMIdxs :: Monad m => Dims ds -> (Idxs ds -> a -> m a) -> a -> m a
 foldMIdxs S k = k S
 foldMIdxs (Snoc ds d) k = foldMIdxs ds k'
   where k' is = go 0
-          where go i | i >= fromDim d = return
+          where go i | i >= dimVal d = return
                      | otherwise = k (is `snoc` Idx i) >=> go (i + 1)
 {-# INLINE foldMIdxs #-}
 
@@ -133,7 +133,7 @@ forMIdxs_ :: Monad m => Dims ds -> (Idxs ds -> m ()) -> m ()
 forMIdxs_ S k = k S
 forMIdxs_ (Snoc ds d) k = forMIdxs_ ds k'
   where k' is = go 0
-          where go i | i >= fromDim d = return ()
+          where go i | i >= dimVal d = return ()
                      | otherwise = k (is `snoc` Idx i) >> go (i + 1)
 {-# INLINE forMIdxs_ #-}
 
@@ -194,7 +194,7 @@ overDim_ :: Monad m
 overDim_ U k offset _step = k S offset
 overDim_ (Snoc ds d) k offset step = overDim_ ds k' offset step -- (di * step)
   where
-    dw = fromDim d
+    dw = dimVal d
     -- di = fromIntegral dw
     k' is = go 0
       where

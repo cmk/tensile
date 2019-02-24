@@ -122,7 +122,7 @@ product
   => KnownDims y
   => T (x +: m) -> T (m :+ y) -> T (x ++ y)
 product t u
-    | I# m <- fromIntegral $ fromDim @m
+    | I# m <- fromIntegral $ dimVal @m
     , I# n <- fromIntegral $ totalDim' @x
     , I# k <- fromIntegral $ totalDim' @y
     , nk <- n *# k

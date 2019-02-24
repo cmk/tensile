@@ -14,7 +14,7 @@ module Numeric.Tensile.Dimensions.Dim.Types (
   Dim(),
   SomeDim(..),
   KnownDim(..),
-  fromDim,
+  dimVal,
   reifyDim,
   reflectDim,
   reflectDim2,
@@ -55,9 +55,9 @@ instance Show (Dim d) where
       $ showString "Dim " . showsPrec p w
 
 -- | Similar to `natVal` from `GHC.TypeLits`, but returns `Int`.
-fromDim :: Dim d -> Int64
-fromDim (DimSing i) = i
-{-# INLINE fromDim #-}
+dimVal :: Dim d -> Int64
+dimVal (DimSing i) = i
+{-# INLINE dimVal #-}
 
 -- | Obtain evidence that both values were instantiated with the same 'Nat's.
 sameDim :: forall (x :: Nat) (y :: Nat)
@@ -110,16 +110,16 @@ pattern Dim <- (withDim -> E)
 data SomeDim where SomeDim :: KnownDim d => !(Dim d) -> SomeDim
 
 instance Eq SomeDim where
-    SomeDim a == SomeDim b = fromDim a == fromDim b
+    SomeDim a == SomeDim b = dimVal a == dimVal b
 
 instance Ord SomeDim where
     compare (SomeDim a) (SomeDim b) = compareDim a b
 
 instance Show SomeDim where
-    show (SomeDim d) = "SomeDim " ++ show (fromDim d)
+    show (SomeDim d) = "SomeDim " ++ show (dimVal d)
     showsPrec p (SomeDim d)
       = showParen (p >= 10)
-      $ showString "SomeDim " . showsPrec p (fromDim d)
+      $ showString "SomeDim " . showsPrec p (dimVal d)
 
 someDim :: Integral i => i -> Maybe SomeDim
 someDim i = if i <= 0 then Nothing else Just sd
